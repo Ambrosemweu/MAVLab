@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MAVLab</string>
+    <string name="simulation_service_channel">MAVLab simulation</string>
+    <string name="simulation_service_title">MAVLab scaffold ready</string>
+    <string name="simulation_service_text">Phase 0 placeholder service. No MAVLink is running.</string>
+</resources>
