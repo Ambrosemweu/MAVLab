@@ -2,11 +2,11 @@
 
 MAVLab is a standalone, offline-first drone education simulator for Android.
 
-This repository is currently at **Phase 0: Project Skeleton + Architecture Guardrails**. The Android app intentionally contains no MAVLink, UDP, QGroundControl, physics, sensor, 3D, mission, failure, or lesson behavior yet.
+This repository is currently at **Phase 1: QGC/MAVLink Protocol Proof**. The app sends minimal MAVLink telemetry, listens for basic QGroundControl commands, sends `COMMAND_ACK`, returns a small parameter list, and shows live protocol-demo state in the dashboard.
 
-## Phase 0 Scope
+## Implemented Scope
 
-Phase 0 provides:
+Phase 0 provided:
 
 - Buildable Android project structure under `mavlab-android/`
 - Package namespace `com.ascend.mavlab`
@@ -21,11 +21,20 @@ Phase 0 provides:
 - Protocol guardrails for Phase 1
 - Test matrix for later validation
 
+Phase 1 adds:
+
+- Foreground service runtime
+- Shared protocol-demo state loop
+- Minimal MAVLink v2 framing and checksum generation
+- `HEARTBEAT`, `ATTITUDE`, `GLOBAL_POSITION_INT`, `GPS_RAW_INT`, `VFR_HUD`, `SYS_STATUS`, and `BATTERY_STATUS`
+- `COMMAND_ACK` for arm/disarm, takeoff, land, mode, and message interval requests
+- Minimal `PARAM_VALUE` responses for QGC parameter refresh
+- Same-device UDP target and LAN broadcast discovery
+- Stable device-derived MAVLink system ID displayed in the dashboard
+
 ## What Comes Next
 
-Phase 1 validates the riskiest assumption: QGroundControl must detect MAVLab, send commands, receive `COMMAND_ACK`, refresh minimal params, reconnect cleanly, and work in same-phone and LAN modes.
-
-Do not add physics, 3D, lessons, or controller behavior until Phase 1 passes.
+Next is real-device validation with QGroundControl on the same phone and on a desktop over the same Wi-Fi. Do not add physics, 3D, lessons, or controller behavior until that protocol check passes.
 
 ## Build
 

@@ -1,6 +1,6 @@
 # Protocol Guardrails
 
-These rules apply before Phase 1 implementation starts.
+These rules guided the Phase 1 implementation and remain the gate before Phase 2 physics starts.
 
 ## UDP Rules
 
@@ -12,9 +12,9 @@ These rules apply before Phase 1 implementation starts.
 
 ## MAVLink Rules
 
-- Phase 1 must send `COMMAND_ACK` for supported commands.
-- Phase 1 must handle or explicitly deny `SET_MESSAGE_INTERVAL`.
-- Phase 1 must answer `PARAM_REQUEST_LIST` with a minimal parameter set.
+- Phase 1 sends `COMMAND_ACK` for supported commands.
+- Phase 1 handles or explicitly denies `SET_MESSAGE_INTERVAL`.
+- Phase 1 answers `PARAM_REQUEST_LIST` with a minimal parameter set.
 - Every unsupported inbound QGC message should be logged.
 - Each app install must use a stable, user-visible MAVLink system ID.
 - `system_id = 1` is allowed only as a temporary development default.

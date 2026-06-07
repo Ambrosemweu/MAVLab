@@ -3,5 +3,6 @@ build/
 local.properties
 *.iml
 .idea/
+.vscode/
 captures/
 app/build/

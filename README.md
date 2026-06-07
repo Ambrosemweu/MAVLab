@@ -13,4 +13,4 @@ The current roadmap is documented in:
 - `phases/phase_5_failures_missions.md`
 - `phases/phase_6_polish_release.md`
 
-Phase 0 has been executed as a scaffold-only Android project. Phase 1 should validate QGroundControl/MAVLink protocol behavior before any physics or UI feature work.
+Phase 0 has been executed as a scaffold-only Android project. Phase 1 now implements the minimal QGroundControl/MAVLink protocol proof: telemetry broadcast, command ACKs, minimal params, and a live local dashboard.
