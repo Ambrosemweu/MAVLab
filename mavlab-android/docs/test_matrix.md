@@ -30,9 +30,21 @@
 - Foreground service class exists but is not active by default
 - No MAVLink, UDP, physics, or sensor behavior is implemented
 
-## Later Phase Checks
+## Phase Checks
 
 - Phase 1: protocol ACKs, params, rates, reconnects, system IDs
 - Phase 2: deterministic physics invariants before device tests
-- Phase 3: bounded UI update rates and sensor fallback
-- Phase 4: 3D frame pacing and bounded MAVLink explorer memory
+- Phase 3: bounded UI update rates, sensor fallback, calibration, throttle altitude control, and split-screen QGC operation
+- Phase 4: 3D model loads and follows simulator attitude without blocking dashboard telemetry
+- Phase 5: failure toggles affect physics/telemetry, demo mission progresses, Guided offsets move the drone, GPS loss downgrades assisted modes, low battery triggers RTL
+- Phase 6: onboarding completion persists, all seven lessons are navigable, CI passes, APK remains under 50 MB, docs and release metadata exist
+
+## Release QA
+
+- Clean install and complete onboarding
+- Run Lesson 1 end-to-end
+- Load demo mission from Labs and start Auto
+- Inject GPS loss and verify Alt Hold failsafe
+- Install with QGroundControl and confirm telemetry
+- Leave app running for 1 hour with no crash or ANR
+- Confirm debug APK size is below 50 MB

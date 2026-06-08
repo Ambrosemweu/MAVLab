@@ -3,5 +3,5 @@
     <string name="app_name">MAVLab</string>
     <string name="simulation_service_channel">MAVLab simulation</string>
     <string name="simulation_service_title">MAVLab simulation active</string>
-    <string name="simulation_service_text">Broadcasting Phase 1 MAVLink protocol telemetry.</string>
+    <string name="simulation_service_text">Broadcasting MAVLink telemetry from the MAVLab simulator.</string>
 </resources>

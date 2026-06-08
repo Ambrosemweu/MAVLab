@@ -1,6 +1,7 @@
 package com.ascend.mavlab.core.mavlink
 
 import com.ascend.mavlab.simulation.engine.DroneState
+import com.ascend.mavlab.simulation.mission.MissionItem
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.roundToInt
@@ -45,7 +46,7 @@ class MavlinkMessageBuilder(
             .putInt((state.altitudeAglMeters * 1000).roundToInt())
             .putShort((state.groundSpeedMS * 100).roundToInt().toShort())
             .putShort(0)
-            .putShort((state.verticalSpeedMS * 100).roundToInt().toShort())
+            .putShort((-state.verticalSpeedMS * 100).roundToInt().toShort())
             .putU16((state.headingDegrees * 100).coerceAtLeast(0))
             .array()
         return frame(messageId = 33, crcExtra = 104, payload = payload)
@@ -74,7 +75,7 @@ class MavlinkMessageBuilder(
             .putFloat(state.altitudeMslMeters)
             .putFloat(state.verticalSpeedMS)
             .putShort(state.headingDegrees)
-            .putU16(if (state.armed) 45 else 0)
+            .putU16(state.throttlePercent.toInt())
             .array()
         return frame(messageId = 74, crcExtra = 20, payload = payload)
     }
@@ -143,6 +144,51 @@ class MavlinkMessageBuilder(
         return frame(messageId = 22, crcExtra = 220, payload = payload)
     }
 
+    fun missionCount(count: Int): ByteArray {
+        val payload = littleEndian(5)
+            .putU8(MavlinkGroundStationSystemId)
+            .putU8(MavlinkGroundStationComponentId)
+            .putU16(count)
+            .putU8(MAV_MISSION_TYPE_MISSION)
+            .array()
+        return frame(messageId = 44, crcExtra = 221, payload = payload)
+    }
+
+    fun missionCurrent(sequence: Int): ByteArray {
+        val payload = littleEndian(2)
+            .putU16(sequence.coerceAtLeast(0))
+            .array()
+        return frame(messageId = 42, crcExtra = 28, payload = payload)
+    }
+
+    fun missionItemReached(sequence: Int): ByteArray {
+        val payload = littleEndian(2)
+            .putU16(sequence.coerceAtLeast(0))
+            .array()
+        return frame(messageId = 46, crcExtra = 11, payload = payload)
+    }
+
+    fun missionItemInt(item: MissionItem, currentSequence: Int): ByteArray {
+        val payload = littleEndian(38)
+            .putFloat(0f)
+            .putFloat(item.acceptanceRadiusMeters)
+            .putFloat(0f)
+            .putFloat(0f)
+            .putInt((item.latitudeDeg * 1e7).roundToInt())
+            .putInt((item.longitudeDeg * 1e7).roundToInt())
+            .putFloat(item.altitudeAglMeters)
+            .putU16(item.sequence)
+            .putU16(item.command.mavCmdId)
+            .putU8(MavlinkGroundStationSystemId)
+            .putU8(MavlinkGroundStationComponentId)
+            .putU8(MAV_FRAME_GLOBAL_RELATIVE_ALT_INT)
+            .putU8(if (item.sequence == currentSequence) 1 else 0)
+            .putU8(if (item.autocontinue) 1 else 0)
+            .putU8(MAV_MISSION_TYPE_MISSION)
+            .array()
+        return frame(messageId = 73, crcExtra = 38, payload = payload)
+    }
+
     private fun frame(messageId: Int, crcExtra: Int, payload: ByteArray): ByteArray {
         val header = ByteArray(10)
         header[0] = 0xfd.toByte()
@@ -196,5 +242,9 @@ class MavlinkMessageBuilder(
         const val MAV_STATE_STANDBY = 3
         const val MAV_STATE_ACTIVE = 4
         const val MAV_PARAM_TYPE_REAL32 = 9
+        const val MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6
+        const val MAV_MISSION_TYPE_MISSION = 0
+        const val MavlinkGroundStationSystemId = 255
+        const val MavlinkGroundStationComponentId = 190
     }
 }

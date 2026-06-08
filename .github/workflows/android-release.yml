@@ -1,0 +1,27 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mavlab-android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: Build release bundle
+        run: ./gradlew bundleRelease
+      - name: Upload release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mavlab-release-aab
+          path: mavlab-android/app/build/outputs/bundle/release/app-release.aab

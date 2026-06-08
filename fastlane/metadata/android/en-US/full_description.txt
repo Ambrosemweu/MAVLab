@@ -1,0 +1,19 @@
+MAVLab turns an Android phone into a drone education simulator.
+
+SIMULATE
+Run an offline quadcopter simulator with physics, autopilot, telemetry, battery behavior, missions, and failures. No drone hardware or server is required.
+
+FLY
+Use phone tilt controls or manual fallback controls to fly. Watch altitude, speed, attitude, GPS, battery, and mode telemetry update live.
+
+CONNECT TO QGROUNDCONTROL
+MAVLab speaks MAVLink over UDP so QGroundControl can connect and view the simulator like a real aircraft.
+
+LEARN
+Seven guided lessons cover first flight, MAVLink, phone control, flight modes, PID control, sensors, and failsafes.
+
+EXPERIMENT
+Use Failure Lab to inject GPS loss, GPS drift, compass interference, wind, motor failures, battery drain, and payload effects. Use Mission Lab to load and run waypoint missions.
+
+BUILT FOR CLASSROOMS
+MAVLab is offline-first, open source, and designed for drone systems education where hardware access is limited.

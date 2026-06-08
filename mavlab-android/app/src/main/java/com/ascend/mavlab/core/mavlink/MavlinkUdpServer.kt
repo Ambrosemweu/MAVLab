@@ -2,7 +2,7 @@ package com.ascend.mavlab.core.mavlink
 
 import android.content.Context
 import com.ascend.mavlab.simulation.engine.FlightMode
-import com.ascend.mavlab.simulation.engine.SimpleSimLoop
+import com.ascend.mavlab.simulation.engine.PhysicsSimulationEngine
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.Inet4Address
@@ -23,7 +23,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class MavlinkUdpServer(
-    private val simLoop: SimpleSimLoop,
+    private val simLoop: PhysicsSimulationEngine,
     private val config: MavlinkSocketConfig = MavlinkSocketConfig(systemId = 1),
 ) : MavlinkEndpoint {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -35,6 +35,7 @@ class MavlinkUdpServer(
     private var telemetryJob: Job? = null
     private var receiveJob: Job? = null
     private var lastPeer: UdpDestination? = null
+    private var lastReachedSequenceSent: Int? = null
 
     fun start(context: Context) {
         if (socket != null) return
@@ -82,15 +83,26 @@ class MavlinkUdpServer(
 
     private fun sendTelemetryBurst(destinations: List<UdpDestination>) {
         val state = simLoop.state.value
-        val messages = listOf(
-            builder.heartbeat(state),
-            builder.attitude(state),
-            builder.globalPosition(state),
-            builder.gpsRaw(state),
-            builder.vfrHud(state),
-            builder.sysStatus(state),
-            builder.batteryStatus(state),
-        )
+        val missionProgress = simLoop.missionProgress.value
+        val messages = buildList {
+            add(
+                builder.heartbeat(state),
+            )
+            add(builder.attitude(state))
+            add(builder.globalPosition(state))
+            add(builder.gpsRaw(state))
+            add(builder.vfrHud(state))
+            add(builder.sysStatus(state))
+            add(builder.batteryStatus(state))
+            if (missionProgress.loaded) {
+                add(builder.missionCurrent(missionProgress.currentIndex.coerceAtMost(missionProgress.items.lastIndex.coerceAtLeast(0))))
+                val reached = missionProgress.lastReachedSequence
+                if (reached != null && reached != lastReachedSequenceSent) {
+                    add(builder.missionItemReached(reached))
+                    lastReachedSequenceSent = reached
+                }
+            }
+        }
         messages.forEach { data -> sendToDestinations(data, destinations) }
     }
 
@@ -146,6 +158,8 @@ class MavlinkUdpServer(
             11 -> handleSetMode(packet, peer)
             21 -> sendParams(peer)
             23 -> ack(0, MAV_RESULT_ACCEPTED, peer, "PARAM_SET")
+            43 -> sendMissionCount(peer)
+            51 -> sendRequestedMissionItem(packet, peer)
             76 -> handleCommandLong(packet, peer)
             else -> simLoop.noteInbound("msg ${packet.messageId}")
         }
@@ -171,12 +185,14 @@ class MavlinkUdpServer(
                 ack(command, MAV_RESULT_ACCEPTED, peer, if (arm) "ARM" else "DISARM")
             }
             MAV_CMD_NAV_TAKEOFF -> {
-                simLoop.setArmed(true)
-                simLoop.setMode(FlightMode.GUIDED)
+                val requestedAltitude = packet.payload.leFloat(24)
+                    .takeIf { it.isFinite() && it > 0f }
+                    ?: 10f
+                simLoop.takeoff(requestedAltitude)
                 ack(command, MAV_RESULT_ACCEPTED, peer, "TAKEOFF")
             }
             MAV_CMD_NAV_LAND -> {
-                simLoop.setMode(FlightMode.LAND)
+                simLoop.land()
                 ack(command, MAV_RESULT_ACCEPTED, peer, "LAND")
             }
             MAV_CMD_SET_MESSAGE_INTERVAL -> {
@@ -198,6 +214,22 @@ class MavlinkUdpServer(
         params.forEachIndexed { index, param ->
             send(builder.paramValue(param.first, param.second, index, params.size), destination)
         }
+    }
+
+    private fun sendMissionCount(peer: UdpDestination?) {
+        simLoop.noteInbound("MISSION_REQUEST_LIST")
+        val destination = peer ?: lastPeer ?: return
+        send(builder.missionCount(simLoop.missionProgress.value.items.size), destination)
+    }
+
+    private fun sendRequestedMissionItem(packet: MavlinkPacket, peer: UdpDestination?) {
+        if (packet.payload.size < 4) return
+        val sequence = packet.payload.leUInt16(2)
+        val progress = simLoop.missionProgress.value
+        val item = progress.items.getOrNull(sequence) ?: return
+        val destination = peer ?: lastPeer ?: return
+        simLoop.noteInbound("MISSION_REQUEST_INT $sequence")
+        send(builder.missionItemInt(item, progress.currentIndex), destination)
     }
 
     private fun ack(command: Int, result: Int, peer: UdpDestination?, label: String) {

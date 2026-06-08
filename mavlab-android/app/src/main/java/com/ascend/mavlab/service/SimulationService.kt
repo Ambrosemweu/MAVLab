@@ -11,7 +11,7 @@ import com.ascend.mavlab.R
 import com.ascend.mavlab.core.common.AppRuntime
 
 /**
- * Owns the Phase 1 protocol runtime.
+ * Owns the foreground simulation runtime.
  */
 class SimulationService : Service() {
     override fun onCreate() {

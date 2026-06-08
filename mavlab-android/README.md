@@ -2,50 +2,39 @@
 
 MAVLab is a standalone, offline-first drone education simulator for Android.
 
-This repository is currently at **Phase 1: QGC/MAVLink Protocol Proof**. The app sends minimal MAVLink telemetry, listens for basic QGroundControl commands, sends `COMMAND_ACK`, returns a small parameter list, and shows live protocol-demo state in the dashboard.
+## Current Scope
 
-## Implemented Scope
+The app now includes Phase 0-6 functionality:
 
-Phase 0 provided:
-
-- Buildable Android project structure under `mavlab-android/`
-- Package namespace `com.ascend.mavlab`
-- Compose shell with placeholder tabs:
-  - Dashboard
-  - Controller
-  - 3D View
-  - Labs
-  - Settings
-- Placeholder foreground service boundary
-- Empty seams for MAVLink, simulation, phone sensors, settings, and lessons
-- Protocol guardrails for Phase 1
-- Test matrix for later validation
-
-Phase 1 adds:
-
-- Foreground service runtime
-- Shared protocol-demo state loop
-- Minimal MAVLink v2 framing and checksum generation
-- `HEARTBEAT`, `ATTITUDE`, `GLOBAL_POSITION_INT`, `GPS_RAW_INT`, `VFR_HUD`, `SYS_STATUS`, and `BATTERY_STATUS`
-- `COMMAND_ACK` for arm/disarm, takeoff, land, mode, and message interval requests
-- Minimal `PARAM_VALUE` responses for QGC parameter refresh
-- Same-device UDP target and LAN broadcast discovery
-- Stable device-derived MAVLink system ID displayed in the dashboard
-
-## What Comes Next
-
-Next is real-device validation with QGroundControl on the same phone and on a desktop over the same Wi-Fi. Do not add physics, 3D, lessons, or controller behavior until that protocol check passes.
+- Android Compose shell and foreground simulation service
+- MAVLink v2 UDP telemetry and basic QGroundControl command handling
+- Quadcopter physics, motor mixing, PID stabilization, takeoff, landing, battery model
+- Phone tilt controller with calibration and manual fallback controls
+- Telemetry dashboard cards and rolling charts
+- SceneView-based 3D drone model tab
+- Failure Lab and Mission Lab
+- Seven guided lessons
+- First-launch onboarding
+- CI and release metadata scaffolding
 
 ## Build
 
 The project expects Android SDK 35 and Java 17.
 
-```sh
-./gradlew lintDebug testDebugUnitTest assembleDebug
+```bash
+GRADLE_USER_HOME="$PWD/.gradle" ./gradlew lintDebug testDebugUnitTest assembleDebug
 ```
 
-If `gradle/wrapper/gradle-wrapper.jar` is missing, regenerate the wrapper with Gradle 8.10.2:
+Install on a connected phone:
 
-```sh
-gradle wrapper --gradle-version 8.10.2
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
+
+## QGroundControl
+
+MAVLab broadcasts MAVLink telemetry over UDP and tracks the last peer that sends inbound MAVLink messages. QGC can be used on the same phone in split-screen or from a desktop on the same Wi-Fi network.
+
+## Release
+
+GitHub Actions workflows live in the repository root under `.github/workflows/`. Play Store draft metadata lives under `fastlane/metadata/android/en-US/`.
