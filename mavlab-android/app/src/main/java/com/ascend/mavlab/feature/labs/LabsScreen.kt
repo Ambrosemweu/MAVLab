@@ -264,7 +264,11 @@ private fun MissionLab(
                 else -> "Queued"
             }
             Text(
-                text = "#${item.sequence + 1} ${item.command.name} | %.1f m | $status".format(item.altitudeAglMeters),
+                text = "#${item.sequence + 1} ${item.command.name} | %.6f, %.6f | %.1f m | $status".format(
+                    item.latitudeDeg,
+                    item.longitudeDeg,
+                    item.altitudeAglMeters,
+                ),
                 style = MaterialTheme.typography.bodyMedium,
             )
         }

@@ -144,14 +144,59 @@ class MavlinkMessageBuilder(
         return frame(messageId = 22, crcExtra = 220, payload = payload)
     }
 
-    fun missionCount(count: Int): ByteArray {
+    fun missionCount(
+        count: Int,
+        targetSystem: Int = MavlinkGroundStationSystemId,
+        targetComponent: Int = MavlinkGroundStationComponentId,
+    ): ByteArray {
         val payload = littleEndian(5)
-            .putU8(MavlinkGroundStationSystemId)
-            .putU8(MavlinkGroundStationComponentId)
+            .putU8(targetSystem)
+            .putU8(targetComponent)
             .putU16(count)
             .putU8(MAV_MISSION_TYPE_MISSION)
             .array()
         return frame(messageId = 44, crcExtra = 221, payload = payload)
+    }
+
+    fun missionRequestInt(
+        sequence: Int,
+        targetSystem: Int,
+        targetComponent: Int,
+    ): ByteArray {
+        val payload = littleEndian(5)
+            .putU8(targetSystem)
+            .putU8(targetComponent)
+            .putU16(sequence.coerceAtLeast(0))
+            .putU8(MAV_MISSION_TYPE_MISSION)
+            .array()
+        return frame(messageId = 51, crcExtra = 196, payload = payload)
+    }
+
+    fun missionRequest(
+        sequence: Int,
+        targetSystem: Int,
+        targetComponent: Int,
+    ): ByteArray {
+        val payload = littleEndian(4)
+            .putU8(targetSystem)
+            .putU8(targetComponent)
+            .putU16(sequence.coerceAtLeast(0))
+            .array()
+        return frame(messageId = 40, crcExtra = 230, payload = payload)
+    }
+
+    fun missionAck(
+        type: Int,
+        targetSystem: Int,
+        targetComponent: Int,
+    ): ByteArray {
+        val payload = littleEndian(4)
+            .putU8(targetSystem)
+            .putU8(targetComponent)
+            .putU8(type)
+            .putU8(MAV_MISSION_TYPE_MISSION)
+            .array()
+        return frame(messageId = 47, crcExtra = 153, payload = payload)
     }
 
     fun missionCurrent(sequence: Int): ByteArray {
@@ -168,7 +213,12 @@ class MavlinkMessageBuilder(
         return frame(messageId = 46, crcExtra = 11, payload = payload)
     }
 
-    fun missionItemInt(item: MissionItem, currentSequence: Int): ByteArray {
+    fun missionItemInt(
+        item: MissionItem,
+        currentSequence: Int,
+        targetSystem: Int = MavlinkGroundStationSystemId,
+        targetComponent: Int = MavlinkGroundStationComponentId,
+    ): ByteArray {
         val payload = littleEndian(38)
             .putFloat(0f)
             .putFloat(item.acceptanceRadiusMeters)
@@ -179,14 +229,39 @@ class MavlinkMessageBuilder(
             .putFloat(item.altitudeAglMeters)
             .putU16(item.sequence)
             .putU16(item.command.mavCmdId)
-            .putU8(MavlinkGroundStationSystemId)
-            .putU8(MavlinkGroundStationComponentId)
+            .putU8(targetSystem)
+            .putU8(targetComponent)
             .putU8(MAV_FRAME_GLOBAL_RELATIVE_ALT_INT)
             .putU8(if (item.sequence == currentSequence) 1 else 0)
             .putU8(if (item.autocontinue) 1 else 0)
             .putU8(MAV_MISSION_TYPE_MISSION)
             .array()
         return frame(messageId = 73, crcExtra = 38, payload = payload)
+    }
+
+    fun missionItem(
+        item: MissionItem,
+        currentSequence: Int,
+        targetSystem: Int,
+        targetComponent: Int,
+    ): ByteArray {
+        val payload = littleEndian(37)
+            .putFloat(0f)
+            .putFloat(item.acceptanceRadiusMeters)
+            .putFloat(0f)
+            .putFloat(0f)
+            .putFloat(item.latitudeDeg.toFloat())
+            .putFloat(item.longitudeDeg.toFloat())
+            .putFloat(item.altitudeAglMeters)
+            .putU16(item.sequence)
+            .putU16(item.command.mavCmdId)
+            .putU8(targetSystem)
+            .putU8(targetComponent)
+            .putU8(MAV_FRAME_GLOBAL_RELATIVE_ALT)
+            .putU8(if (item.sequence == currentSequence) 1 else 0)
+            .putU8(if (item.autocontinue) 1 else 0)
+            .array()
+        return frame(messageId = 39, crcExtra = 254, payload = payload)
     }
 
     private fun frame(messageId: Int, crcExtra: Int, payload: ByteArray): ByteArray {
@@ -242,6 +317,7 @@ class MavlinkMessageBuilder(
         const val MAV_STATE_STANDBY = 3
         const val MAV_STATE_ACTIVE = 4
         const val MAV_PARAM_TYPE_REAL32 = 9
+        const val MAV_FRAME_GLOBAL_RELATIVE_ALT = 3
         const val MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6
         const val MAV_MISSION_TYPE_MISSION = 0
         const val MavlinkGroundStationSystemId = 255

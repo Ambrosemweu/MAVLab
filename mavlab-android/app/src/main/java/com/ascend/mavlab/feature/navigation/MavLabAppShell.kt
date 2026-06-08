@@ -6,7 +6,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.ControlCamera
 import androidx.compose.material.icons.filled.Route
-import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,7 +30,6 @@ import com.ascend.mavlab.feature.controller.ControllerScreen
 import com.ascend.mavlab.feature.dashboard.DashboardScreen
 import com.ascend.mavlab.feature.drone3d.Drone3DScreen
 import com.ascend.mavlab.feature.labs.LabsScreen
-import com.ascend.mavlab.feature.lessons.LessonScreen
 import com.ascend.mavlab.feature.onboarding.OnboardingScreen
 import com.ascend.mavlab.feature.settings.SettingsScreen
 
@@ -40,11 +38,10 @@ private enum class MavLabTab(
     val title: String,
     val icon: ImageVector,
 ) {
-    Dashboard("Dash", "Telemetry Dashboard", Icons.Filled.Analytics),
-    Lessons("Learn", "Guided Lessons", Icons.Filled.School),
-    Controller("Fly", "Phone Controller", Icons.Filled.ControlCamera),
-    Drone3D("3D", "3D Drone View", Icons.Filled.Route),
-    Labs("Labs", "Failure & Mission Labs", Icons.Filled.Science),
+    Cockpit("Cockpit", "Flight Cockpit", Icons.Filled.Analytics),
+    Controls("Fly", "Phone Flight Controls", Icons.Filled.ControlCamera),
+    Twin("Twin", "3D Digital Twin", Icons.Filled.Route),
+    Systems("Systems", "Systems & Missions", Icons.Filled.Science),
     Settings("Ops", "Operations", Icons.Filled.Settings),
 }
 
@@ -58,7 +55,7 @@ fun MavLabAppShell() {
     var onboardingComplete by remember {
         mutableStateOf(preferences.getBoolean("onboarding_complete", false))
     }
-    var selectedTab by remember { mutableStateOf(MavLabTab.Dashboard) }
+    var selectedTab by remember { mutableStateOf(MavLabTab.Cockpit) }
 
     if (!onboardingComplete) {
         OnboardingScreen(
@@ -111,11 +108,10 @@ fun MavLabAppShell() {
     ) { innerPadding ->
         val modifier = Modifier.padding(innerPadding)
         when (selectedTab) {
-            MavLabTab.Dashboard -> DashboardScreen(modifier)
-            MavLabTab.Lessons -> LessonScreen(modifier)
-            MavLabTab.Controller -> ControllerScreen(modifier)
-            MavLabTab.Drone3D -> Drone3DScreen(modifier)
-            MavLabTab.Labs -> LabsScreen(modifier)
+            MavLabTab.Cockpit -> DashboardScreen(modifier)
+            MavLabTab.Controls -> ControllerScreen(modifier)
+            MavLabTab.Twin -> Drone3DScreen(modifier)
+            MavLabTab.Systems -> LabsScreen(modifier)
             MavLabTab.Settings -> SettingsScreen(modifier)
         }
     }

@@ -64,7 +64,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text("Telemetry Dashboard", style = MaterialTheme.typography.headlineMedium)
+            Text("Flight Cockpit", style = MaterialTheme.typography.headlineMedium)
             Text(
                 text = "$status | System ID $systemId",
                 style = MaterialTheme.typography.bodyMedium,

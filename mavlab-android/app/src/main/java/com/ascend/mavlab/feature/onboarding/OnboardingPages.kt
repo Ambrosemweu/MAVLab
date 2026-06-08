@@ -9,7 +9,7 @@ data class OnboardingPage(
 val OnboardingPages = listOf(
     OnboardingPage(
         title = "Welcome to MAVLab",
-        body = "Learn drone systems with your phone. MAVLab runs an offline quadcopter simulator, controller, telemetry dashboard, and MAVLink endpoint.",
+        body = "Run a phone-based drone digital twin. MAVLab simulates a quadcopter, broadcasts MAVLink telemetry, and connects to Ground Control Station software.",
         primaryAction = "Get started",
     ),
     OnboardingPage(
@@ -24,7 +24,7 @@ val OnboardingPages = listOf(
     ),
     OnboardingPage(
         title = "Ready to fly",
-        body = "Start with Lessons, then use Dashboard, Controller, 3D View, and Labs to explore the full simulator.",
+        body = "Use Cockpit, Fly, Twin, Systems, and Ops to operate the simulator, test missions, inject failures, and inspect live vehicle state.",
         primaryAction = "Start flying",
     ),
 )

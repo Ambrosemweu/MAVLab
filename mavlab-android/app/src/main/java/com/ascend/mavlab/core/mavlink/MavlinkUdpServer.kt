@@ -36,6 +36,7 @@ class MavlinkUdpServer(
     private var receiveJob: Job? = null
     private var lastPeer: UdpDestination? = null
     private var lastReachedSequenceSent: Int? = null
+    private var missionUploadSession: MissionUploadSession? = null
 
     fun start(context: Context) {
         if (socket != null) return
@@ -154,14 +155,21 @@ class MavlinkUdpServer(
 
     private fun handleInbound(data: ByteArray, length: Int, peer: UdpDestination?) {
         val packet = MavlinkParser.parse(data, length) ?: return
+        logInbound(packet, peer, length, "received")
         when (packet.messageId) {
             11 -> handleSetMode(packet, peer)
             21 -> sendParams(peer)
             23 -> ack(0, MAV_RESULT_ACCEPTED, peer, "PARAM_SET")
-            43 -> sendMissionCount(peer)
+            39 -> handleMissionItemUpload(packet, peer, legacy = true, length = length)
+            40 -> sendRequestedMissionItem(packet, peer, legacy = true)
+            41 -> handleMissionSetCurrent(packet, peer, length)
+            43 -> sendMissionCount(packet, peer)
+            44 -> handleMissionCountUpload(packet, peer, length)
+            45 -> handleMissionClearAll(packet, peer, length)
             51 -> sendRequestedMissionItem(packet, peer)
+            73 -> handleMissionItemUpload(packet, peer, legacy = false, length = length)
             76 -> handleCommandLong(packet, peer)
-            else -> simLoop.noteInbound("msg ${packet.messageId}")
+            else -> logInbound(packet, peer, length, "unsupported")
         }
     }
 
@@ -198,6 +206,18 @@ class MavlinkUdpServer(
             MAV_CMD_SET_MESSAGE_INTERVAL -> {
                 ack(command, MAV_RESULT_ACCEPTED, peer, "SET_MESSAGE_INTERVAL")
             }
+            MAV_CMD_MISSION_START -> {
+                val accepted = simLoop.missionProgress.value.loaded
+                if (accepted) {
+                    simLoop.setMode(FlightMode.AUTO)
+                }
+                ack(
+                    command,
+                    if (accepted) MAV_RESULT_ACCEPTED else MAV_RESULT_DENIED,
+                    peer,
+                    if (accepted) "MISSION_START" else "MISSION_START NO MISSION",
+                )
+            }
             else -> {
                 ack(command, MAV_RESULT_UNSUPPORTED, peer, "UNSUPPORTED $command")
             }
@@ -216,26 +236,157 @@ class MavlinkUdpServer(
         }
     }
 
-    private fun sendMissionCount(peer: UdpDestination?) {
+    private fun sendMissionCount(packet: MavlinkPacket, peer: UdpDestination?) {
         simLoop.noteInbound("MISSION_REQUEST_LIST")
         val destination = peer ?: lastPeer ?: return
-        send(builder.missionCount(simLoop.missionProgress.value.items.size), destination)
+        send(
+            builder.missionCount(
+                count = simLoop.missionProgress.value.items.size,
+                targetSystem = packet.systemId,
+                targetComponent = packet.componentId,
+            ),
+            destination,
+        )
     }
 
-    private fun sendRequestedMissionItem(packet: MavlinkPacket, peer: UdpDestination?) {
+    private fun sendRequestedMissionItem(
+        packet: MavlinkPacket,
+        peer: UdpDestination?,
+        legacy: Boolean = false,
+    ) {
         if (packet.payload.size < 4) return
         val sequence = packet.payload.leUInt16(2)
         val progress = simLoop.missionProgress.value
         val item = progress.items.getOrNull(sequence) ?: return
         val destination = peer ?: lastPeer ?: return
-        simLoop.noteInbound("MISSION_REQUEST_INT $sequence")
-        send(builder.missionItemInt(item, progress.currentIndex), destination)
+        simLoop.noteInbound("${if (legacy) "MISSION_REQUEST" else "MISSION_REQUEST_INT"} $sequence")
+        val data = if (legacy) {
+            builder.missionItem(item, progress.currentIndex, packet.systemId, packet.componentId)
+        } else {
+            builder.missionItemInt(item, progress.currentIndex, packet.systemId, packet.componentId)
+        }
+        send(data, destination)
+    }
+
+    private fun handleMissionCountUpload(packet: MavlinkPacket, peer: UdpDestination?, length: Int) {
+        val destination = peer ?: lastPeer ?: return
+        val session = MissionUploadSession.parseMissionCount(packet, destination)
+        if (session == null) {
+            sendMissionAck(MAV_MISSION_ERROR, packet, destination, "MISSION_COUNT rejected")
+            logInbound(packet, peer, length, "rejected invalid-count")
+            return
+        }
+        if (session.expectedCount == 0) {
+            missionUploadSession = null
+            simLoop.clearMission()
+            sendMissionAck(MAV_MISSION_ACCEPTED, packet, destination, "MISSION_CLEAR_EMPTY")
+            logInbound(packet, peer, length, "accepted clear-empty")
+            return
+        }
+        missionUploadSession = session
+        send(
+            builder.missionRequestInt(
+                sequence = 0,
+                targetSystem = packet.systemId,
+                targetComponent = packet.componentId,
+            ),
+            destination,
+        )
+        logInbound(packet, peer, length, "accepted upload-count=${session.expectedCount} request=0")
+    }
+
+    private fun handleMissionItemUpload(
+        packet: MavlinkPacket,
+        peer: UdpDestination?,
+        legacy: Boolean,
+        length: Int,
+    ) {
+        val destination = peer ?: lastPeer ?: return
+        val session = missionUploadSession
+        if (session == null) {
+            sendMissionAck(MAV_MISSION_ERROR, packet, destination, "MISSION_ITEM no session")
+            logInbound(packet, peer, length, "rejected no-session")
+            return
+        }
+        if (session.expired) {
+            missionUploadSession = null
+            sendMissionAck(MAV_MISSION_ERROR, packet, destination, "MISSION_UPLOAD timeout")
+            logInbound(packet, peer, length, "rejected timeout")
+            return
+        }
+        val item = if (legacy) {
+            MissionUploadSession.parseMissionItem(packet)
+        } else {
+            MissionUploadSession.parseMissionItemInt(packet)
+        }
+        if (item == null) {
+            missionUploadSession = null
+            sendMissionAck(MAV_MISSION_INVALID, packet, destination, "MISSION_ITEM invalid")
+            logInbound(packet, peer, length, "rejected invalid-item")
+            return
+        }
+        when (val result = session.receive(item)) {
+            is MissionUploadResult.RequestNext -> {
+                val request = if (legacy) {
+                    builder.missionRequest(result.sequence, packet.systemId, packet.componentId)
+                } else {
+                    builder.missionRequestInt(result.sequence, packet.systemId, packet.componentId)
+                }
+                send(request, destination)
+                logInbound(packet, peer, length, "accepted item=${item.sequence} request=${result.sequence}")
+            }
+            is MissionUploadResult.Complete -> {
+                missionUploadSession = null
+                simLoop.loadMission(result.items)
+                lastReachedSequenceSent = null
+                sendMissionAck(MAV_MISSION_ACCEPTED, packet, destination, "MISSION_UPLOAD ${result.items.size}")
+                logInbound(packet, peer, length, "accepted complete=${result.items.size}")
+            }
+            is MissionUploadResult.Rejected -> {
+                missionUploadSession = null
+                sendMissionAck(MAV_MISSION_INVALID_SEQUENCE, packet, destination, "MISSION_ITEM ${result.reason}")
+                logInbound(packet, peer, length, "rejected ${result.reason}")
+            }
+        }
+    }
+
+    private fun handleMissionClearAll(packet: MavlinkPacket, peer: UdpDestination?, length: Int) {
+        val destination = peer ?: lastPeer ?: return
+        missionUploadSession = null
+        simLoop.clearMission()
+        lastReachedSequenceSent = null
+        sendMissionAck(MAV_MISSION_ACCEPTED, packet, destination, "MISSION_CLEAR_ALL")
+        logInbound(packet, peer, length, "accepted clear-all")
+    }
+
+    private fun handleMissionSetCurrent(packet: MavlinkPacket, peer: UdpDestination?, length: Int) {
+        if (packet.payload.size < 4) return
+        val destination = peer ?: lastPeer ?: return
+        val sequence = packet.payload.leUInt16(2)
+        val accepted = simLoop.setMissionCurrent(sequence)
+        sendMissionAck(
+            if (accepted) MAV_MISSION_ACCEPTED else MAV_MISSION_INVALID_SEQUENCE,
+            packet,
+            destination,
+            if (accepted) "MISSION_SET_CURRENT $sequence" else "MISSION_SET_CURRENT INVALID $sequence",
+        )
+        logInbound(packet, peer, length, if (accepted) "accepted current=$sequence" else "rejected current=$sequence")
+    }
+
+    private fun sendMissionAck(type: Int, packet: MavlinkPacket, destination: UdpDestination, label: String) {
+        simLoop.noteAck(label)
+        send(builder.missionAck(type, packet.systemId, packet.componentId), destination)
     }
 
     private fun ack(command: Int, result: Int, peer: UdpDestination?, label: String) {
         simLoop.noteAck(label)
         val destination = peer ?: lastPeer ?: return
         send(builder.commandAck(command, result), destination)
+    }
+
+    private fun logInbound(packet: MavlinkPacket, peer: UdpDestination?, length: Int, result: String) {
+        val peerLabel = peer?.let { "${it.host}:${it.port}" } ?: "unknown"
+        simLoop.noteInbound("rx id=${packet.messageId} from=$peerLabel len=$length $result")
     }
 
     private fun destinations(context: Context): List<UdpDestination> {
@@ -284,9 +435,15 @@ class MavlinkUdpServer(
 
     private companion object {
         const val MAV_RESULT_ACCEPTED = 0
+        const val MAV_RESULT_DENIED = 2
         const val MAV_RESULT_UNSUPPORTED = 3
+        const val MAV_MISSION_ACCEPTED = 0
+        const val MAV_MISSION_ERROR = 1
+        const val MAV_MISSION_INVALID_SEQUENCE = 13
+        const val MAV_MISSION_INVALID = 5
         const val MAV_CMD_NAV_TAKEOFF = 22
         const val MAV_CMD_NAV_LAND = 21
+        const val MAV_CMD_MISSION_START = 300
         const val MAV_CMD_COMPONENT_ARM_DISARM = 400
         const val MAV_CMD_SET_MESSAGE_INTERVAL = 511
     }

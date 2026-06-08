@@ -23,7 +23,13 @@ enum class MissionCommand(val mavCmdId: Int) {
     TAKEOFF(22),
     LAND(21),
     RTL(20),
-    LOITER_TIME(19),
+    LOITER_TIME(19);
+
+    companion object {
+        fun fromMavCmdId(mavCmdId: Int): MissionCommand {
+            return entries.firstOrNull { it.mavCmdId == mavCmdId } ?: WAYPOINT
+        }
+    }
 }
 
 data class MissionProgress(

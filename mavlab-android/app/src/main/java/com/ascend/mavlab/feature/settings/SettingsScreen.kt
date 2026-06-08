@@ -20,6 +20,8 @@ import com.ascend.mavlab.core.common.AppRuntime
 
 @Composable
 fun SettingsScreen(modifier: Modifier = Modifier) {
+    val state by AppRuntime.state.collectAsState()
+    val mission by AppRuntime.missionProgress.collectAsState()
     val status by AppRuntime.status.collectAsState()
     val systemId by AppRuntime.systemId.collectAsState()
 
@@ -36,12 +38,16 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                 body = "Status: $status\nSystem ID: $systemId\nQGroundControl should connect over UDP 14550 on the same phone or Wi-Fi network.",
             )
             InfoCard(
+                title = "GCS diagnostics",
+                body = "Last inbound: ${state.lastInboundMessage}\nLast ACK: ${state.lastAck}\nMission: ${mission.items.size} items, active ${mission.activeTarget?.sequence?.plus(1) ?: "none"}",
+            )
+            InfoCard(
                 title = "Troubleshooting",
                 body = "If QGC does not connect, restart QGC, keep MAVLab open, and verify both devices are on the same network. If phone tilt is unavailable, use manual fallback controls in Controller.",
             )
             InfoCard(
                 title = "Release QA",
-                body = "Run onboarding, Lesson 1, demo mission, GPS loss, and QGC split-screen before tagging a release.",
+                body = "Run onboarding, QGC discovery, mission upload, demo mission, GPS loss, and QGC split-screen before tagging a release.",
             )
         }
     }

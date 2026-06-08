@@ -57,7 +57,7 @@ fun OnboardingScreen(
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
-                            text = "Drone education simulator",
+                            text = "GCS digital twin simulator",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -153,10 +153,10 @@ fun OnboardingScreen(
 @Composable
 private fun FeatureRow(pageIndex: Int) {
     val labels = when (pageIndex) {
-        0 -> listOf("Offline", "MAVLink", "Lessons")
-        1 -> listOf("Physics", "Tilt control", "3D")
+        0 -> listOf("Digital twin", "MAVLink", "QGC")
+        1 -> listOf("Physics", "Tilt control", "Twin")
         2 -> listOf("QGC", "UDP", "Telemetry")
-        else -> listOf("Dashboard", "Labs", "Missions")
+        else -> listOf("Cockpit", "Systems", "Missions")
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         labels.forEach { label ->

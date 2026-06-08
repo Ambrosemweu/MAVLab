@@ -29,6 +29,19 @@ class MissionEngine {
         mutableProgress.value = MissionProgress()
     }
 
+    fun setCurrent(sequence: Int): Boolean {
+        val progress = mutableProgress.value
+        val index = progress.items.indexOfFirst { it.sequence == sequence }
+        if (index < 0) return false
+        mutableProgress.value = progress.copy(
+            currentIndex = index,
+            complete = false,
+            lastReachedSequence = null,
+            activeTarget = progress.items[index],
+        )
+        return true
+    }
+
     fun reset() {
         val items = mutableProgress.value.items
         load(items)

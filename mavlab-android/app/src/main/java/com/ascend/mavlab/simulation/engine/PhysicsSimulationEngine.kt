@@ -158,6 +158,15 @@ class PhysicsSimulationEngine(
         noteAck("MISSION CLEAR")
     }
 
+    fun setMissionCurrent(sequence: Int): Boolean {
+        val updated = missionEngine.setCurrent(sequence)
+        if (updated) {
+            missionEngine.progress.value.activeTarget?.let { autopilot.setTargetAltitude(it.altitudeAglMeters) }
+            noteAck("MISSION CURRENT $sequence")
+        }
+        return updated
+    }
+
     fun noteInbound(message: String) {
         mutableState.value = mutableState.value.copy(lastInboundMessage = message)
     }
