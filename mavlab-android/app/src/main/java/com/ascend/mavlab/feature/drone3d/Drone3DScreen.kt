@@ -52,7 +52,8 @@ private fun DroneScene(
             ModelNode(
                 modelInstance = modelInstance,
                 scaleToUnits = 1.35f,
-                autoAnimate = false,
+                autoAnimate = state.armed,
+                animationName = PropellerAnimationName,
                 position = Position(
                     x = (state.eastMeters * ScenePositionScale).coerceIn(-4f, 4f),
                     y = (state.altitudeAglMeters * AltitudeSceneScale).coerceIn(0.15f, 4.5f),
@@ -97,6 +98,7 @@ private fun SceneScope.FlightLighting(state: DroneState) {
 private fun radiansToDegrees(radians: Float): Float = radians * 180f / PI.toFloat()
 
 private const val DroneAssetPath = "models/drone.glb"
+private const val PropellerAnimationName = "propellers_spin"
 private const val ScenePositionScale = 0.08f
 private const val AltitudeSceneScale = 0.12f
 private const val MaxRollForLighting = 0.8f
