@@ -29,7 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.ascend.mavlab.feature.controller.ControllerScreen
 import com.ascend.mavlab.feature.dashboard.DashboardScreen
 import com.ascend.mavlab.feature.drone3d.Drone3DScreen
-import com.ascend.mavlab.feature.labs.LabsScreen
+import com.ascend.mavlab.feature.mission.MissionScreen
 import com.ascend.mavlab.feature.onboarding.OnboardingScreen
 import com.ascend.mavlab.feature.settings.SettingsScreen
 
@@ -39,10 +39,10 @@ private enum class MavLabTab(
     val icon: ImageVector,
 ) {
     Cockpit("Cockpit", "Flight Cockpit", Icons.Filled.Analytics),
-    Controls("Fly", "Phone Flight Controls", Icons.Filled.ControlCamera),
-    Twin("Twin", "3D Digital Twin", Icons.Filled.Route),
-    Systems("Systems", "Systems & Missions", Icons.Filled.Science),
-    Settings("Ops", "Operations", Icons.Filled.Settings),
+    Controller("Controller", "Phone Flight Controls", Icons.Filled.ControlCamera),
+    Mission("Mission", "GCS Mission", Icons.Filled.Route),
+    Sim("SIM", "3D Flight SIM", Icons.Filled.Science),
+    Ops("Ops", "Operations", Icons.Filled.Settings),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -109,10 +109,10 @@ fun MavLabAppShell() {
         val modifier = Modifier.padding(innerPadding)
         when (selectedTab) {
             MavLabTab.Cockpit -> DashboardScreen(modifier)
-            MavLabTab.Controls -> ControllerScreen(modifier)
-            MavLabTab.Twin -> Drone3DScreen(modifier)
-            MavLabTab.Systems -> LabsScreen(modifier)
-            MavLabTab.Settings -> SettingsScreen(modifier)
+            MavLabTab.Controller -> ControllerScreen(modifier)
+            MavLabTab.Mission -> MissionScreen(modifier)
+            MavLabTab.Sim -> Drone3DScreen(modifier)
+            MavLabTab.Ops -> SettingsScreen(modifier)
         }
     }
 }

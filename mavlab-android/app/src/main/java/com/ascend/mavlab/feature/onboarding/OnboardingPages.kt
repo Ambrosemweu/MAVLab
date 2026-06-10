@@ -24,7 +24,7 @@ val OnboardingPages = listOf(
     ),
     OnboardingPage(
         title = "Ready to fly",
-        body = "Use Cockpit, Fly, Twin, Systems, and Ops to operate the simulator, test missions, inject failures, and inspect live vehicle state.",
+        body = "Use Cockpit, Controller, Mission, SIM, and Ops to operate the simulator, test missions, inspect live vehicle state, and diagnose QGC connections.",
         primaryAction = "Start flying",
     ),
 )

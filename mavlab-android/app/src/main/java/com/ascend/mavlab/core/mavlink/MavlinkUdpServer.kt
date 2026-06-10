@@ -1,6 +1,7 @@
 package com.ascend.mavlab.core.mavlink
 
 import android.content.Context
+import com.ascend.mavlab.simulation.engine.ControlAuthority
 import com.ascend.mavlab.simulation.engine.FlightMode
 import com.ascend.mavlab.simulation.engine.PhysicsSimulationEngine
 import java.net.DatagramPacket
@@ -177,7 +178,7 @@ class MavlinkUdpServer(
         if (packet.payload.size < 6) return
         val customMode = packet.payload.leUInt32(0)
         val mode = FlightMode.fromCustomMode(customMode)
-        simLoop.setMode(mode)
+        simLoop.setMode(mode, ControlAuthority.GCS_DIRECT)
         simLoop.noteInbound("SET_MODE ${mode.displayName}")
         ack(0, MAV_RESULT_ACCEPTED, peer, "SET_MODE")
     }
@@ -189,18 +190,18 @@ class MavlinkUdpServer(
         when (command) {
             MAV_CMD_COMPONENT_ARM_DISARM -> {
                 val arm = packet.payload.leFloat(0) >= 0.5f
-                simLoop.setArmed(arm)
+                simLoop.setArmed(arm, ControlAuthority.GCS_DIRECT)
                 ack(command, MAV_RESULT_ACCEPTED, peer, if (arm) "ARM" else "DISARM")
             }
             MAV_CMD_NAV_TAKEOFF -> {
                 val requestedAltitude = packet.payload.leFloat(24)
                     .takeIf { it.isFinite() && it > 0f }
                     ?: 10f
-                simLoop.takeoff(requestedAltitude)
+                simLoop.takeoff(requestedAltitude, ControlAuthority.GCS_DIRECT)
                 ack(command, MAV_RESULT_ACCEPTED, peer, "TAKEOFF")
             }
             MAV_CMD_NAV_LAND -> {
-                simLoop.land()
+                simLoop.land(ControlAuthority.GCS_DIRECT)
                 ack(command, MAV_RESULT_ACCEPTED, peer, "LAND")
             }
             MAV_CMD_SET_MESSAGE_INTERVAL -> {
@@ -209,7 +210,8 @@ class MavlinkUdpServer(
             MAV_CMD_MISSION_START -> {
                 val accepted = simLoop.missionProgress.value.loaded
                 if (accepted) {
-                    simLoop.setMode(FlightMode.AUTO)
+                    simLoop.setArmed(true, ControlAuthority.GCS_MISSION)
+                    simLoop.setMode(FlightMode.AUTO, ControlAuthority.GCS_MISSION)
                 }
                 ack(
                     command,
@@ -272,6 +274,7 @@ class MavlinkUdpServer(
         val destination = peer ?: lastPeer ?: return
         val session = MissionUploadSession.parseMissionCount(packet, destination)
         if (session == null) {
+            simLoop.rejectMissionUpload("invalid mission count")
             sendMissionAck(MAV_MISSION_ERROR, packet, destination, "MISSION_COUNT rejected")
             logInbound(packet, peer, length, "rejected invalid-count")
             return
@@ -279,11 +282,13 @@ class MavlinkUdpServer(
         if (session.expectedCount == 0) {
             missionUploadSession = null
             simLoop.clearMission()
+            simLoop.acceptMissionUpload(0)
             sendMissionAck(MAV_MISSION_ACCEPTED, packet, destination, "MISSION_CLEAR_EMPTY")
             logInbound(packet, peer, length, "accepted clear-empty")
             return
         }
         missionUploadSession = session
+        simLoop.beginMissionUpload(expectedCount = session.expectedCount, requestedSequence = 0)
         send(
             builder.missionRequestInt(
                 sequence = 0,
@@ -304,12 +309,14 @@ class MavlinkUdpServer(
         val destination = peer ?: lastPeer ?: return
         val session = missionUploadSession
         if (session == null) {
+            simLoop.rejectMissionUpload("no active upload session")
             sendMissionAck(MAV_MISSION_ERROR, packet, destination, "MISSION_ITEM no session")
             logInbound(packet, peer, length, "rejected no-session")
             return
         }
         if (session.expired) {
             missionUploadSession = null
+            simLoop.rejectMissionUpload("upload timeout", expectedCount = session.expectedCount, receivedCount = session.receivedCount)
             sendMissionAck(MAV_MISSION_ERROR, packet, destination, "MISSION_UPLOAD timeout")
             logInbound(packet, peer, length, "rejected timeout")
             return
@@ -321,12 +328,19 @@ class MavlinkUdpServer(
         }
         if (item == null) {
             missionUploadSession = null
+            simLoop.rejectMissionUpload("invalid mission item", expectedCount = session.expectedCount, receivedCount = session.receivedCount)
             sendMissionAck(MAV_MISSION_INVALID, packet, destination, "MISSION_ITEM invalid")
             logInbound(packet, peer, length, "rejected invalid-item")
             return
         }
         when (val result = session.receive(item)) {
             is MissionUploadResult.RequestNext -> {
+                simLoop.recordMissionUploadProgress(
+                    expectedCount = session.expectedCount,
+                    receivedCount = session.receivedCount,
+                    lastReceivedSequence = item.sequence,
+                    nextRequestedSequence = result.sequence,
+                )
                 val request = if (legacy) {
                     builder.missionRequest(result.sequence, packet.systemId, packet.componentId)
                 } else {
@@ -338,12 +352,18 @@ class MavlinkUdpServer(
             is MissionUploadResult.Complete -> {
                 missionUploadSession = null
                 simLoop.loadMission(result.items)
+                simLoop.acceptMissionUpload(count = result.items.size, lastReceivedSequence = item.sequence)
                 lastReachedSequenceSent = null
                 sendMissionAck(MAV_MISSION_ACCEPTED, packet, destination, "MISSION_UPLOAD ${result.items.size}")
                 logInbound(packet, peer, length, "accepted complete=${result.items.size}")
             }
             is MissionUploadResult.Rejected -> {
                 missionUploadSession = null
+                simLoop.rejectMissionUpload(
+                    reason = result.reason,
+                    expectedCount = session.expectedCount,
+                    receivedCount = session.receivedCount,
+                )
                 sendMissionAck(MAV_MISSION_INVALID_SEQUENCE, packet, destination, "MISSION_ITEM ${result.reason}")
                 logInbound(packet, peer, length, "rejected ${result.reason}")
             }

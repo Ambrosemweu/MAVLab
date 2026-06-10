@@ -39,7 +39,9 @@ import com.ascend.mavlab.core.sensors.OrientationSource
 import com.ascend.mavlab.core.sensors.PhoneSensorRepository
 import com.ascend.mavlab.core.sensors.SensorCalibration
 import com.ascend.mavlab.simulation.autopilot.PilotInput
+import com.ascend.mavlab.simulation.engine.ControlAuthority
 import com.ascend.mavlab.simulation.engine.FlightMode
+import com.ascend.mavlab.simulation.failures.FailureState
 import kotlin.math.PI
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -47,6 +49,7 @@ import kotlin.math.PI
 fun ControllerScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val state by AppRuntime.state.collectAsState()
+    val failures by AppRuntime.failures.collectAsState()
     val sensorManager = remember {
         context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     }
@@ -55,8 +58,14 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
     val calibration = remember { SensorCalibration() }
     val mapper = remember { ControlMapper() }
     val config = remember { ControlConfig() }
+    val sensorAvailable = source != OrientationSource.Unavailable
+    val inputPaused = state.controlAuthority == ControlAuthority.GCS_MISSION
 
-    var tiltEnabled by remember { mutableStateOf(source != OrientationSource.Unavailable) }
+    var inputMode by remember {
+        mutableStateOf(
+            if (sensorAvailable) ControllerInputMode.PHONE_SENSORS else ControllerInputMode.CUSTOM_INPUT,
+        )
+    }
     var rawOrientation by remember { mutableStateOf(OrientationData(source = source)) }
     var calibratedOrientation by remember { mutableStateOf(OrientationData(source = source)) }
     var pilotInput by remember { mutableStateOf(PilotInput(throttle = 0.5f)) }
@@ -64,9 +73,10 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
     var manualRoll by remember { mutableFloatStateOf(0f) }
     var manualPitch by remember { mutableFloatStateOf(0f) }
     var manualYaw by remember { mutableFloatStateOf(0f) }
+    var advancedExpanded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(tiltEnabled, throttle, manualYaw, source) {
-        if (!tiltEnabled || source == OrientationSource.Unavailable) return@LaunchedEffect
+    LaunchedEffect(inputMode, inputPaused, throttle, manualYaw, source) {
+        if (inputMode != ControllerInputMode.PHONE_SENSORS || !sensorAvailable || inputPaused) return@LaunchedEffect
         repository.orientationFlow().collect { raw ->
             rawOrientation = raw
             val calibrated = calibration.apply(raw)
@@ -76,8 +86,8 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    LaunchedEffect(tiltEnabled, throttle, manualRoll, manualPitch, manualYaw) {
-        if (tiltEnabled && source != OrientationSource.Unavailable) return@LaunchedEffect
+    LaunchedEffect(inputMode, inputPaused, throttle, manualRoll, manualPitch, manualYaw) {
+        if (inputMode != ControllerInputMode.CUSTOM_INPUT || inputPaused) return@LaunchedEffect
         pilotInput = PilotInput(
             roll = manualRoll,
             pitch = manualPitch,
@@ -96,65 +106,77 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
         ) {
             Text("Controller", style = MaterialTheme.typography.headlineMedium)
             Text(
-                text = "Sensor: ${source.label}",
+                text = "Phone sensors or custom inputs drive the simulated drone.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
             )
+            Text(
+                text = "Sensor: ${source.label}",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text("Tilt input", style = MaterialTheme.typography.titleMedium)
-                Switch(
-                    checked = tiltEnabled,
-                    onCheckedChange = { tiltEnabled = it && source != OrientationSource.Unavailable },
-                    enabled = source != OrientationSource.Unavailable,
+            if (inputPaused) {
+                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text("GCS Mission active", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            text = "Manual Controller inputs are paused until mission control is released.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.76f),
+                        )
+                    }
+                }
+            }
+
+            InputModeSelector(
+                selected = inputMode,
+                sensorAvailable = sensorAvailable,
+                onSelected = { inputMode = it },
+            )
+
+            AdvancedTestInputs(
+                failures = failures,
+                expanded = advancedExpanded,
+                onExpandedChange = { advancedExpanded = it },
+            )
+
+            when (inputMode) {
+                ControllerInputMode.PHONE_SENSORS -> PhoneSensorControls(
+                    pilotInput = pilotInput,
+                    calibratedOrientation = calibratedOrientation,
+                    config = config,
+                    throttle = throttle,
+                    manualYaw = manualYaw,
+                    inputPaused = inputPaused,
+                    onThrottleChange = {
+                        throttle = it
+                        if (!inputPaused) AppRuntime.setPilotInput(pilotInput.copy(throttle = it))
+                    },
+                    onYawChange = { manualYaw = it },
+                )
+                ControllerInputMode.CUSTOM_INPUT -> CustomInputControls(
+                    throttle = throttle,
+                    roll = manualRoll,
+                    pitch = manualPitch,
+                    yaw = manualYaw,
+                    inputPaused = inputPaused,
+                    onThrottleChange = { throttle = it },
+                    onRollChange = { manualRoll = it },
+                    onPitchChange = { manualPitch = it },
+                    onYawChange = { manualYaw = it },
                 )
             }
 
-            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    TiltVisualizer(
-                        rollNormalized = pilotInput.roll,
-                        pitchNormalized = pilotInput.pitch,
-                        deadzoneRadius = config.deadzoneRad / config.maxRollAngleRad,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text("Roll ${degrees(calibratedOrientation.roll)}")
-                        Text("Pitch ${degrees(calibratedOrientation.pitch)}")
-                        Text("Yaw ${degrees(calibratedOrientation.yaw)}")
-                    }
-                }
-            }
-
-            ControlSlider("Throttle", throttle, " ${(throttle * 100).toInt()}%") {
-                throttle = it
-                AppRuntime.setPilotInput(pilotInput.copy(throttle = it))
-            }
-
-            if (!tiltEnabled || source == OrientationSource.Unavailable) {
-                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text("Manual fallback", style = MaterialTheme.typography.titleMedium)
-                        ControlSlider("Roll", manualRoll, normalizedLabel(manualRoll), -1f, 1f) { manualRoll = it }
-                        ControlSlider("Pitch", manualPitch, normalizedLabel(manualPitch), -1f, 1f) { manualPitch = it }
-                        ControlSlider("Yaw", manualYaw, normalizedLabel(manualYaw), -1f, 1f) { manualYaw = it }
-                    }
-                }
-            }
-
             HorizontalDivider()
-            FlightModeSelector(selected = state.mode, onSelected = AppRuntime::setMode)
+            FlightModeSelector(
+                selected = state.mode,
+                enabled = !inputPaused,
+                onSelected = AppRuntime::setMode,
+            )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -163,18 +185,21 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
                 Button(
                     onClick = { AppRuntime.setArmed(!state.armed) },
                     modifier = Modifier.weight(1f),
+                    enabled = !inputPaused,
                 ) {
                     Text(if (state.armed) "Disarm" else "Arm")
                 }
                 OutlinedButton(
                     onClick = { AppRuntime.takeoff(10f) },
                     modifier = Modifier.weight(1f),
+                    enabled = !inputPaused,
                 ) {
                     Text("Takeoff")
                 }
                 OutlinedButton(
                     onClick = AppRuntime::land,
                     modifier = Modifier.weight(1f),
+                    enabled = !inputPaused,
                 ) {
                     Text("Land")
                 }
@@ -184,14 +209,121 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                OutlinedButton(onClick = { calibration.calibrate(rawOrientation) }) {
-                    Text("Calibrate")
+                if (inputMode == ControllerInputMode.PHONE_SENSORS) {
+                    OutlinedButton(
+                        onClick = { calibration.calibrate(rawOrientation) },
+                        enabled = sensorAvailable && !inputPaused,
+                    ) {
+                        Text("Calibrate")
+                    }
                 }
                 Text(
-                    text = "${state.mode.displayName} | ${if (state.armed) "Armed" else "Disarmed"} | ${"%.1f".format(state.altitudeAglMeters)} m",
+                    text = "${state.controlAuthority.displayName} | ${state.mode.displayName} | ${if (state.armed) "Armed" else "Disarmed"}",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
+
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun InputModeSelector(
+    selected: ControllerInputMode,
+    sensorAvailable: Boolean,
+    onSelected: (ControllerInputMode) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Input mode", style = MaterialTheme.typography.titleMedium)
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ControllerInputMode.entries.forEach { mode ->
+                FilterChip(
+                    selected = selected == mode,
+                    onClick = { onSelected(mode) },
+                    enabled = mode != ControllerInputMode.PHONE_SENSORS || sensorAvailable,
+                    label = { Text(mode.label) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhoneSensorControls(
+    pilotInput: PilotInput,
+    calibratedOrientation: OrientationData,
+    config: ControlConfig,
+    throttle: Float,
+    manualYaw: Float,
+    inputPaused: Boolean,
+    onThrottleChange: (Float) -> Unit,
+    onYawChange: (Float) -> Unit,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            TiltVisualizer(
+                rollNormalized = pilotInput.roll,
+                pitchNormalized = pilotInput.pitch,
+                deadzoneRadius = config.deadzoneRad / config.maxRollAngleRad,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("Roll ${degrees(calibratedOrientation.roll)}")
+                Text("Pitch ${degrees(calibratedOrientation.pitch)}")
+                Text("Yaw ${degrees(calibratedOrientation.yaw)}")
+            }
+            ControlSlider(
+                label = "Throttle",
+                value = throttle,
+                valueLabel = " ${(throttle * 100).toInt()}%",
+                enabled = !inputPaused,
+                onValueChange = onThrottleChange,
+            )
+            ControlSlider(
+                label = "Yaw trim",
+                value = manualYaw,
+                valueLabel = normalizedLabel(manualYaw),
+                min = -1f,
+                max = 1f,
+                enabled = !inputPaused,
+                onValueChange = onYawChange,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CustomInputControls(
+    throttle: Float,
+    roll: Float,
+    pitch: Float,
+    yaw: Float,
+    inputPaused: Boolean,
+    onThrottleChange: (Float) -> Unit,
+    onRollChange: (Float) -> Unit,
+    onPitchChange: (Float) -> Unit,
+    onYawChange: (Float) -> Unit,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Custom input", style = MaterialTheme.typography.titleMedium)
+            ControlSlider("Throttle", throttle, " ${(throttle * 100).toInt()}%", enabled = !inputPaused, onValueChange = onThrottleChange)
+            ControlSlider("Roll", roll, normalizedLabel(roll), -1f, 1f, !inputPaused, onRollChange)
+            ControlSlider("Pitch", pitch, normalizedLabel(pitch), -1f, 1f, !inputPaused, onPitchChange)
+            ControlSlider("Yaw", yaw, normalizedLabel(yaw), -1f, 1f, !inputPaused, onYawChange)
         }
     }
 }
@@ -200,6 +332,7 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
 @Composable
 private fun FlightModeSelector(
     selected: FlightMode,
+    enabled: Boolean,
     onSelected: (FlightMode) -> Unit,
 ) {
     val modes = listOf(
@@ -220,6 +353,7 @@ private fun FlightModeSelector(
                 FilterChip(
                     selected = selected == mode,
                     onClick = { onSelected(mode) },
+                    enabled = enabled,
                     label = { Text(mode.displayName) },
                 )
             }
@@ -234,6 +368,7 @@ private fun ControlSlider(
     valueLabel: String,
     min: Float = 0f,
     max: Float = 1f,
+    enabled: Boolean = true,
     onValueChange: (Float) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -248,8 +383,98 @@ private fun ControlSlider(
             value = value,
             onValueChange = onValueChange,
             valueRange = min..max,
+            enabled = enabled,
         )
     }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AdvancedTestInputs(
+    failures: FailureState,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        OutlinedButton(
+            onClick = { onExpandedChange(!expanded) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (expanded) "Hide advanced test inputs" else "Advanced test inputs")
+        }
+        if (!expanded) return@Column
+
+        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text("Motor failure", style = MaterialTheme.typography.bodyLarge)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    (0..3).forEach { index ->
+                        val failed = failures.motorFailureMask and (1 shl index) != 0
+                        FilterChip(
+                            selected = failed,
+                            onClick = { AppRuntime.setMotorFailed(index, !failed) },
+                            label = { Text("Motor ${index + 1}") },
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("GPS available", style = MaterialTheme.typography.bodyLarge)
+                    Switch(
+                        checked = failures.gpsEnabled,
+                        onCheckedChange = AppRuntime::setGpsEnabled,
+                    )
+                }
+                Text("Wind preset", style = MaterialTheme.typography.bodyLarge)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    WindPreset.entries.forEach { preset ->
+                        FilterChip(
+                            selected = windPresetMatches(failures, preset),
+                            onClick = { applyWindPreset(preset) },
+                            label = { Text(preset.label) },
+                        )
+                    }
+                }
+                OutlinedButton(
+                    onClick = AppRuntime::resetFailures,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Reset perturbations")
+                }
+            }
+        }
+    }
+}
+
+private enum class WindPreset(
+    val label: String,
+    val speedMs: Float,
+    val gustsMs: Float,
+) {
+    NONE("None", 0f, 0f),
+    LIGHT("Light", 3f, 0.8f),
+    STRONG("Strong", 8f, 2f),
+}
+
+private fun applyWindPreset(preset: WindPreset) {
+    AppRuntime.setWindSpeedMs(preset.speedMs)
+    AppRuntime.setWindDirectionDeg(90f)
+    AppRuntime.setWindGustsMs(preset.gustsMs)
+}
+
+private fun windPresetMatches(failures: FailureState, preset: WindPreset): Boolean {
+    return failures.windSpeedMs == preset.speedMs && failures.windGustsMs == preset.gustsMs
 }
 
 private fun degrees(radians: Float): String {

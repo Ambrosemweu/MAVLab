@@ -17,11 +17,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ascend.mavlab.core.common.AppRuntime
+import com.ascend.mavlab.simulation.recording.FlightRecordingStatus
+import com.ascend.mavlab.simulation.recording.FlightSession
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun SettingsScreen(modifier: Modifier = Modifier) {
     val state by AppRuntime.state.collectAsState()
     val mission by AppRuntime.missionProgress.collectAsState()
+    val uploadStatus by AppRuntime.missionUploadStatus.collectAsState()
+    val recording by AppRuntime.recordingStatus.collectAsState()
     val status by AppRuntime.status.collectAsState()
     val systemId by AppRuntime.systemId.collectAsState()
 
@@ -32,14 +39,23 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Settings", style = MaterialTheme.typography.headlineMedium)
+            Text("Ops", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                text = "MAVLink, QGC, recording, and runtime diagnostics.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
+            )
             InfoCard(
                 title = "MAVLink",
                 body = "Status: $status\nSystem ID: $systemId\nQGroundControl should connect over UDP 14550 on the same phone or Wi-Fi network.",
             )
             InfoCard(
                 title = "GCS diagnostics",
-                body = "Last inbound: ${state.lastInboundMessage}\nLast ACK: ${state.lastAck}\nMission: ${mission.items.size} items, active ${mission.activeTarget?.sequence?.plus(1) ?: "none"}",
+                body = "Last inbound: ${state.lastInboundMessage}\nLast ACK: ${state.lastAck}\n${uploadStatus.displayText}\nMission: ${mission.items.size} items, active ${mission.activeTarget?.sequence?.plus(1) ?: "none"}",
+            )
+            InfoCard(
+                title = "Flight logs",
+                body = flightLogBody(recording),
             )
             InfoCard(
                 title = "Troubleshooting",
@@ -51,6 +67,29 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             )
         }
     }
+}
+
+private fun flightLogBody(recording: FlightRecordingStatus): String {
+    val session = recording.currentSession ?: recording.lastSession
+    return if (session == null) {
+        "No local flight logs yet.\nPath: app-private files/mavlab/flights"
+    } else {
+        buildString {
+            append(if (recording.active) "Status: Active" else "Status: Last session")
+            append("\nSession ID: ${session.id}")
+            append("\nStarted: ${formatTimestamp(session.startedAtMs)}")
+            append("\nEnded: ${endedLabel(session)}")
+            append("\nPath: ${session.directoryPath}")
+        }
+    }
+}
+
+private fun endedLabel(session: FlightSession): String {
+    return session.endedAtMs?.let(::formatTimestamp) ?: "Active"
+}
+
+private fun formatTimestamp(timestampMs: Long): String {
+    return OpsTimeFormatter.format(Instant.ofEpochMilli(timestampMs))
 }
 
 @Composable
@@ -69,3 +108,7 @@ private fun InfoCard(title: String, body: String) {
         }
     }
 }
+
+private val OpsTimeFormatter: DateTimeFormatter = DateTimeFormatter
+    .ofPattern("yyyy-MM-dd HH:mm:ss 'UTC'")
+    .withZone(ZoneOffset.UTC)

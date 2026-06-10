@@ -41,6 +41,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
     val state by AppRuntime.state.collectAsState()
     val status by AppRuntime.status.collectAsState()
     val systemId by AppRuntime.systemId.collectAsState()
+    val recording by AppRuntime.recordingStatus.collectAsState()
     val rollHistory = remember { mutableStateListOf<Float>() }
     val pitchHistory = remember { mutableStateListOf<Float>() }
     val yawHistory = remember { mutableStateListOf<Float>() }
@@ -78,6 +79,8 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
                 maxItemsInEachRow = 2,
             ) {
                 TelemetryCard("Mode", state.mode.displayName, Modifier.weight(1f), accent = true)
+                TelemetryCard("Control", state.controlAuthority.displayName, Modifier.weight(1f), accent = true)
+                TelemetryCard("Recording", if (recording.active) "Active" else "Idle", Modifier.weight(1f), accent = recording.active)
                 TelemetryCard("Armed", if (state.armed) "Yes" else "No", Modifier.weight(1f))
                 TelemetryCard("Altitude", "%.1f m".format(state.altitudeAglMeters), Modifier.weight(1f), accent = true)
                 TelemetryCard("Ground speed", "%.2f m/s".format(state.groundSpeedMS), Modifier.weight(1f))
@@ -91,6 +94,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
                 TelemetryCard("Pitch", degrees(state.pitchRadians), Modifier.weight(1f))
                 TelemetryCard("Yaw", degrees(state.yawRadians), Modifier.weight(1f))
                 TelemetryCard("Throttle", "${state.throttlePercent}%", Modifier.weight(1f))
+                TelemetryCard("RPM", rpmSummary(state), Modifier.weight(1f), accent = true)
             }
 
             RollingChart(
@@ -111,6 +115,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
             HorizontalDivider()
             FlightControls(state)
             StatusRow("GPS", "%.6f, %.6f".format(state.latitudeDeg, state.longitudeDeg))
+            StatusRow("Recording", recording.displayText)
             StatusRow("Last inbound", state.lastInboundMessage)
             StatusRow("Last ACK", state.lastAck)
         }
@@ -194,3 +199,7 @@ private fun gpsLabel(state: DroneState): String {
 private fun degrees(radians: Float): String = "%.1f deg".format(degreesValue(radians))
 
 private fun degreesValue(radians: Float): Float = radians * 180f / PI.toFloat()
+
+private fun rpmSummary(state: DroneState): String {
+    return state.motors.joinToString(" / ") { "%.0f".format(it.rpm) }
+}

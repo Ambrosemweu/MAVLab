@@ -11,7 +11,10 @@ import com.ascend.mavlab.simulation.physics.PhysicsModel
 import com.ascend.mavlab.simulation.physics.QuadcopterParams
 import com.ascend.mavlab.simulation.mission.MissionItem
 import com.ascend.mavlab.simulation.mission.MissionProgress
+import com.ascend.mavlab.simulation.mission.MissionUploadPhase
+import com.ascend.mavlab.simulation.mission.MissionUploadStatus
 import com.ascend.mavlab.simulation.physics.Vector3
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +40,8 @@ class PhysicsSimulationEngine(
     override val state: StateFlow<DroneState> = mutableState.asStateFlow()
     val failures: StateFlow<FailureState> = failureInjector.state
     val missionProgress: StateFlow<MissionProgress> = missionEngine.progress
+    private val mutableMissionUploadStatus = MutableStateFlow(MissionUploadStatus())
+    val missionUploadStatus: StateFlow<MissionUploadStatus> = mutableMissionUploadStatus.asStateFlow()
 
     private val scope = CoroutineScope(Dispatchers.Default)
     private var job: Job? = null
@@ -71,7 +76,10 @@ class PhysicsSimulationEngine(
         job = null
     }
 
-    fun setArmed(armed: Boolean) {
+    fun setArmed(
+        armed: Boolean,
+        authority: ControlAuthority = ControlAuthority.CONTROLLER,
+    ) {
         autopilot.setArmed(armed, mutableState.value)
         if (armed) {
             val current = mutableState.value
@@ -80,28 +88,44 @@ class PhysicsSimulationEngine(
             homeAltitudeMeters = current.altitudeAglMeters.coerceAtLeast(8f)
             captureLoiterTarget(current)
         }
-        mutableState.value = mutableState.value.copy(armed = autopilot.armed)
+        mutableState.value = mutableState.value.copy(
+            armed = autopilot.armed,
+            controlAuthority = authorityAfterArmedChange(armed = autopilot.armed, authority = authority),
+        )
     }
 
-    fun setMode(mode: FlightMode) {
+    fun setMode(
+        mode: FlightMode,
+        authority: ControlAuthority = ControlAuthority.CONTROLLER,
+    ) {
         if (mode == FlightMode.LOITER) {
             captureLoiterTarget(mutableState.value)
         }
         autopilot.setMode(mode, mutableState.value)
-        mutableState.value = mutableState.value.copy(mode = mode)
+        mutableState.value = mutableState.value.copy(
+            mode = mode,
+            controlAuthority = authority,
+        )
     }
 
-    fun takeoff(targetAltitudeM: Float) {
+    fun takeoff(
+        targetAltitudeM: Float,
+        authority: ControlAuthority = ControlAuthority.CONTROLLER,
+    ) {
         autopilot.takeoff(mutableState.value, targetAltitudeM)
         mutableState.value = mutableState.value.copy(
             armed = autopilot.armed,
             mode = autopilot.mode,
+            controlAuthority = authority,
         )
     }
 
-    fun land() {
+    fun land(authority: ControlAuthority = ControlAuthority.CONTROLLER) {
         autopilot.land()
-        mutableState.value = mutableState.value.copy(mode = FlightMode.LAND)
+        mutableState.value = mutableState.value.copy(
+            mode = FlightMode.LAND,
+            controlAuthority = authority,
+        )
     }
 
     fun setPilotInput(input: PilotInput) {
@@ -111,27 +135,47 @@ class PhysicsSimulationEngine(
             throttle = input.throttle.coerceIn(0f, 1f),
             yaw = input.yaw.coerceIn(-1f, 1f),
         )
+        val current = mutableState.value
+        if (current.armed && current.controlAuthority != ControlAuthority.GCS_MISSION) {
+            mutableState.value = current.copy(controlAuthority = ControlAuthority.CONTROLLER)
+        }
     }
 
-    fun setGuidedTarget(latitudeDeg: Double, longitudeDeg: Double, altitudeAglMeters: Float) {
+    fun setGuidedTarget(
+        latitudeDeg: Double,
+        longitudeDeg: Double,
+        altitudeAglMeters: Float,
+        authority: ControlAuthority = ControlAuthority.GCS_DIRECT,
+    ) {
         val current = mutableState.value
         guidedNorthMeters = current.northMeters + ((latitudeDeg - current.latitudeDeg) * METERS_PER_LAT_DEG).toFloat()
         guidedEastMeters = current.eastMeters + ((longitudeDeg - current.longitudeDeg) * lonMetersPerDeg(current)).toFloat()
         guidedAltitudeMeters = altitudeAglMeters.coerceAtLeast(0f)
         autopilot.setTargetAltitude(guidedAltitudeMeters)
         autopilot.setMode(FlightMode.GUIDED, current)
-        mutableState.value = current.copy(mode = FlightMode.GUIDED)
+        mutableState.value = current.copy(
+            mode = FlightMode.GUIDED,
+            controlAuthority = authority,
+        )
         noteAck("GUIDED TARGET")
     }
 
-    fun setGuidedOffset(northMeters: Float, eastMeters: Float, altitudeAglMeters: Float) {
+    fun setGuidedOffset(
+        northMeters: Float,
+        eastMeters: Float,
+        altitudeAglMeters: Float,
+        authority: ControlAuthority = ControlAuthority.CONTROLLER,
+    ) {
         val current = mutableState.value
         guidedNorthMeters = current.northMeters + northMeters
         guidedEastMeters = current.eastMeters + eastMeters
         guidedAltitudeMeters = altitudeAglMeters.coerceAtLeast(0f)
         autopilot.setTargetAltitude(guidedAltitudeMeters)
         autopilot.setMode(FlightMode.GUIDED, current)
-        mutableState.value = current.copy(mode = FlightMode.GUIDED)
+        mutableState.value = current.copy(
+            mode = FlightMode.GUIDED,
+            controlAuthority = authority,
+        )
         noteAck("GUIDED OFFSET")
     }
 
@@ -139,6 +183,48 @@ class PhysicsSimulationEngine(
         missionEngine.load(items)
         missionEngine.progress.value.activeTarget?.let { autopilot.setTargetAltitude(it.altitudeAglMeters) }
         noteAck("MISSION ${items.size}")
+    }
+
+    fun beginMissionUpload(expectedCount: Int, requestedSequence: Int) {
+        mutableMissionUploadStatus.value = MissionUploadStatus(
+            phase = MissionUploadPhase.UPLOADING,
+            expectedCount = expectedCount,
+            receivedCount = 0,
+            lastRequestedSequence = requestedSequence,
+        )
+    }
+
+    fun recordMissionUploadProgress(
+        expectedCount: Int,
+        receivedCount: Int,
+        lastReceivedSequence: Int,
+        nextRequestedSequence: Int,
+    ) {
+        mutableMissionUploadStatus.value = MissionUploadStatus(
+            phase = MissionUploadPhase.UPLOADING,
+            expectedCount = expectedCount,
+            receivedCount = receivedCount,
+            lastRequestedSequence = nextRequestedSequence,
+            lastReceivedSequence = lastReceivedSequence,
+        )
+    }
+
+    fun acceptMissionUpload(count: Int, lastReceivedSequence: Int? = null) {
+        mutableMissionUploadStatus.value = MissionUploadStatus(
+            phase = MissionUploadPhase.ACCEPTED,
+            expectedCount = count,
+            receivedCount = count,
+            lastReceivedSequence = lastReceivedSequence,
+        )
+    }
+
+    fun rejectMissionUpload(reason: String, expectedCount: Int = 0, receivedCount: Int = 0) {
+        mutableMissionUploadStatus.value = MissionUploadStatus(
+            phase = MissionUploadPhase.REJECTED,
+            expectedCount = expectedCount,
+            receivedCount = receivedCount,
+            lastError = reason,
+        )
     }
 
     fun loadDemoMission() {
@@ -155,6 +241,7 @@ class PhysicsSimulationEngine(
 
     fun clearMission() {
         missionEngine.clear()
+        mutableMissionUploadStatus.value = MissionUploadStatus()
         noteAck("MISSION CLEAR")
     }
 
@@ -185,20 +272,53 @@ class PhysicsSimulationEngine(
         val navigationInput = activePilotInput(current, dt)
         val output = autopilot.computeMotorOutput(current, navigationInput, dt)
         val failedMotorSpeeds = failureInjector.applyMotorFailures(output.speeds)
+        val motorTelemetry = motorTelemetry(
+            commandedSpeeds = output.speeds,
+            postFailureSpeeds = failedMotorSpeeds,
+            failures = failures,
+        )
         val environment = EnvironmentModel(windNedMS = failureInjector.windVectorNed())
         val physicsState = physics.step(current, failedMotorSpeeds, dt, environment)
         val batteryState = updateBattery(physicsState, output.throttle, dt, failures)
         val nowMs = System.currentTimeMillis()
 
+        val simulatedState = batteryState.copy(
+            armed = autopilot.armed,
+            mode = autopilot.mode,
+            uptimeMs = (nowMs - startedAtMs).coerceAtLeast(0L).toUInt(),
+            throttlePercent = autopilot.throttlePercent(),
+            motors = motorTelemetry,
+        )
         mutableState.value = applySensorTelemetry(
-            batteryState.copy(
-                armed = autopilot.armed,
-                mode = autopilot.mode,
-                uptimeMs = (nowMs - startedAtMs).coerceAtLeast(0L).toUInt(),
-                throttlePercent = autopilot.throttlePercent(),
-            ),
+            simulatedState.copy(controlAuthority = resolvedAuthorityAfterTick(simulatedState)),
             failures,
         )
+    }
+
+    internal fun tickForTest() {
+        tick()
+    }
+
+    private fun authorityAfterArmedChange(
+        armed: Boolean,
+        authority: ControlAuthority,
+    ): ControlAuthority {
+        return when {
+            armed -> authority
+            authority == ControlAuthority.GCS_DIRECT -> ControlAuthority.GCS_DIRECT
+            else -> ControlAuthority.IDLE
+        }
+    }
+
+    private fun resolvedAuthorityAfterTick(state: DroneState): ControlAuthority {
+        val progress = missionEngine.progress.value
+        return when {
+            !state.armed && state.controlAuthority != ControlAuthority.GCS_DIRECT -> ControlAuthority.IDLE
+            state.controlAuthority == ControlAuthority.GCS_MISSION &&
+                (!progress.loaded || progress.complete) &&
+                state.mode != FlightMode.AUTO -> if (state.armed) ControlAuthority.GCS_DIRECT else ControlAuthority.IDLE
+            else -> state.controlAuthority
+        }
     }
 
     private fun activePilotInput(state: DroneState, dt: Float): PilotInput {
@@ -301,6 +421,25 @@ class PhysicsSimulationEngine(
                 else -> state.lastInboundMessage
             },
         )
+    }
+
+    private fun motorTelemetry(
+        commandedSpeeds: FloatArray,
+        postFailureSpeeds: FloatArray,
+        failures: FailureState,
+    ): List<MotorTelemetry> {
+        return List(4) { index ->
+            val failed = failures.motorFailureMask and (1 shl index) != 0
+            MotorTelemetry(
+                rpm = radPerSecondToRpm(postFailureSpeeds.getOrElse(index) { 0f }),
+                command = (commandedSpeeds.getOrElse(index) { 0f } / params.motorMaxSpeedRadS).coerceIn(0f, 1f),
+                failed = failed,
+            )
+        }
+    }
+
+    private fun radPerSecondToRpm(radPerSecond: Float): Float {
+        return radPerSecond.coerceAtLeast(0f) * 60f / (2f * PI.toFloat())
     }
 
     private fun updateBattery(

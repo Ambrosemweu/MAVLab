@@ -153,10 +153,10 @@ fun OnboardingScreen(
 @Composable
 private fun FeatureRow(pageIndex: Int) {
     val labels = when (pageIndex) {
-        0 -> listOf("Digital twin", "MAVLink", "QGC")
-        1 -> listOf("Physics", "Tilt control", "Twin")
+        0 -> listOf("Flight SIM", "MAVLink", "QGC")
+        1 -> listOf("Physics", "Tilt control", "SIM")
         2 -> listOf("QGC", "UDP", "Telemetry")
-        else -> listOf("Cockpit", "Systems", "Missions")
+        else -> listOf("Cockpit", "Mission", "Ops")
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         labels.forEach { label ->

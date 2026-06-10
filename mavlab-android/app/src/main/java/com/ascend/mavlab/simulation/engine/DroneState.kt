@@ -7,6 +7,7 @@ package com.ascend.mavlab.simulation.engine
 data class DroneState(
     val armed: Boolean = false,
     val mode: FlightMode = FlightMode.STABILIZE,
+    val controlAuthority: ControlAuthority = ControlAuthority.IDLE,
     val uptimeMs: UInt = 0u,
     val latitudeDeg: Double = -1.2921,
     val longitudeDeg: Double = 36.8219,
@@ -31,6 +32,7 @@ data class DroneState(
     val throttlePercent: UByte = 0u,
     val gpsSatellites: UByte = 12u,
     val gpsFixType: UByte = 3u,
+    val motors: List<MotorTelemetry> = List(4) { MotorTelemetry() },
     val lastInboundMessage: String = "None",
     val lastAck: String = "None",
 )
