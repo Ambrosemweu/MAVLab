@@ -184,6 +184,7 @@ class MavlinkUdpServer(
         when (packet.messageId) {
             0 -> handleHeartbeat(packet, peer, length)
             11 -> handleSetMode(packet, peer)
+            20 -> handleParamRequestRead(packet, peer, length)
             21 -> sendParams(packet, peer, length)
             23 -> handleParamSet(packet, peer, length)
             39 -> handleMissionItemUpload(packet, peer, legacy = true, length = length)
@@ -293,6 +294,18 @@ class MavlinkUdpServer(
                     if (accepted) "MISSION_START" else "MISSION_START NO MISSION",
                 )
             }
+            MAV_CMD_PREFLIGHT_CALIBRATION -> {
+                ack(command, MAV_RESULT_ACCEPTED, peer, "PREFLIGHT_CALIBRATION")
+            }
+            MAV_CMD_DO_START_MAG_CAL -> {
+                ack(command, MAV_RESULT_ACCEPTED, peer, "DO_START_MAG_CAL")
+            }
+            MAV_CMD_DO_ACCEPT_MAG_CAL -> {
+                ack(command, MAV_RESULT_ACCEPTED, peer, "DO_ACCEPT_MAG_CAL")
+            }
+            MAV_CMD_DO_CANCEL_MAG_CAL -> {
+                ack(command, MAV_RESULT_ACCEPTED, peer, "DO_CANCEL_MAG_CAL")
+            }
             else -> {
                 ack(command, MAV_RESULT_UNSUPPORTED, peer, "UNSUPPORTED $command")
             }
@@ -326,14 +339,8 @@ class MavlinkUdpServer(
         ack(0, MAV_RESULT_ACCEPTED, peer, "PARAM_SET")
     }
 
-    private fun sendParams(packet: MavlinkPacket, peer: UdpDestination?, length: Int) {
-        if (!isTargetedToVehicle(packet, targetSystemOffset = 0, label = "PARAM_REQUEST_LIST")) {
-            logInbound(packet, peer, length, "ignored target-mismatch")
-            return
-        }
-        simLoop.noteInbound("PARAM_REQUEST_LIST")
-        val destination = peer ?: lastPeer ?: return
-        val params = listOf(
+    private fun getParamsList(): List<Pair<String, Float>> {
+        return listOf(
             "SYSID_THISMAV" to vehicleSystemId.toFloat(),
             "MAV_SYSID" to vehicleSystemId.toFloat(),
             "SYSID_MYGCS" to DefaultQgcSystemId.toFloat(),
@@ -364,32 +371,124 @@ class MavlinkUdpServer(
             "COMPASS_USE" to 1f,
             "COMPASS_USE2" to 1f,
             "COMPASS_USE3" to 0f,
-            "INS_ACCOFFS_X" to 0f,
-            "INS_ACCOFFS_Y" to 0f,
-            "INS_ACCOFFS_Z" to 0f,
+            "INS_ACCOFFS_X" to 0.001f,
+            "INS_ACCOFFS_Y" to 0.001f,
+            "INS_ACCOFFS_Z" to 0.001f,
+            "INS_ACCSCAL_X" to 1.001f,
+            "INS_ACCSCAL_Y" to 1.001f,
+            "INS_ACCSCAL_Z" to 1.001f,
             "FLTMODE1" to 0f,
             "FLTMODE2" to 0f,
             "FLTMODE3" to 0f,
             "FLTMODE4" to 0f,
             "FLTMODE5" to 0f,
             "FLTMODE6" to 0f,
-            "COMPASS_OFS_X" to 0f,
-            "COMPASS_OFS_Y" to 0f,
-            "COMPASS_OFS_Z" to 0f,
-            "COMPASS_OFS2_X" to 0f,
-            "COMPASS_OFS2_Y" to 0f,
-            "COMPASS_OFS2_Z" to 0f,
-            "COMPASS_OFS3_X" to 0f,
-            "COMPASS_OFS3_Y" to 0f,
-            "COMPASS_OFS3_Z" to 0f,
+            "COMPASS_OFS_X" to 5f,
+            "COMPASS_OFS_Y" to 5f,
+            "COMPASS_OFS_Z" to 5f,
+            "COMPASS_OFS2_X" to 5f,
+            "COMPASS_OFS2_Y" to 5f,
+            "COMPASS_OFS2_Z" to 5f,
+            "COMPASS_OFS3_X" to 5f,
+            "COMPASS_OFS3_Y" to 5f,
+            "COMPASS_OFS3_Z" to 5f,
             "COMPASS_DEC" to 0f,
             "BATT_MONITOR" to 0f,
             "ARMING_CHECK" to 0f,
             "AHRS_ORIENTATION" to 0f,
             "COMPASS_AUTODEC" to 1f,
+            "RC1_REV" to 0f,
+            "RC2_REV" to 0f,
+            "RC3_REV" to 0f,
+            "RC4_REV" to 0f,
+            "r.RC6_OPTION" to 0f,
+            "r.RC7_OPTION" to 0f,
+            "r.RC8_OPTION" to 0f,
+            "r.RC9_OPTION" to 0f,
+            "r.RC10_OPTION" to 0f,
+            "r.RC11_OPTION" to 0f,
+            "r.RC12_OPTION" to 0f,
+            "r.RC13_OPTION" to 0f,
+            "r.RC14_OPTION" to 0f,
+            "r.RC15_OPTION" to 0f,
+            "r.RC16_OPTION" to 0f,
+            "r.TUNE_MIN" to 0f,
+            "r.TUNE_MAX" to 0f,
+            "TUNE" to 0f,
+            "AUTOTUNE_AXES" to 0f,
+            "MOT_SPIN_MIN" to 0.15f,
+            "MOT_SPIN_ARM" to 0.10f,
+            "PSC_ACCZ_P" to 0.50f,
+            "PSC_ACCZ_I" to 1.00f,
+            "ATC_RAT_RLL_P" to 0.15f,
+            "ATC_RAT_RLL_I" to 0.15f,
+            "ATC_RAT_PIT_P" to 0.15f,
+            "ATC_RAT_PIT_I" to 0.15f,
+            "LAND_SPEED" to 50f,
+            "RTL_ALT_FINAL" to 0f,
+            "RTL_LOIT_TIME" to 5000f,
+            "RTL_ALT" to 1500f,
+            "FENCE_MARGIN" to 2f,
+            "FENCE_ACTION" to 0f,
+            "FENCE_TYPE" to 0f,
+            "FENCE_RADIUS" to 150f,
+            "FENCE_ALT_MAX" to 100f,
+            "FENCE_ENABLE" to 0f,
+            "FS_THR_VALUE" to 975f,
+            "FS_THR_ENABLE" to 0f,
+            "FS_GCS_ENABLE" to 0f,
         )
-        params.forEachIndexed { index, param ->
-            send(builder.paramValue(param.first, param.second, index, params.size), destination)
+    }
+
+    private fun sendParams(packet: MavlinkPacket, peer: UdpDestination?, length: Int) {
+        if (!isTargetedToVehicle(packet, targetSystemOffset = 0, label = "PARAM_REQUEST_LIST")) {
+            logInbound(packet, peer, length, "ignored target-mismatch")
+            return
+        }
+        simLoop.noteInbound("PARAM_REQUEST_LIST")
+        val destination = peer ?: lastPeer ?: return
+        scope.launch {
+            val params = getParamsList()
+            params.forEachIndexed { index, param ->
+                send(builder.paramValue(param.first, param.second, index, params.size), destination)
+                delay(2)
+            }
+        }
+    }
+
+    private fun handleParamRequestRead(packet: MavlinkPacket, peer: UdpDestination?, length: Int) {
+        if (!isTargetedToVehicle(packet, targetSystemOffset = 2, label = "PARAM_REQUEST_READ")) {
+            logInbound(packet, peer, length, "ignored target-mismatch")
+            return
+        }
+        val payload = packet.payload
+        if (payload.size < 20) return
+
+        val paramIndex = payload.leInt16(0)
+        val paramIdBytes = payload.copyOfRange(4, 20)
+        val paramId = String(paramIdBytes, Charsets.US_ASCII).trimEnd { it == '\u0000' }
+
+        val params = getParamsList()
+        val foundIndex: Int
+        val foundParam: Pair<String, Float>?
+
+        if (paramIndex >= 0 && paramIndex < params.size) {
+            foundIndex = paramIndex
+            foundParam = params[paramIndex]
+        } else {
+            foundIndex = params.indexOfFirst { it.first == paramId }
+            foundParam = if (foundIndex != -1) params[foundIndex] else null
+        }
+
+        if (foundParam != null) {
+            simLoop.noteInbound("PARAM_REQUEST_READ index=$foundIndex id=$paramId (found: ${foundParam.first})")
+            val destination = peer ?: lastPeer ?: return
+            send(
+                builder.paramValue(foundParam.first, foundParam.second, foundIndex, params.size),
+                destination
+            )
+        } else {
+            simLoop.noteInbound("PARAM_REQUEST_READ index=$paramIndex id=$paramId (not found)")
         }
     }
 
@@ -652,6 +751,10 @@ class MavlinkUdpServer(
         return (this[offset].toInt() and 0xff) or ((this[offset + 1].toInt() and 0xff) shl 8)
     }
 
+    private fun ByteArray.leInt16(offset: Int): Int {
+        return ((this[offset + 1].toInt() shl 8) or (this[offset].toInt() and 0xff)).toShort().toInt()
+    }
+
     private fun ByteArray.leUInt32(offset: Int): UInt {
         val value = (this[offset].toInt() and 0xff) or
             ((this[offset + 1].toInt() and 0xff) shl 8) or
@@ -679,6 +782,10 @@ class MavlinkUdpServer(
         const val MAV_CMD_NAV_LAND = 21
         const val MAV_CMD_MISSION_START = 300
         const val MAV_CMD_COMPONENT_ARM_DISARM = 400
+        const val MAV_CMD_PREFLIGHT_CALIBRATION = 241
+        const val MAV_CMD_DO_START_MAG_CAL = 424
+        const val MAV_CMD_DO_ACCEPT_MAG_CAL = 425
+        const val MAV_CMD_DO_CANCEL_MAG_CAL = 426
         const val MAV_CMD_SET_MESSAGE_INTERVAL = 511
         const val MAV_CMD_REQUEST_MESSAGE = 512
         const val MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES = 520
