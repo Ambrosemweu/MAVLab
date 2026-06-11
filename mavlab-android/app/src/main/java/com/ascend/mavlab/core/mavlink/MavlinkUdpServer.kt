@@ -385,6 +385,8 @@ class MavlinkUdpServer(
             "COMPASS_DEC" to 0f,
             "BATT_MONITOR" to 0f,
             "ARMING_CHECK" to 0f,
+            "AHRS_ORIENTATION" to 0f,
+            "COMPASS_AUTODEC" to 1f,
         )
         params.forEachIndexed { index, param ->
             send(builder.paramValue(param.first, param.second, index, params.size), destination)
