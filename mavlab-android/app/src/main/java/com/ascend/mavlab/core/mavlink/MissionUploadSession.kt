@@ -36,7 +36,7 @@ class MissionUploadSession(
 
         fun parseMissionCount(packet: MavlinkPacket, peer: UdpDestination): MissionUploadSession? {
             if (packet.payload.size < 4) return null
-            val count = packet.payload.leUInt16(2)
+            val count = packet.payload.leUInt16(0)
             if (count !in 0..MaxMissionItems) return null
             return MissionUploadSession(
                 expectedCount = count,

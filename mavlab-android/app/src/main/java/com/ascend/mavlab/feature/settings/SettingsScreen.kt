@@ -31,6 +31,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     val recording by AppRuntime.recordingStatus.collectAsState()
     val status by AppRuntime.status.collectAsState()
     val systemId by AppRuntime.systemId.collectAsState()
+    val identityStatus by AppRuntime.mavlinkIdentityStatus.collectAsState()
 
     Surface(modifier = modifier.fillMaxSize()) {
         Column(
@@ -47,7 +48,18 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             )
             InfoCard(
                 title = "MAVLink",
-                body = "Status: $status\nSystem ID: $systemId\nQGroundControl should connect over UDP 14550 on the same phone or Wi-Fi network.",
+                body = buildString {
+                    append("Status: $status")
+                    append("\nVehicle SYSID: $systemId")
+                    append("\nVehicle COMPID: ${identityStatus.vehicleComponentId}")
+                    append("\nExpected QGC SYSID: ${identityStatus.recommendedGcsSystemId}")
+                    append("\nLast GCS SYSID: ${identityStatus.lastGcsSystemId ?: "none"}")
+                    append("\nLast GCS COMPID: ${identityStatus.lastGcsComponentId ?: "none"}")
+                    append("\nIdentity: ${identityStatus.healthLabel}")
+                    if (identityStatus.message.isNotBlank()) {
+                        append("\n${identityStatus.message}")
+                    }
+                },
             )
             InfoCard(
                 title = "GCS diagnostics",
@@ -59,7 +71,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             )
             InfoCard(
                 title = "Troubleshooting",
-                body = "If QGC does not connect, restart QGC, keep MAVLab open, and verify both devices are on the same network. If phone tilt is unavailable, use manual fallback controls in Controller.",
+                body = "Recommended QGC setup: set QGC MAVLink System ID to 255, keep MAVLab Vehicle SYSID at 1, keep QGC UDP on 14550, and restart QGC or reconnect the UDP link after changing System ID. Do not set QGC to the same system ID as MAVLab.",
             )
             InfoCard(
                 title = "Release QA",

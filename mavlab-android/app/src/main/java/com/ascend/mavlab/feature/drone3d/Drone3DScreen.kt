@@ -21,6 +21,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.google.android.filament.LightManager
 import com.ascend.mavlab.core.common.AppRuntime
+import com.ascend.mavlab.core.sensors.OrientationSource
+import com.ascend.mavlab.simulation.engine.ControlAuthority
 import com.ascend.mavlab.simulation.engine.DroneState
 import com.ascend.mavlab.simulation.mission.MissionProgress
 import io.github.sceneview.SceneView
@@ -42,7 +44,11 @@ import kotlin.math.sqrt
 fun Drone3DScreen(modifier: Modifier = Modifier) {
     val state by AppRuntime.state.collectAsState()
     val mission by AppRuntime.missionProgress.collectAsState()
+    val sensorSource by AppRuntime.phoneSensorSource.collectAsState()
+    val sensorOrientation by AppRuntime.phoneSensorOrientation.collectAsState()
     val modelController = remember { DroneModelController() }
+    val gcsMissionOwnsAttitude = state.armed && state.controlAuthority == ControlAuthority.GCS_MISSION
+    val usePhoneAttitude = sensorSource != OrientationSource.Unavailable && !gcsMissionOwnsAttitude
     Box(modifier = modifier.fillMaxSize()) {
         DroneScene(
             state = state,
@@ -53,6 +59,9 @@ fun Drone3DScreen(modifier: Modifier = Modifier) {
             state = state,
             mission = mission,
             modelController = modelController,
+            yawRadians = if (usePhoneAttitude) sensorOrientation.yaw else state.yawRadians,
+            rollRadians = if (usePhoneAttitude) sensorOrientation.roll else state.rollRadians,
+            pitchRadians = if (usePhoneAttitude) sensorOrientation.pitch else state.pitchRadians,
             modifier = Modifier.fillMaxSize(),
         )
     }
@@ -93,6 +102,9 @@ private fun SimHud(
     state: DroneState,
     mission: MissionProgress,
     modelController: DroneModelController,
+    yawRadians: Float,
+    rollRadians: Float,
+    pitchRadians: Float,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
@@ -128,9 +140,9 @@ private fun SimHud(
         AltitudeInstrument(
             altitudeMeters = state.altitudeAglMeters,
             verticalSpeedMetersPerSecond = state.verticalSpeedMS,
-            yawRadians = state.yawRadians,
-            rollRadians = state.rollRadians,
-            pitchRadians = state.pitchRadians,
+            yawRadians = yawRadians,
+            rollRadians = rollRadians,
+            pitchRadians = pitchRadians,
             armed = state.armed,
             modifier = Modifier
                 .align(Alignment.BottomCenter)

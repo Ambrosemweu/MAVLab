@@ -26,6 +26,25 @@ class MissionUploadSessionTest {
     }
 
     @Test
+    fun missionCountUsesMavlinkFieldOrder() {
+        val packet = MavlinkPacket(
+            messageId = 44,
+            systemId = 255,
+            componentId = 190,
+            payload = littleEndian(4)
+                .putU16(7)
+                .putU8(1)
+                .putU8(1)
+                .array(),
+        )
+
+        val session = MissionUploadSession.parseMissionCount(packet, UdpDestination("127.0.0.1"))
+
+        assertNotNull(session)
+        assertEquals(7, session.expectedCount)
+    }
+
+    @Test
     fun missionItemIntCompletesWhenAllSequencesReceived() {
         val session = MissionUploadSession(expectedCount = 2, peer = UdpDestination("127.0.0.1"))
 
@@ -76,11 +95,10 @@ class MissionUploadSessionTest {
     }
 
     private fun missionCountPayload(count: Int): ByteArray {
-        return littleEndian(5)
-            .putU8(1)
-            .putU8(1)
+        return littleEndian(4)
             .putU16(count)
-            .putU8(0)
+            .putU8(1)
+            .putU8(1)
             .array()
     }
 

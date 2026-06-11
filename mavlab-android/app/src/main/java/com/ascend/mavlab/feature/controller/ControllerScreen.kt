@@ -1,7 +1,5 @@
 package com.ascend.mavlab.feature.controller
 
-import android.content.Context
-import android.hardware.SensorManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -31,13 +29,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.ascend.mavlab.core.common.AppRuntime
 import com.ascend.mavlab.core.sensors.OrientationData
 import com.ascend.mavlab.core.sensors.OrientationSource
-import com.ascend.mavlab.core.sensors.PhoneSensorRepository
-import com.ascend.mavlab.core.sensors.SensorCalibration
 import com.ascend.mavlab.simulation.autopilot.PilotInput
 import com.ascend.mavlab.simulation.engine.ControlAuthority
 import com.ascend.mavlab.simulation.engine.FlightMode
@@ -47,16 +42,11 @@ import kotlin.math.PI
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ControllerScreen(modifier: Modifier = Modifier) {
-    val context = LocalContext.current
     val state by AppRuntime.state.collectAsState()
     val failures by AppRuntime.failures.collectAsState()
-    val sensorManager = remember {
-        context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    }
-    val repository = remember(sensorManager) { PhoneSensorRepository(sensorManager) }
-    val source = remember(repository) { repository.activeSource() }
-    val calibration = remember { SensorCalibration() }
-    val mapper = remember { ControlMapper() }
+    val source by AppRuntime.phoneSensorSource.collectAsState()
+    val calibratedOrientation by AppRuntime.phoneSensorOrientation.collectAsState()
+    val phoneSensorPilotInput by AppRuntime.phoneSensorPilotInput.collectAsState()
     val config = remember { ControlConfig() }
     val sensorAvailable = source != OrientationSource.Unavailable
     val inputPaused = state.controlAuthority == ControlAuthority.GCS_MISSION
@@ -66,8 +56,6 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
             if (sensorAvailable) ControllerInputMode.PHONE_SENSORS else ControllerInputMode.CUSTOM_INPUT,
         )
     }
-    var rawOrientation by remember { mutableStateOf(OrientationData(source = source)) }
-    var calibratedOrientation by remember { mutableStateOf(OrientationData(source = source)) }
     var pilotInput by remember { mutableStateOf(PilotInput(throttle = 0.5f)) }
     var throttle by remember { mutableFloatStateOf(0.5f) }
     var manualRoll by remember { mutableFloatStateOf(0f) }
@@ -75,19 +63,19 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
     var manualYaw by remember { mutableFloatStateOf(0f) }
     var advancedExpanded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(inputMode, inputPaused, throttle, manualYaw, source) {
-        if (inputMode != ControllerInputMode.PHONE_SENSORS || !sensorAvailable || inputPaused) return@LaunchedEffect
-        repository.orientationFlow().collect { raw ->
-            rawOrientation = raw
-            val calibrated = calibration.apply(raw)
-            calibratedOrientation = calibrated
-            pilotInput = mapper.map(calibrated, throttle, manualYaw)
-            AppRuntime.setPilotInput(pilotInput)
+    LaunchedEffect(inputMode, inputPaused, throttle, manualYaw, sensorAvailable) {
+        val enabled = inputMode == ControllerInputMode.PHONE_SENSORS && sensorAvailable && !inputPaused
+        AppRuntime.setPhoneSensorThrottle(throttle)
+        AppRuntime.setPhoneSensorYawTrim(manualYaw)
+        AppRuntime.setPhoneSensorControlEnabled(enabled)
+        if (enabled) {
+            pilotInput = phoneSensorPilotInput
         }
     }
 
     LaunchedEffect(inputMode, inputPaused, throttle, manualRoll, manualPitch, manualYaw) {
         if (inputMode != ControllerInputMode.CUSTOM_INPUT || inputPaused) return@LaunchedEffect
+        AppRuntime.setPhoneSensorControlEnabled(false)
         pilotInput = PilotInput(
             roll = manualRoll,
             pitch = manualPitch,
@@ -146,7 +134,7 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
 
             when (inputMode) {
                 ControllerInputMode.PHONE_SENSORS -> PhoneSensorControls(
-                    pilotInput = pilotInput,
+                    pilotInput = phoneSensorPilotInput,
                     calibratedOrientation = calibratedOrientation,
                     config = config,
                     throttle = throttle,
@@ -154,9 +142,12 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
                     inputPaused = inputPaused,
                     onThrottleChange = {
                         throttle = it
-                        if (!inputPaused) AppRuntime.setPilotInput(pilotInput.copy(throttle = it))
+                        AppRuntime.setPhoneSensorThrottle(it)
                     },
-                    onYawChange = { manualYaw = it },
+                    onYawChange = {
+                        manualYaw = it
+                        AppRuntime.setPhoneSensorYawTrim(it)
+                    },
                 )
                 ControllerInputMode.CUSTOM_INPUT -> CustomInputControls(
                     throttle = throttle,
@@ -211,7 +202,7 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
             ) {
                 if (inputMode == ControllerInputMode.PHONE_SENSORS) {
                     OutlinedButton(
-                        onClick = { calibration.calibrate(rawOrientation) },
+                        onClick = AppRuntime::calibratePhoneSensors,
                         enabled = sensorAvailable && !inputPaused,
                     ) {
                         Text("Calibrate")

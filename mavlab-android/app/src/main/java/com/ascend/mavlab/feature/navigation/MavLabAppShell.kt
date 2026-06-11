@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.ControlCamera
+import androidx.compose.material.icons.filled.Height
 import androidx.compose.material.icons.filled.Route
-import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -41,7 +41,7 @@ private enum class MavLabTab(
     Cockpit("Cockpit", "Flight Cockpit", Icons.Filled.Analytics),
     Controller("Controller", "Phone Flight Controls", Icons.Filled.ControlCamera),
     Mission("Mission", "GCS Mission", Icons.Filled.Route),
-    Sim("SIM", "3D Flight SIM", Icons.Filled.Science),
+    Sim("SIM", "3D Flight SIM", Icons.Filled.Height),
     Ops("Ops", "Operations", Icons.Filled.Settings),
 }
 
