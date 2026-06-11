@@ -113,6 +113,36 @@ class MavlinkMessageBuilderTest {
         assertEquals(3, packet.payload[33].toInt())
     }
 
+    @Test
+    fun heartbeatCrcIsCorrect() {
+        val builder = MavlinkMessageBuilder(systemId = 1, componentId = 1)
+        val state = DroneState() // default armed=false, mode=STABILIZE
+        val data = builder.heartbeat(state)
+
+        assertEquals(17, data.size) // header (6) + payload (9) + crc (2)
+        assertEquals(0xfe, data[0].toInt() and 0xff) // magic
+        assertEquals(9, data[1].toInt() and 0xff) // payload length
+        assertEquals(0, data[2].toInt() and 0xff) // sequence
+        assertEquals(1, data[3].toInt() and 0xff) // system ID
+        assertEquals(1, data[4].toInt() and 0xff) // component ID
+        assertEquals(0, data[5].toInt() and 0xff) // message ID
+        
+        // Expected payload: [0, 0, 0, 0, 2, 3, 93, 3, 3]
+        assertEquals(0, data[6].toInt() and 0xff)
+        assertEquals(0, data[7].toInt() and 0xff)
+        assertEquals(0, data[8].toInt() and 0xff)
+        assertEquals(0, data[9].toInt() and 0xff)
+        assertEquals(2, data[10].toInt() and 0xff)
+        assertEquals(3, data[11].toInt() and 0xff)
+        assertEquals(93, data[12].toInt() and 0xff)
+        assertEquals(3, data[13].toInt() and 0xff)
+        assertEquals(3, data[14].toInt() and 0xff)
+
+        // CRC low byte and high byte (expected CRC: 0xc64c)
+        assertEquals(0x4c, data[15].toInt() and 0xff)
+        assertEquals(0xc6, data[16].toInt() and 0xff)
+    }
+
     private fun ByteArray.leUInt64(offset: Int): Long {
         var value = 0L
         for (index in 0 until 8) {

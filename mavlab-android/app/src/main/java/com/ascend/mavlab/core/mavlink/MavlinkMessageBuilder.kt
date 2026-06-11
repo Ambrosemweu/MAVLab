@@ -332,7 +332,7 @@ class MavlinkMessageBuilder(
             var crc = 0xffff
             (headerWithoutMagic + payload + byteArrayOf(extra.toByte())).forEach { byte ->
                 var tmp = (byte.toInt() and 0xff) xor (crc and 0xff)
-                tmp = tmp xor (tmp shl 4)
+                tmp = (tmp xor (tmp shl 4)) and 0xff
                 crc = ((crc ushr 8) xor (tmp shl 8) xor (tmp shl 3) xor (tmp ushr 4)) and 0xffff
             }
             return crc
