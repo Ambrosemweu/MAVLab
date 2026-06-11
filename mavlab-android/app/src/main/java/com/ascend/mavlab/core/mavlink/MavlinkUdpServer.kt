@@ -294,6 +294,12 @@ class MavlinkUdpServer(
                     if (accepted) "MISSION_START" else "MISSION_START NO MISSION",
                 )
             }
+            MAV_CMD_DO_SET_MODE -> {
+                val customMode = packet.payload.leFloat(4).toLong().toUInt()
+                val mode = FlightMode.fromCustomMode(customMode)
+                simLoop.setMode(mode, ControlAuthority.GCS_DIRECT)
+                ack(command, MAV_RESULT_ACCEPTED, peer, "DO_SET_MODE ${mode.displayName}")
+            }
             MAV_CMD_PREFLIGHT_CALIBRATION -> {
                 ack(command, MAV_RESULT_ACCEPTED, peer, "PREFLIGHT_CALIBRATION")
             }
@@ -782,6 +788,7 @@ class MavlinkUdpServer(
         const val MAV_CMD_NAV_LAND = 21
         const val MAV_CMD_MISSION_START = 300
         const val MAV_CMD_COMPONENT_ARM_DISARM = 400
+        const val MAV_CMD_DO_SET_MODE = 176
         const val MAV_CMD_PREFLIGHT_CALIBRATION = 241
         const val MAV_CMD_DO_START_MAG_CAL = 424
         const val MAV_CMD_DO_ACCEPT_MAG_CAL = 425
