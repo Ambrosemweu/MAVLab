@@ -96,13 +96,10 @@ class Autopilot(
         val pitchCommand = pitchRate.update(desiredPitchRate - state.pitchSpeedRadS, dt)
         val yawCommand = yawRate.update(desiredYawRate - state.yawSpeedRadS, dt)
 
-        if (mode == FlightMode.ALT_HOLD ||
-            mode == FlightMode.GUIDED ||
-            mode == FlightMode.LOITER ||
-            mode == FlightMode.AUTO
-        ) {
+        if (mode == FlightMode.ALT_HOLD) {
             updateTargetAltitudeFromThrottle(input.throttle, dt)
         }
+
 
         val throttle = when (mode) {
             FlightMode.ALT_HOLD,

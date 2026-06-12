@@ -50,9 +50,9 @@ class MavlinkMessageBuilder(
             .putInt((state.longitudeDeg * 1e7).roundToInt())
             .putInt((state.altitudeMslMeters * 1000).roundToInt())
             .putInt((state.altitudeAglMeters * 1000).roundToInt())
-            .putShort((state.groundSpeedMS * 100).roundToInt().toShort())
-            .putShort(0)
-            .putShort((-state.verticalSpeedMS * 100).roundToInt().toShort())
+            .putShort(speedCentimetersPerSecond(state.northVelocityMS).toShort())
+            .putShort(speedCentimetersPerSecond(state.eastVelocityMS).toShort())
+            .putShort(speedCentimetersPerSecond(-state.verticalSpeedMS).toShort())
             .putU16((state.headingDegrees * 100).coerceAtLeast(0))
             .array()
         return frame(messageId = 33, crcExtra = 104, payload = payload)
@@ -66,7 +66,7 @@ class MavlinkMessageBuilder(
             .putInt((state.altitudeMslMeters * 1000).roundToInt())
             .putU16(80)
             .putU16(120)
-            .putU16((state.groundSpeedMS * 100).roundToInt())
+            .putU16(speedCentimetersPerSecond(state.groundSpeedMS).coerceAtLeast(0))
             .putU16((state.headingDegrees * 100).coerceAtLeast(0))
             .putU8(state.gpsFixType.toInt())
             .putU8(state.gpsSatellites.toInt())
@@ -76,14 +76,26 @@ class MavlinkMessageBuilder(
 
     fun vfrHud(state: DroneState): ByteArray {
         val payload = littleEndian(20)
-            .putFloat(state.groundSpeedMS)
-            .putFloat(state.groundSpeedMS)
-            .putShort(state.headingDegrees)
-            .putU16(state.throttlePercent.toInt())
+            .putFloat(0f)
+            .putFloat(saneSpeedMetersPerSecond(state.groundSpeedMS))
             .putFloat(state.altitudeMslMeters)
             .putFloat(state.verticalSpeedMS)
+            .putShort(state.headingDegrees)
+            .putU16(state.throttlePercent.toInt())
             .array()
         return frame(messageId = 74, crcExtra = 20, payload = payload)
+    }
+
+    private fun saneSpeedMetersPerSecond(value: Float): Float {
+        return if (value.isFinite()) value.coerceIn(0f, MaxTelemetrySpeedMS) else 0f
+    }
+
+    private fun speedCentimetersPerSecond(value: Float): Int {
+        return if (value.isFinite()) {
+            (value.coerceIn(-MaxTelemetrySpeedMS, MaxTelemetrySpeedMS) * 100f).roundToInt()
+        } else {
+            0
+        }
     }
 
     fun sysStatus(state: DroneState): ByteArray {
@@ -363,5 +375,6 @@ class MavlinkMessageBuilder(
         const val MAV_PROTOCOL_CAPABILITY_SET_POSITION_TARGET_LOCAL_NED = 128L
         const val MAV_PROTOCOL_CAPABILITY_SET_POSITION_TARGET_GLOBAL_INT = 256L
         const val MAV_PROTOCOL_CAPABILITY_MAVLINK2 = 8192L
+        const val MaxTelemetrySpeedMS = 80f
     }
 }

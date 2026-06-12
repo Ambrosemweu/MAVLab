@@ -1,6 +1,7 @@
 package com.ascend.mavlab.simulation.autopilot
 
 import com.ascend.mavlab.simulation.engine.DroneState
+import com.ascend.mavlab.simulation.mission.MissionCommand
 import com.ascend.mavlab.simulation.mission.MissionItem
 import com.ascend.mavlab.simulation.mission.MissionProgress
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,11 +18,12 @@ class MissionEngine {
 
     fun load(items: List<MissionItem>) {
         val sorted = items.sortedBy { it.sequence }
+        val startIndex = if (isQgcHomeMarker(sorted)) 1 else 0
         mutableProgress.value = MissionProgress(
             items = sorted,
-            currentIndex = 0,
-            complete = sorted.isEmpty(),
-            activeTarget = sorted.firstOrNull(),
+            currentIndex = startIndex,
+            complete = sorted.size <= startIndex,
+            activeTarget = sorted.getOrNull(startIndex),
         )
     }
 
@@ -52,7 +54,7 @@ class MissionEngine {
         val current = progress.activeTarget ?: return progress
         val distance = distanceMeters(state, current)
         val altitudeError = abs(state.altitudeAglMeters - current.altitudeAglMeters)
-        if (distance <= current.acceptanceRadiusMeters && altitudeError <= 1.25f) {
+        if (distance <= effectiveAcceptanceRadius(current) && altitudeError <= altitudeToleranceMeters(current)) {
             val nextIndex = progress.currentIndex + 1
             val next = progress.items.getOrNull(nextIndex)
             val updated = progress.copy(
@@ -68,10 +70,36 @@ class MissionEngine {
     }
 
     private fun distanceMeters(state: DroneState, item: MissionItem): Float {
+        val localNorth = item.localNorthMeters
+        val localEast = item.localEastMeters
+        if (localNorth != null && localEast != null) {
+            val north = localNorth - state.northMeters
+            val east = localEast - state.eastMeters
+            return sqrt(north * north + east * east)
+        }
         val north = ((item.latitudeDeg - state.latitudeDeg) * MetersPerLatDeg).toFloat()
         val lonScale = MetersPerLatDeg * max(0.2, cos(Math.toRadians(state.latitudeDeg)))
         val east = ((item.longitudeDeg - state.longitudeDeg) * lonScale).toFloat()
         return sqrt(north * north + east * east)
+    }
+
+    private fun isQgcHomeMarker(items: List<MissionItem>): Boolean {
+        val first = items.firstOrNull() ?: return false
+        val second = items.getOrNull(1) ?: return false
+        return first.sequence == 0 &&
+            first.command == MissionCommand.WAYPOINT &&
+            second.command == MissionCommand.TAKEOFF
+    }
+
+    private fun effectiveAcceptanceRadius(item: MissionItem): Float {
+        return item.acceptanceRadiusMeters.coerceAtLeast(5f)
+    }
+
+    private fun altitudeToleranceMeters(item: MissionItem): Float {
+        return when (item.command) {
+            MissionCommand.LAND -> 1.25f
+            else -> 4f
+        }
     }
 
     private companion object {

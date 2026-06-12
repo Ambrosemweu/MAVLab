@@ -50,6 +50,8 @@ class MavlinkUdpServer(
     private var lastPeer: UdpDestination? = null
     private var lastReachedSequenceSent: Int? = null
     private var missionUploadSession: MissionUploadSession? = null
+    @Volatile
+    private var telemetryDestinations: List<UdpDestination> = emptyList()
 
     fun start(context: Context) {
         if (socket != null) return
@@ -60,6 +62,7 @@ class MavlinkUdpServer(
         mutableStatus.value = "Running UDP ${openedSocket.localPort} -> QGC ${config.sameDeviceQgcPort}"
 
         val destinations = destinations(context)
+        telemetryDestinations = destinations
         Log.i(
             TAG,
             "MAVLink started sys=$vehicleSystemId comp=${config.componentId} " +
@@ -67,6 +70,18 @@ class MavlinkUdpServer(
         )
         telemetryJob = scope.launch { telemetryLoop(destinations) }
         receiveJob = scope.launch { receiveLoop() }
+    }
+
+    private fun sendImmediateTelemetry() {
+        val state = simLoop.state.value
+        val heartbeatData = builder.heartbeat(state)
+        val peer = lastPeer
+        if (peer != null) {
+            send(heartbeatData, peer)
+        } else {
+            val destinations = telemetryDestinations
+            destinations.forEach { send(heartbeatData, it) }
+        }
     }
 
     override suspend fun start() {
@@ -110,10 +125,16 @@ class MavlinkUdpServer(
     private fun sendTelemetryBurst(destinations: List<UdpDestination>) {
         val state = simLoop.state.value
         val missionProgress = simLoop.missionProgress.value
+        val peer = lastPeer
+
+        if (peer == null) {
+            val heartbeatData = builder.heartbeat(state)
+            destinations.forEach { send(heartbeatData, it) }
+            return
+        }
+
         val messages = buildList {
-            add(
-                builder.heartbeat(state),
-            )
+            add(builder.heartbeat(state))
             add(builder.attitude(state))
             add(builder.globalPosition(state))
             add(builder.gpsRaw(state))
@@ -129,18 +150,7 @@ class MavlinkUdpServer(
                 }
             }
         }
-        messages.forEach { data -> sendToDestinations(data, destinations) }
-    }
-
-    private fun sendToDestinations(data: ByteArray, destinations: List<UdpDestination>) {
-        val dynamicDestinations = buildList {
-            addAll(destinations)
-            lastPeer?.let { add(it) }
-        }.distinct()
-
-        dynamicDestinations.forEach { destination ->
-            send(data, destination)
-        }
+        messages.forEach { send(it, peer) }
     }
 
     private fun send(data: ByteArray, destination: UdpDestination) {
@@ -246,6 +256,7 @@ class MavlinkUdpServer(
         val mode = FlightMode.fromCustomMode(customMode)
         simLoop.setMode(mode, ControlAuthority.GCS_DIRECT)
         simLoop.noteInbound("SET_MODE ${mode.displayName}")
+        sendImmediateTelemetry()
         ack(0, MAV_RESULT_ACCEPTED, peer, "SET_MODE")
     }
 
@@ -253,11 +264,13 @@ class MavlinkUdpServer(
         if (packet.payload.size < 33) return
         if (!isTargetedToVehicle(packet, targetSystemOffset = 30, label = "COMMAND_LONG")) return
         val command = packet.payload.leUInt16(28)
+        Log.i(TAG, "rx COMMAND_LONG: command=$command")
         simLoop.noteInbound("COMMAND_LONG $command")
         when (command) {
             MAV_CMD_COMPONENT_ARM_DISARM -> {
                 val arm = packet.payload.leFloat(0) >= 0.5f
                 simLoop.setArmed(arm, ControlAuthority.GCS_DIRECT)
+                sendImmediateTelemetry()
                 ack(command, MAV_RESULT_ACCEPTED, peer, if (arm) "ARM" else "DISARM")
             }
             MAV_CMD_NAV_TAKEOFF -> {
@@ -265,10 +278,12 @@ class MavlinkUdpServer(
                     .takeIf { it.isFinite() && it > 0f }
                     ?: 10f
                 simLoop.takeoff(requestedAltitude, ControlAuthority.GCS_DIRECT)
+                sendImmediateTelemetry()
                 ack(command, MAV_RESULT_ACCEPTED, peer, "TAKEOFF")
             }
             MAV_CMD_NAV_LAND -> {
                 simLoop.land(ControlAuthority.GCS_DIRECT)
+                sendImmediateTelemetry()
                 ack(command, MAV_RESULT_ACCEPTED, peer, "LAND")
             }
             MAV_CMD_SET_MESSAGE_INTERVAL -> {
@@ -286,6 +301,7 @@ class MavlinkUdpServer(
                 if (accepted) {
                     simLoop.setArmed(true, ControlAuthority.GCS_MISSION)
                     simLoop.setMode(FlightMode.AUTO, ControlAuthority.GCS_MISSION)
+                    sendImmediateTelemetry()
                 }
                 ack(
                     command,
@@ -298,6 +314,7 @@ class MavlinkUdpServer(
                 val customMode = packet.payload.leFloat(4).toLong().toUInt()
                 val mode = FlightMode.fromCustomMode(customMode)
                 simLoop.setMode(mode, ControlAuthority.GCS_DIRECT)
+                sendImmediateTelemetry()
                 ack(command, MAV_RESULT_ACCEPTED, peer, "DO_SET_MODE ${mode.displayName}")
             }
             MAV_CMD_PREFLIGHT_CALIBRATION -> {
@@ -604,6 +621,9 @@ class MavlinkUdpServer(
             MissionUploadSession.parseMissionItem(packet)
         } else {
             MissionUploadSession.parseMissionItemInt(packet)
+        }
+        if (item != null) {
+            Log.i(TAG, "Parsed mission item: seq=${item.sequence} cmd=${item.command} lat=${item.latitudeDeg} lon=${item.longitudeDeg} alt=${item.altitudeAglMeters}")
         }
         if (item == null) {
             missionUploadSession = null

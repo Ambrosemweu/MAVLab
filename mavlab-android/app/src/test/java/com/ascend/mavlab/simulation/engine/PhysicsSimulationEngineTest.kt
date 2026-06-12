@@ -3,6 +3,7 @@ package com.ascend.mavlab.simulation.engine
 import com.ascend.mavlab.simulation.autopilot.PilotInput
 import com.ascend.mavlab.simulation.mission.MissionCommand
 import com.ascend.mavlab.simulation.mission.MissionItem
+import com.ascend.mavlab.simulation.mission.MissionProgress
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -104,7 +105,116 @@ class PhysicsSimulationEngineTest {
         assertTrue(state.northMeters != initial.northMeters || state.altitudeAglMeters != initial.altitudeAglMeters)
     }
 
+    @Test
+    fun uploadedMissionPinsGlobalWaypointToLocalTarget() {
+        val engine = PhysicsSimulationEngine()
+        val initial = engine.state.value
+
+        engine.loadMission(
+            listOf(
+                MissionItem(
+                    sequence = 0,
+                    command = MissionCommand.WAYPOINT,
+                    latitudeDeg = initial.latitudeDeg + 14f / MetersPerLatDeg,
+                    longitudeDeg = initial.longitudeDeg,
+                    altitudeAglMeters = initial.altitudeAglMeters,
+                ),
+            ),
+        )
+
+        val target = engine.missionProgress.value.activeTarget
+
+        assertEquals(14f, target?.localNorthMeters ?: -1f, absoluteTolerance = 0.05f)
+        assertEquals(0f, target?.localEastMeters ?: Float.NaN, absoluteTolerance = 0.05f)
+    }
+
+    @Test
+    fun qgcRtlItemReturnsToUploadedHomeAtMissionAltitude() {
+        val engine = PhysicsSimulationEngine()
+        val initial = engine.state.value
+        val homeLat = initial.latitudeDeg + 12f / MetersPerLatDeg
+        val homeLon = initial.longitudeDeg - 9f / lonMetersPerDeg(initial.latitudeDeg)
+
+        engine.loadMission(
+            listOf(
+                MissionItem(
+                    sequence = 0,
+                    command = MissionCommand.WAYPOINT,
+                    latitudeDeg = homeLat,
+                    longitudeDeg = homeLon,
+                    altitudeAglMeters = 1667f,
+                ),
+                MissionItem(
+                    sequence = 1,
+                    command = MissionCommand.TAKEOFF,
+                    latitudeDeg = 0.0,
+                    longitudeDeg = 0.0,
+                    altitudeAglMeters = 50f,
+                ),
+                MissionItem(
+                    sequence = 2,
+                    command = MissionCommand.WAYPOINT,
+                    latitudeDeg = initial.latitudeDeg + 60f / MetersPerLatDeg,
+                    longitudeDeg = initial.longitudeDeg,
+                    altitudeAglMeters = 50f,
+                ),
+                MissionItem(
+                    sequence = 3,
+                    command = MissionCommand.RTL,
+                    latitudeDeg = 0.0,
+                    longitudeDeg = 0.0,
+                    altitudeAglMeters = 0f,
+                ),
+            ),
+        )
+
+        val takeoff = engine.missionProgress.value.items.first { it.command == MissionCommand.TAKEOFF }
+        val rtl = engine.missionProgress.value.items.first { it.command == MissionCommand.RTL }
+
+        assertEquals(12f, takeoff.localNorthMeters ?: Float.NaN, absoluteTolerance = 0.05f)
+        assertEquals(-9f, takeoff.localEastMeters ?: Float.NaN, absoluteTolerance = 0.05f)
+        assertEquals(12f, rtl.localNorthMeters ?: Float.NaN, absoluteTolerance = 0.05f)
+        assertEquals(-9f, rtl.localEastMeters ?: Float.NaN, absoluteTolerance = 0.05f)
+        assertEquals(50f, rtl.altitudeAglMeters)
+    }
+
+    @Test
+    fun autoPathTargetTracksLineSegmentWithLookahead() {
+        val engine = PhysicsSimulationEngine()
+        val start = MissionItem(
+            sequence = 0,
+            command = MissionCommand.WAYPOINT,
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            altitudeAglMeters = 20f,
+            localNorthMeters = 0f,
+            localEastMeters = 0f,
+        )
+        val end = start.copy(
+            sequence = 1,
+            localNorthMeters = 100f,
+            localEastMeters = 0f,
+        )
+        val target = engine.previewAutoPathTarget(
+            state = DroneState(northMeters = 20f, eastMeters = 20f, altitudeAglMeters = 20f),
+            progress = MissionProgress(
+                items = listOf(start, end),
+                currentIndex = 1,
+                complete = false,
+                activeTarget = end,
+            ),
+            target = end,
+        )
+
+        assertEquals(28f, target.x, absoluteTolerance = 0.05f)
+        assertEquals(0f, target.y, absoluteTolerance = 0.05f)
+    }
+
     private companion object {
         const val MetersPerLatDeg = 111_320.0
+
+        fun lonMetersPerDeg(latitudeDeg: Double): Double {
+            return MetersPerLatDeg * kotlin.math.max(0.2, kotlin.math.cos(Math.toRadians(latitudeDeg)))
+        }
     }
 }

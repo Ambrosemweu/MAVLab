@@ -81,12 +81,50 @@ class MavlinkMessageBuilderTest {
 
         assertNotNull(packet)
         assertEquals(74, packet.messageId)
-        assertEquals(4.5f, packet.payload.leFloat(0))
+        assertEquals(0f, packet.payload.leFloat(0))
         assertEquals(4.5f, packet.payload.leFloat(4))
-        assertEquals(123, packet.payload.leInt16(8))
-        assertEquals(67, packet.payload.leUInt16(10))
-        assertEquals(1807.25f, packet.payload.leFloat(12))
-        assertEquals(-1.5f, packet.payload.leFloat(16))
+        assertEquals(1807.25f, packet.payload.leFloat(8))
+        assertEquals(-1.5f, packet.payload.leFloat(12))
+        assertEquals(123, packet.payload.leInt16(16))
+        assertEquals(67, packet.payload.leUInt16(18))
+    }
+
+    @Test
+    fun globalPositionUsesVelocityComponentsNotAltitudeOrSpeedMagnitude() {
+        val builder = MavlinkMessageBuilder(systemId = 174, componentId = 1)
+        val state = DroneState(
+            altitudeMslMeters = 1805f,
+            northVelocityMS = 3.5f,
+            eastVelocityMS = -1.25f,
+            verticalSpeedMS = 0.5f,
+            groundSpeedMS = 1805f,
+        )
+
+        val data = builder.globalPosition(state)
+        val packet = MavlinkParser.parse(data, length = data.size)
+
+        assertNotNull(packet)
+        assertEquals(33, packet.messageId)
+        assertEquals(350, packet.payload.leInt16(20))
+        assertEquals(-125, packet.payload.leInt16(22))
+        assertEquals(-50, packet.payload.leInt16(24))
+    }
+
+    @Test
+    fun qgcSpeedTelemetryIsClampedAndDoesNotMirrorMslAltitude() {
+        val builder = MavlinkMessageBuilder(systemId = 174, componentId = 1)
+        val state = DroneState(
+            altitudeMslMeters = 1805f,
+            groundSpeedMS = 1805f,
+        )
+
+        val vfrHud = assertNotNull(MavlinkParser.parse(builder.vfrHud(state), length = 28))
+        val gpsRaw = assertNotNull(MavlinkParser.parse(builder.gpsRaw(state), length = 38))
+
+        assertEquals(0f, vfrHud.payload.leFloat(0))
+        assertEquals(80f, vfrHud.payload.leFloat(4))
+        assertEquals(0f, vfrHud.payload.leFloat(12))
+        assertEquals(8000, gpsRaw.payload.leUInt16(24))
     }
 
     @Test

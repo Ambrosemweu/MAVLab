@@ -9,6 +9,7 @@ import com.ascend.mavlab.simulation.failures.FailureState
 import com.ascend.mavlab.simulation.physics.EnvironmentModel
 import com.ascend.mavlab.simulation.physics.PhysicsModel
 import com.ascend.mavlab.simulation.physics.QuadcopterParams
+import com.ascend.mavlab.simulation.mission.MissionCommand
 import com.ascend.mavlab.simulation.mission.MissionItem
 import com.ascend.mavlab.simulation.mission.MissionProgress
 import com.ascend.mavlab.simulation.mission.MissionUploadPhase
@@ -17,6 +18,7 @@ import com.ascend.mavlab.simulation.physics.Vector3
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.sqrt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -87,6 +89,7 @@ class PhysicsSimulationEngine(
             homeEastMeters = current.eastMeters
             homeAltitudeMeters = current.altitudeAglMeters.coerceAtLeast(8f)
             captureLoiterTarget(current)
+            positionController.reset()
         }
         mutableState.value = mutableState.value.copy(
             armed = autopilot.armed,
@@ -98,13 +101,25 @@ class PhysicsSimulationEngine(
         mode: FlightMode,
         authority: ControlAuthority = ControlAuthority.CONTROLLER,
     ) {
+        val current = mutableState.value
         if (mode == FlightMode.LOITER) {
-            captureLoiterTarget(mutableState.value)
+            captureLoiterTarget(current)
         }
-        autopilot.setMode(mode, mutableState.value)
-        mutableState.value = mutableState.value.copy(
+        if (mode == FlightMode.GUIDED) {
+            guidedNorthMeters = current.northMeters
+            guidedEastMeters = current.eastMeters
+            guidedAltitudeMeters = current.altitudeAglMeters.coerceAtLeast(8f)
+        }
+        val resolvedAuthority = if (mode == FlightMode.AUTO) {
+            ControlAuthority.GCS_MISSION
+        } else {
+            authority
+        }
+        positionController.reset()
+        autopilot.setMode(mode, current)
+        mutableState.value = current.copy(
             mode = mode,
-            controlAuthority = authority,
+            controlAuthority = resolvedAuthority,
         )
     }
 
@@ -112,8 +127,13 @@ class PhysicsSimulationEngine(
         targetAltitudeM: Float,
         authority: ControlAuthority = ControlAuthority.CONTROLLER,
     ) {
-        autopilot.takeoff(mutableState.value, targetAltitudeM)
-        mutableState.value = mutableState.value.copy(
+        val current = mutableState.value
+        guidedNorthMeters = current.northMeters
+        guidedEastMeters = current.eastMeters
+        guidedAltitudeMeters = targetAltitudeM
+        positionController.reset()
+        autopilot.takeoff(current, targetAltitudeM)
+        mutableState.value = current.copy(
             armed = autopilot.armed,
             mode = autopilot.mode,
             controlAuthority = authority,
@@ -148,8 +168,10 @@ class PhysicsSimulationEngine(
         authority: ControlAuthority = ControlAuthority.GCS_DIRECT,
     ) {
         val current = mutableState.value
-        guidedNorthMeters = current.northMeters + ((latitudeDeg - current.latitudeDeg) * METERS_PER_LAT_DEG).toFloat()
-        guidedEastMeters = current.eastMeters + ((longitudeDeg - current.longitudeDeg) * lonMetersPerDeg(current)).toFloat()
+        val lat = if (latitudeDeg == 0.0 && longitudeDeg == 0.0) current.latitudeDeg else latitudeDeg
+        val lon = if (latitudeDeg == 0.0 && longitudeDeg == 0.0) current.longitudeDeg else longitudeDeg
+        guidedNorthMeters = current.northMeters + ((lat - current.latitudeDeg) * METERS_PER_LAT_DEG).toFloat()
+        guidedEastMeters = current.eastMeters + ((lon - current.longitudeDeg) * lonMetersPerDeg(current)).toFloat()
         guidedAltitudeMeters = altitudeAglMeters.coerceAtLeast(0f)
         autopilot.setTargetAltitude(guidedAltitudeMeters)
         autopilot.setMode(FlightMode.GUIDED, current)
@@ -180,7 +202,45 @@ class PhysicsSimulationEngine(
     }
 
     fun loadMission(items: List<MissionItem>) {
-        missionEngine.load(items)
+        val current = mutableState.value
+        val sorted = items.sortedBy { it.sequence }
+        val homeMarker = sorted.takeIf { isQgcHomeMarker(it) }?.firstOrNull()
+        val returnAltitude = sorted
+            .filterNot { it == homeMarker }
+            .filter { it.command == com.ascend.mavlab.simulation.mission.MissionCommand.TAKEOFF || it.command == com.ascend.mavlab.simulation.mission.MissionCommand.WAYPOINT }
+            .map { it.altitudeAglMeters }
+            .filter { it.isFinite() && it > 0f }
+            .maxOrNull()
+            ?: current.altitudeAglMeters.coerceAtLeast(8f)
+        val sanitized = sorted.map { item ->
+            val placeholderPosition = item.latitudeDeg == 0.0 && item.longitudeDeg == 0.0
+            val rtlHome = item.command == com.ascend.mavlab.simulation.mission.MissionCommand.RTL
+            val takeoffHome = item.command == MissionCommand.TAKEOFF
+            val useHomeMarker = placeholderPosition && homeMarker != null && (rtlHome || takeoffHome)
+            val lat = when {
+                useHomeMarker -> homeMarker.latitudeDeg
+                placeholderPosition -> current.latitudeDeg
+                else -> item.latitudeDeg
+            }
+            val lon = when {
+                useHomeMarker -> homeMarker.longitudeDeg
+                placeholderPosition -> current.longitudeDeg
+                else -> item.longitudeDeg
+            }
+            val altitude = if (rtlHome && item.altitudeAglMeters <= 0f) {
+                returnAltitude.coerceAtLeast(8f)
+            } else {
+                item.altitudeAglMeters
+            }
+            item.copy(
+                latitudeDeg = lat,
+                longitudeDeg = lon,
+                altitudeAglMeters = altitude,
+                localNorthMeters = current.northMeters + ((lat - current.latitudeDeg) * METERS_PER_LAT_DEG).toFloat(),
+                localEastMeters = current.eastMeters + ((lon - current.longitudeDeg) * lonMetersPerDeg(current)).toFloat(),
+            )
+        }
+        missionEngine.load(sanitized)
         missionEngine.progress.value.activeTarget?.let { autopilot.setTargetAltitude(it.altitudeAglMeters) }
         noteAck("MISSION ${items.size}")
     }
@@ -231,10 +291,11 @@ class PhysicsSimulationEngine(
         val current = mutableState.value
         loadMission(
             listOf(
-                missionItem(current, sequence = 0, north = 8f, east = 0f, altitude = 8f),
-                missionItem(current, sequence = 1, north = 8f, east = 8f, altitude = 10f),
-                missionItem(current, sequence = 2, north = 0f, east = 8f, altitude = 10f),
-                missionItem(current, sequence = 3, north = 0f, east = 0f, altitude = 6f),
+                MissionItem(sequence = 0, command = com.ascend.mavlab.simulation.mission.MissionCommand.WAYPOINT, latitudeDeg = current.latitudeDeg, longitudeDeg = current.longitudeDeg, altitudeAglMeters = 0f),
+                missionItem(current, sequence = 1, north = 8f, east = 0f, altitude = 8f),
+                missionItem(current, sequence = 2, north = 8f, east = 8f, altitude = 10f),
+                missionItem(current, sequence = 3, north = 0f, east = 8f, altitude = 10f),
+                missionItem(current, sequence = 4, north = 0f, east = 0f, altitude = 6f),
             ),
         )
     }
@@ -252,6 +313,14 @@ class PhysicsSimulationEngine(
             noteAck("MISSION CURRENT $sequence")
         }
         return updated
+    }
+
+    internal fun previewAutoPathTarget(
+        state: DroneState,
+        progress: MissionProgress,
+        target: MissionItem,
+    ): Vector3 {
+        return pathTargetFor(state, progress, target)
     }
 
     fun noteInbound(message: String) {
@@ -352,7 +421,7 @@ class PhysicsSimulationEngine(
                     autopilot.setMode(FlightMode.LOITER, state)
                     PilotInput(throttle = 0.5f)
                 } else {
-                    val localTarget = localTargetFor(state, target)
+                    val localTarget = pathTargetFor(state, progress, target)
                     autopilot.setTargetAltitude(target.altitudeAglMeters)
                     positionController.computePilotInput(
                         state = state,
@@ -487,9 +556,65 @@ class PhysicsSimulationEngine(
     }
 
     private fun localTargetFor(state: DroneState, item: MissionItem): Vector3 {
-        val north = state.northMeters + ((item.latitudeDeg - state.latitudeDeg) * METERS_PER_LAT_DEG).toFloat()
-        val east = state.eastMeters + ((item.longitudeDeg - state.longitudeDeg) * lonMetersPerDeg(state)).toFloat()
+        val north = item.localNorthMeters ?: run {
+            val lat = if (item.latitudeDeg == 0.0 && item.longitudeDeg == 0.0) state.latitudeDeg else item.latitudeDeg
+            state.northMeters + ((lat - state.latitudeDeg) * METERS_PER_LAT_DEG).toFloat()
+        }
+        val east = item.localEastMeters ?: run {
+            val lon = if (item.latitudeDeg == 0.0 && item.longitudeDeg == 0.0) state.longitudeDeg else item.longitudeDeg
+            state.eastMeters + ((lon - state.longitudeDeg) * lonMetersPerDeg(state)).toFloat()
+        }
         return Vector3(x = north, y = east, z = item.altitudeAglMeters)
+    }
+
+    private fun pathTargetFor(
+        state: DroneState,
+        progress: MissionProgress,
+        target: MissionItem,
+    ): Vector3 {
+        if (target.command == MissionCommand.TAKEOFF || target.command == MissionCommand.LAND) {
+            return localTargetFor(state, target)
+        }
+        val endpoint = localTargetFor(state, target)
+        val start = previousPathAnchorFor(state, progress) ?: return endpoint
+        val legNorth = endpoint.x - start.x
+        val legEast = endpoint.y - start.y
+        val legLength = sqrt(legNorth * legNorth + legEast * legEast)
+        if (legLength < 0.5f) return endpoint
+
+        val vehicleNorth = state.northMeters - start.x
+        val vehicleEast = state.eastMeters - start.y
+        val alongTrack = ((vehicleNorth * legNorth + vehicleEast * legEast) / (legLength * legLength))
+            .coerceIn(0f, 1f)
+        val lookahead = (PathLookaheadMeters / legLength).coerceIn(0f, 1f)
+        val targetFraction = (alongTrack + lookahead).coerceAtMost(1f)
+        val altitude = start.z + (endpoint.z - start.z) * targetFraction
+        return Vector3(
+            x = start.x + legNorth * targetFraction,
+            y = start.y + legEast * targetFraction,
+            z = altitude,
+        )
+    }
+
+    private fun previousPathAnchorFor(state: DroneState, progress: MissionProgress): Vector3? {
+        for (index in progress.currentIndex - 1 downTo 0) {
+            val item = progress.items.getOrNull(index) ?: continue
+            if (item.command == MissionCommand.WAYPOINT ||
+                item.command == MissionCommand.TAKEOFF ||
+                item.command == MissionCommand.RTL
+            ) {
+                return localTargetFor(state, item)
+            }
+        }
+        return null
+    }
+
+    private fun isQgcHomeMarker(items: List<MissionItem>): Boolean {
+        val first = items.firstOrNull() ?: return false
+        val second = items.getOrNull(1) ?: return false
+        return first.sequence == 0 &&
+            first.command == MissionCommand.WAYPOINT &&
+            second.command == MissionCommand.TAKEOFF
     }
 
     private fun missionItem(
@@ -520,5 +645,6 @@ class PhysicsSimulationEngine(
     private companion object {
         const val TICK_MS = 10L
         const val METERS_PER_LAT_DEG = 111_320.0
+        const val PathLookaheadMeters = 8f
     }
 }

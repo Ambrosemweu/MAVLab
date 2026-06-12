@@ -16,6 +16,8 @@ data class MissionItem(
     val altitudeAglMeters: Float,
     val acceptanceRadiusMeters: Float = 2f,
     val autocontinue: Boolean = true,
+    val localNorthMeters: Float? = null,
+    val localEastMeters: Float? = null,
 )
 
 enum class MissionCommand(val mavCmdId: Int) {
