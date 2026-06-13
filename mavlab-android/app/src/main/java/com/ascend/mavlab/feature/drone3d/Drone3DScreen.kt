@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -75,6 +76,7 @@ private fun DroneScene(
 ) {
     val engine = rememberEngine()
     val modelLoader = rememberModelLoader(engine)
+    val latestState = rememberUpdatedState(state)
 
     SceneView(
         modifier = modifier,
@@ -88,10 +90,20 @@ private fun DroneScene(
             ModelNode(
                 modelInstance = modelInstance,
                 scaleToUnits = 1.35f,
-                autoAnimate = modelController.propAnimationEnabled(state),
-                animationName = PropellerAnimationName,
+                autoAnimate = false,
                 position = modelController.bodyPosition(state),
                 rotation = modelController.bodyRotation(state),
+                apply = {
+                    val modelNode = this
+                    onFrame = { frameTimeNanos ->
+                        modelController.applyPropellerAnimation(
+                            modelNode = modelNode,
+                            state = latestState.value,
+                            animationName = PropellerAnimationName,
+                            frameTimeNanos = frameTimeNanos,
+                        )
+                    }
+                },
             )
         }
     }

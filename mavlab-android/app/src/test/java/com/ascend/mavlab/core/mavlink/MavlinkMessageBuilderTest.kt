@@ -90,6 +90,19 @@ class MavlinkMessageBuilderTest {
     }
 
     @Test
+    fun initialGlobalPositionReportsZeroRelativeAltitudeForQgcTakeoff() {
+        val builder = MavlinkMessageBuilder(systemId = 174, componentId = 1)
+
+        val data = builder.globalPosition(DroneState())
+        val packet = MavlinkParser.parse(data, length = data.size)
+
+        assertNotNull(packet)
+        assertEquals(33, packet.messageId)
+        assertEquals(1805_000, packet.payload.leInt32(12))
+        assertEquals(0, packet.payload.leInt32(16))
+    }
+
+    @Test
     fun globalPositionUsesVelocityComponentsNotAltitudeOrSpeedMagnitude() {
         val builder = MavlinkMessageBuilder(systemId = 174, componentId = 1)
         val state = DroneState(

@@ -11,6 +11,14 @@ import kotlin.test.assertTrue
 
 class PhysicsSimulationEngineTest {
     @Test
+    fun initialStateStartsOnGroundForQgcTakeoff() {
+        val engine = PhysicsSimulationEngine()
+
+        assertEquals(0f, engine.state.value.altitudeAglMeters)
+        assertEquals(1805f, engine.state.value.altitudeMslMeters)
+    }
+
+    @Test
     fun disarmedMotorsReportZeroRpm() {
         val engine = PhysicsSimulationEngine()
 

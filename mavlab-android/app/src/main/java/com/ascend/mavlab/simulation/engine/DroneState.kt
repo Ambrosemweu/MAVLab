@@ -16,7 +16,7 @@ data class DroneState(
     val northVelocityMS: Float = 0f,
     val eastVelocityMS: Float = 0f,
     val altitudeMslMeters: Float = 1805f,
-    val altitudeAglMeters: Float = 10f,
+    val altitudeAglMeters: Float = 0f,
     val rollRadians: Float = 0f,
     val pitchRadians: Float = 0f,
     val yawRadians: Float = 0f,

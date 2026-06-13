@@ -50,6 +50,8 @@ object AppRuntime {
     private var flightRecorder: FlightRecorder? = null
     private var recordingJob: Job? = null
     private var phoneSensorJob: Job? = null
+    private var applicationContext: Context? = null
+    private var restoredPersistedMission = false
     private val phoneSensorCalibration = SensorCalibration()
     private var phoneSensorControlEnabled = false
     private var phoneSensorThrottle = 0.5f
@@ -70,20 +72,25 @@ object AppRuntime {
     val systemId: StateFlow<Int> = mutableSystemId.asStateFlow()
 
     fun start(context: Context) {
+        val appContext = context.applicationContext
+        applicationContext = appContext
         if (flightRecorder == null) {
-            flightRecorder = FlightRecorder(context.applicationContext.filesDir)
+            flightRecorder = FlightRecorder(appContext.filesDir)
         }
+        restorePersistedMission(appContext)
         if (mavlinkServer == null) {
-            val id = stableSystemId(context)
+            val id = stableSystemId(appContext)
             mutableSystemId.value = id
             mavlinkServer = MavlinkUdpServer(
                 simLoop = simLoop,
                 config = MavlinkSocketConfig(systemId = id),
+                onMissionLoaded = { items -> MissionPersistence.save(appContext, items) },
+                onMissionCleared = { MissionPersistence.clear(appContext) },
             )
         }
         simLoop.start()
-        mavlinkServer?.start(context.applicationContext)
-        startPhoneSensorMonitor(context.applicationContext)
+        mavlinkServer?.start(appContext)
+        startPhoneSensorMonitor(appContext)
         startRecordingMonitor()
     }
 
@@ -192,13 +199,16 @@ object AppRuntime {
 
     fun loadDemoMission() {
         simLoop.loadDemoMission()
+        applicationContext?.let { MissionPersistence.save(it, simLoop.missionProgress.value.items) }
     }
 
     fun clearMission() {
         simLoop.clearMission()
+        applicationContext?.let { MissionPersistence.clear(it) }
     }
 
     fun startAutoMission() {
+        applicationContext?.let { restorePersistedMission(it) }
         if (!simLoop.missionProgress.value.loaded) {
             simLoop.noteAck("MISSION_START NO MISSION")
             return
@@ -214,6 +224,17 @@ object AppRuntime {
 
     private fun stableSystemId(context: Context): Int {
         return DefaultMavLabVehicleSystemId
+    }
+
+    private fun restorePersistedMission(context: Context) {
+        if (restoredPersistedMission || simLoop.missionProgress.value.loaded) return
+        val items = MissionPersistence.load(context)
+        restoredPersistedMission = true
+        if (items.isEmpty()) return
+
+        simLoop.loadMission(items)
+        simLoop.acceptMissionUpload(count = items.size)
+        simLoop.noteAck("MISSION RESTORED ${items.size}")
     }
 
     private fun startRecordingMonitor() {

@@ -52,12 +52,12 @@ class PhysicsSimulationEngine(
     private var batteryUsedWh = 0f
     private var homeNorthMeters = 0f
     private var homeEastMeters = 0f
-    private var homeAltitudeMeters = 10f
+    private var homeAltitudeMeters = 0f
     private var loiterNorthMeters = 0f
     private var loiterEastMeters = 0f
     private var guidedNorthMeters = 0f
     private var guidedEastMeters = 0f
-    private var guidedAltitudeMeters = 10f
+    private var guidedAltitudeMeters = 0f
     @Volatile
     private var pilotInput = PilotInput(throttle = params.hoverThrottle)
 
@@ -87,7 +87,7 @@ class PhysicsSimulationEngine(
             val current = mutableState.value
             homeNorthMeters = current.northMeters
             homeEastMeters = current.eastMeters
-            homeAltitudeMeters = current.altitudeAglMeters.coerceAtLeast(8f)
+            homeAltitudeMeters = current.altitudeAglMeters.coerceAtLeast(0f)
             captureLoiterTarget(current)
             positionController.reset()
         }
@@ -108,7 +108,7 @@ class PhysicsSimulationEngine(
         if (mode == FlightMode.GUIDED) {
             guidedNorthMeters = current.northMeters
             guidedEastMeters = current.eastMeters
-            guidedAltitudeMeters = current.altitudeAglMeters.coerceAtLeast(8f)
+            guidedAltitudeMeters = current.altitudeAglMeters.coerceAtLeast(0f)
         }
         val resolvedAuthority = if (mode == FlightMode.AUTO) {
             ControlAuthority.GCS_MISSION
@@ -211,7 +211,7 @@ class PhysicsSimulationEngine(
             .map { it.altitudeAglMeters }
             .filter { it.isFinite() && it > 0f }
             .maxOrNull()
-            ?: current.altitudeAglMeters.coerceAtLeast(8f)
+            ?: current.altitudeAglMeters.coerceAtLeast(0f)
         val sanitized = sorted.map { item ->
             val placeholderPosition = item.latitudeDeg == 0.0 && item.longitudeDeg == 0.0
             val rtlHome = item.command == com.ascend.mavlab.simulation.mission.MissionCommand.RTL
@@ -228,7 +228,7 @@ class PhysicsSimulationEngine(
                 else -> item.longitudeDeg
             }
             val altitude = if (rtlHome && item.altitudeAglMeters <= 0f) {
-                returnAltitude.coerceAtLeast(8f)
+                returnAltitude.coerceAtLeast(MinimumAirborneReturnAltitudeMeters)
             } else {
                 item.altitudeAglMeters
             }
@@ -433,7 +433,12 @@ class PhysicsSimulationEngine(
                 }
             }
             autopilot.mode == FlightMode.RTL -> {
-                autopilot.setTargetAltitude(max(homeAltitudeMeters, 8f))
+                val rtlAltitudeMeters = if (state.altitudeAglMeters > AirborneAltitudeThresholdMeters) {
+                    max(homeAltitudeMeters, MinimumAirborneReturnAltitudeMeters)
+                } else {
+                    homeAltitudeMeters
+                }
+                autopilot.setTargetAltitude(rtlAltitudeMeters)
                 positionController.computePilotInput(
                     state = state,
                     targetNorthMeters = homeNorthMeters,
@@ -646,5 +651,7 @@ class PhysicsSimulationEngine(
         const val TICK_MS = 10L
         const val METERS_PER_LAT_DEG = 111_320.0
         const val PathLookaheadMeters = 8f
+        const val MinimumAirborneReturnAltitudeMeters = 8f
+        const val AirborneAltitudeThresholdMeters = 0.5f
     }
 }

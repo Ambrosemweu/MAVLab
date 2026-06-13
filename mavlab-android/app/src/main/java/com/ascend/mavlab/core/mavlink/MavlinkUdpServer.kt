@@ -5,6 +5,7 @@ import android.util.Log
 import com.ascend.mavlab.simulation.engine.ControlAuthority
 import com.ascend.mavlab.simulation.engine.FlightMode
 import com.ascend.mavlab.simulation.engine.PhysicsSimulationEngine
+import com.ascend.mavlab.simulation.mission.MissionItem
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.Inet4Address
@@ -30,6 +31,8 @@ import kotlinx.coroutines.launch
 class MavlinkUdpServer(
     private val simLoop: PhysicsSimulationEngine,
     private val config: MavlinkSocketConfig = MavlinkSocketConfig(),
+    private val onMissionLoaded: (List<MissionItem>) -> Unit = {},
+    private val onMissionCleared: () -> Unit = {},
 ) : MavlinkEndpoint {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val vehicleSystemId = config.systemId
@@ -573,6 +576,7 @@ class MavlinkUdpServer(
         if (session.expectedCount == 0) {
             missionUploadSession = null
             simLoop.clearMission()
+            onMissionCleared()
             simLoop.acceptMissionUpload(0)
             sendMissionAck(MAV_MISSION_ACCEPTED, packet, destination, "MISSION_CLEAR_EMPTY")
             logInbound(packet, peer, length, "accepted clear-empty")
@@ -651,6 +655,7 @@ class MavlinkUdpServer(
             is MissionUploadResult.Complete -> {
                 missionUploadSession = null
                 simLoop.loadMission(result.items)
+                onMissionLoaded(result.items)
                 simLoop.acceptMissionUpload(count = result.items.size, lastReceivedSequence = item.sequence)
                 lastReachedSequenceSent = null
                 sendMissionAck(MAV_MISSION_ACCEPTED, packet, destination, "MISSION_UPLOAD ${result.items.size}")
@@ -677,6 +682,7 @@ class MavlinkUdpServer(
         }
         missionUploadSession = null
         simLoop.clearMission()
+        onMissionCleared()
         lastReachedSequenceSent = null
         sendMissionAck(MAV_MISSION_ACCEPTED, packet, destination, "MISSION_CLEAR_ALL")
         logInbound(packet, peer, length, "accepted clear-all")

@@ -78,6 +78,7 @@ class MissionEngineTest {
                     longitudeDeg = 0.0,
                     localNorthMeters = 0f,
                     localEastMeters = 0f,
+                    altitudeAglMeters = 0f,
                     acceptanceRadiusMeters = 1f,
                 ),
             ),
