@@ -37,9 +37,7 @@ class PositionController(
         }
         val translationScale = translationScaleForYawError(yawError)
 
-        val speedLimit = maxHorizontalSpeedMS
-            .takeIf { it.isFinite() && it > 0f }
-            ?: maxSpeed
+        val speedLimit = maxHorizontalSpeedMS.takeIf { it.isFinite() && it > 0f } ?: maxSpeed
         var desiredVelNorth = errorNorth * KpPos
         var desiredVelEast = errorEast * KpPos
         val desiredSpeed = kotlin.math.sqrt(desiredVelNorth * desiredVelNorth + desiredVelEast * desiredVelEast)
@@ -54,6 +52,50 @@ class PositionController(
         // 2. Velocity loop (PID): Desired Velocity -> Tilt Commands
         val velErrorNorth = desiredVelNorth - state.northVelocityMS
         val velErrorEast = desiredVelEast - state.eastVelocityMS
+
+        val northCommand = velocityNorth.update(velErrorNorth, dt)
+        val eastCommand = velocityEast.update(velErrorEast, dt)
+
+        // 3. Coordinate rotation from local (NED) to body frame
+        val yaw = state.yawRadians
+        val cosYaw = cos(yaw)
+        val sinYaw = sin(yaw)
+        val bodyPitch = (northCommand * cosYaw + eastCommand * sinYaw).coerceIn(-1f, 1f)
+        val bodyRoll = (northCommand * sinYaw - eastCommand * cosYaw).coerceIn(-1f, 1f)
+
+        val altitudeError = targetAltitudeMeters - state.altitudeAglMeters
+        val throttle = (0.5f + altitudeError * 0.08f - state.verticalSpeedMS * 0.04f)
+            .coerceIn(0.35f, 0.65f)
+
+        return PilotInput(
+            roll = bodyRoll,
+            pitch = bodyPitch,
+            throttle = throttle,
+            yaw = (yawError * YawRateGain).coerceIn(-1f, 1f),
+        )
+    }
+
+    fun computePilotInputDirect(
+        state: DroneState,
+        desiredVelNorth: Float,
+        desiredVelEast: Float,
+        targetAltitudeMeters: Float,
+        dt: Float,
+    ): PilotInput {
+        // Calculate yaw error to point towards the direction of the desired velocity
+        val desiredSpeed = kotlin.math.sqrt(desiredVelNorth * desiredVelNorth + desiredVelEast * desiredVelEast)
+        val yawError = if (desiredSpeed > 0.5f) {
+            normalizeRadians(atan2(desiredVelEast, desiredVelNorth) - state.yawRadians)
+        } else {
+            0f
+        }
+        val translationScale = translationScaleForYawError(yawError)
+        val scaledVelNorth = desiredVelNorth * translationScale
+        val scaledVelEast = desiredVelEast * translationScale
+
+        // 2. Velocity loop (PID): Desired Velocity -> Tilt Commands
+        val velErrorNorth = scaledVelNorth - state.northVelocityMS
+        val velErrorEast = scaledVelEast - state.eastVelocityMS
 
         val northCommand = velocityNorth.update(velErrorNorth, dt)
         val eastCommand = velocityEast.update(velErrorEast, dt)

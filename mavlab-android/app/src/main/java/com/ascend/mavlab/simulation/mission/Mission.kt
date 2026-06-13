@@ -29,6 +29,16 @@ enum class MissionCommand(val mavCmdId: Int) {
     LOITER_TIME(19),
     CHANGE_SPEED(178);
 
+    val isNav: Boolean
+        get() = this == WAYPOINT ||
+            this == TAKEOFF ||
+            this == LAND ||
+            this == RTL ||
+            this == LOITER_TIME
+
+    val isDo: Boolean
+        get() = this == CHANGE_SPEED
+
     companion object {
         fun fromMavCmdId(mavCmdId: Int): MissionCommand {
             return entries.firstOrNull { it.mavCmdId == mavCmdId } ?: WAYPOINT

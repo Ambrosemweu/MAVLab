@@ -56,6 +56,8 @@ class MavlinkUdpServer(
     private var missionUploadSession: MissionUploadSession? = null
     @Volatile
     private var telemetryDestinations: List<UdpDestination> = emptyList()
+    @Volatile
+    private var wpNavSpeed: Float = 300f
 
     fun start(context: Context) {
         if (socket != null) return
@@ -360,6 +362,11 @@ class MavlinkUdpServer(
             MAV_CMD_DO_CANCEL_MAG_CAL -> {
                 ack(command, MAV_RESULT_ACCEPTED, peer, "DO_CANCEL_MAG_CAL")
             }
+            MAV_CMD_DO_CHANGE_SPEED -> {
+                val speed = packet.payload.leFloat(4)
+                simLoop.setWpNavSpeed(speed)
+                ack(command, MAV_RESULT_ACCEPTED, peer, "DO_CHANGE_SPEED")
+            }
             else -> {
                 ack(command, MAV_RESULT_UNSUPPORTED, peer, "UNSUPPORTED $command")
             }
@@ -390,7 +397,26 @@ class MavlinkUdpServer(
             logInbound(packet, peer, length, "ignored target-mismatch")
             return
         }
-        ack(0, MAV_RESULT_ACCEPTED, peer, "PARAM_SET")
+        val payload = packet.payload
+        if (payload.size < 23) return
+        val paramValue = payload.leFloat(0)
+        val paramIdBytes = payload.copyOfRange(6, 22)
+        val paramId = String(paramIdBytes, Charsets.US_ASCII).trimEnd { it == '\u0000' }
+
+        if (paramId == "WPNAV_SPEED") {
+            wpNavSpeed = paramValue
+            simLoop.setWpNavSpeedParameter(paramValue / 100f)
+            Log.i(TAG, "PARAM_SET: WPNAV_SPEED set to $paramValue cm/s (${paramValue / 100f} m/s)")
+        }
+
+        val params = getParamsList()
+        val index = params.indexOfFirst { it.first == paramId }
+        val finalValue = if (paramId == "WPNAV_SPEED") wpNavSpeed else paramValue
+        val destination = peer ?: lastPeer ?: return
+        send(
+            builder.paramValue(paramId, finalValue, if (index != -1) index else 65535, params.size),
+            destination
+        )
     }
 
     private fun getParamsList(): List<Pair<String, Float>> {
@@ -400,6 +426,7 @@ class MavlinkUdpServer(
             "SYSID_MYGCS" to DefaultQgcSystemId.toFloat(),
             "MAV_GCS_SYSID" to DefaultQgcSystemId.toFloat(),
             "MAV_TYPE" to 2f,
+            "WPNAV_SPEED" to wpNavSpeed,
             "RCMAP_ROLL" to 1f,
             "RCMAP_PITCH" to 2f,
             "RCMAP_THROTTLE" to 3f,
@@ -847,6 +874,7 @@ class MavlinkUdpServer(
         const val MAV_CMD_DO_START_MAG_CAL = 424
         const val MAV_CMD_DO_ACCEPT_MAG_CAL = 425
         const val MAV_CMD_DO_CANCEL_MAG_CAL = 426
+        const val MAV_CMD_DO_CHANGE_SPEED = 178
         const val MAV_CMD_SET_MESSAGE_INTERVAL = 511
         const val MAV_CMD_REQUEST_MESSAGE = 512
         const val MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES = 520

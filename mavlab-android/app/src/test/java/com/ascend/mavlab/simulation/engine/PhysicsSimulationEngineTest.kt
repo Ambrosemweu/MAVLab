@@ -342,6 +342,75 @@ class PhysicsSimulationEngineTest {
         assertEquals(0f, target.y, absoluteTolerance = 0.05f)
     }
 
+    @Test
+    fun testGcsSpeedOverrideAndParameter() {
+        val engine = PhysicsSimulationEngine()
+        
+        // Default parameter speed limit
+        assertEquals(3.0f, engine.wpNavSpeedLimitMps)
+        assertEquals(null, engine.gcsSpeedOverride)
+        
+        // Parameter update
+        engine.setWpNavSpeedParameter(5.5f)
+        assertEquals(5.5f, engine.wpNavSpeedLimitMps)
+        
+        // GCS speed override
+        engine.setWpNavSpeed(8.0f)
+        assertEquals(8.0f, engine.gcsSpeedOverride)
+        
+        // GCS speed ignore (-1)
+        engine.setWpNavSpeed(-1f)
+        assertEquals(8.0f, engine.gcsSpeedOverride)
+        
+        // GCS speed clear (-2)
+        engine.setWpNavSpeed(-2f)
+        assertEquals(null, engine.gcsSpeedOverride)
+    }
+
+    @Test
+    fun testMissionSpeedWithAssociatedChangeSpeed() {
+        val engine = PhysicsSimulationEngine()
+        
+        val wp1 = MissionItem(
+            sequence = 1,
+            command = MissionCommand.WAYPOINT,
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            altitudeAglMeters = 20f,
+            localNorthMeters = 50f,
+            localEastMeters = 0f,
+        )
+        val speed1 = MissionItem(
+            sequence = 2,
+            command = MissionCommand.CHANGE_SPEED,
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            altitudeAglMeters = 0f,
+            speedMetersPerSecond = 12.0f,
+        )
+        val wp2 = MissionItem(
+            sequence = 3,
+            command = MissionCommand.WAYPOINT,
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            altitudeAglMeters = 20f,
+            localNorthMeters = 100f,
+            localEastMeters = 0f,
+        )
+        val progress = MissionProgress(
+            items = listOf(wp1, speed1, wp2),
+            currentIndex = 0, // flying to wp1 (sequence 1)
+            complete = false,
+            activeTarget = wp1,
+        )
+        
+        // Flying towards wp1 (sequence 1), the CHANGE_SPEED is at sequence 2.
+        // It is associated with the preceding NAV command (wp1), so it should apply while flying to wp1.
+        val speed = engine.previewAutoMissionSpeed(progress)
+        assertEquals(12.0f, speed)
+    }
+
+
     private companion object {
         const val MetersPerLatDeg = 111_320.0
 

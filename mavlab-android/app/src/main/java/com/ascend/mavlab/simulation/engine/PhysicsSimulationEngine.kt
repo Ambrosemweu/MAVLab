@@ -61,6 +61,12 @@ class PhysicsSimulationEngine(
     @Volatile
     private var pilotInput = PilotInput(throttle = params.hoverThrottle)
 
+    @Volatile
+    var gcsSpeedOverride: Float? = null
+
+    @Volatile
+    var wpNavSpeedLimitMps: Float = 3.0f
+
     override fun start() {
         if (job != null) return
         startedAtMs = System.currentTimeMillis() - mutableState.value.uptimeMs.toLong()
@@ -158,6 +164,23 @@ class PhysicsSimulationEngine(
         val current = mutableState.value
         if (current.armed && current.controlAuthority != ControlAuthority.GCS_MISSION) {
             mutableState.value = current.copy(controlAuthority = ControlAuthority.CONTROLLER)
+        }
+    }
+
+    fun setWpNavSpeed(speedMps: Float) {
+        if (speedMps == -1f) {
+            return
+        }
+        if (speedMps == -2f) {
+            gcsSpeedOverride = null
+        } else if (speedMps >= 0f) {
+            gcsSpeedOverride = speedMps
+        }
+    }
+
+    fun setWpNavSpeedParameter(speedMps: Float) {
+        if (speedMps > 0f) {
+            wpNavSpeedLimitMps = speedMps
         }
     }
 
@@ -415,6 +438,7 @@ class PhysicsSimulationEngine(
                     targetEastMeters = guidedEastMeters,
                     targetAltitudeMeters = guidedAltitudeMeters,
                     dt = dt,
+                    maxHorizontalSpeedMS = gcsSpeedOverride ?: wpNavSpeedLimitMps,
                 )
             }
             autopilot.mode == FlightMode.AUTO -> {
@@ -426,15 +450,14 @@ class PhysicsSimulationEngine(
                     PilotInput(throttle = 0.5f)
                 } else {
                     val missionSpeed = missionSpeedFor(progress)
-                    val localTarget = pathTargetFor(state, progress, target, missionSpeed)
-                    autopilot.setTargetAltitude(target.altitudeAglMeters)
-                    positionController.computePilotInput(
+                    val velSetpoint = computeAutoVelocitySetpoint(state, progress, target, missionSpeed)
+                    autopilot.setTargetAltitude(velSetpoint.z)
+                    positionController.computePilotInputDirect(
                         state = state,
-                        targetNorthMeters = localTarget.x,
-                        targetEastMeters = localTarget.y,
-                        targetAltitudeMeters = target.altitudeAglMeters,
+                        desiredVelNorth = velSetpoint.x,
+                        desiredVelEast = velSetpoint.y,
+                        targetAltitudeMeters = velSetpoint.z,
                         dt = dt,
-                        maxHorizontalSpeedMS = missionSpeed,
                     )
                 }
             }
@@ -451,6 +474,7 @@ class PhysicsSimulationEngine(
                     targetEastMeters = homeEastMeters,
                     targetAltitudeMeters = autopilot.targetAltitudeM,
                     dt = dt,
+                    maxHorizontalSpeedMS = gcsSpeedOverride ?: wpNavSpeedLimitMps,
                 )
             }
             else -> pilotInput
@@ -624,14 +648,108 @@ class PhysicsSimulationEngine(
     }
 
     private fun missionSpeedFor(progress: MissionProgress): Float {
-        return progress.items
-            .take(progress.currentIndex + 1)
-            .asReversed()
-            .firstNotNullOfOrNull { item ->
-                item.speedMetersPerSecond
-                    ?.takeIf { item.command == MissionCommand.CHANGE_SPEED && it.isFinite() && it > 0f }
+        val activeNavIndex = progress.currentIndex
+        var nextNavIndex = activeNavIndex + 1
+        while (nextNavIndex < progress.items.size) {
+            if (progress.items[nextNavIndex].command.isNav) break
+            nextNavIndex++
+        }
+        for (index in nextNavIndex - 1 downTo 0) {
+            val item = progress.items.getOrNull(index) ?: continue
+            if (item.command == MissionCommand.CHANGE_SPEED && item.speedMetersPerSecond != null && item.speedMetersPerSecond > 0f) {
+                return item.speedMetersPerSecond
             }
-            ?: DefaultMissionSpeedMetersPerSecond
+        }
+        return gcsSpeedOverride ?: wpNavSpeedLimitMps
+    }
+
+    private fun computeAutoVelocitySetpoint(
+        state: DroneState,
+        progress: MissionProgress,
+        target: MissionItem,
+        speed: Float,
+    ): Vector3 {
+        if (target.command == MissionCommand.TAKEOFF) {
+            if (state.altitudeAglMeters < target.altitudeAglMeters - TakeoffHorizontalGateAltitudeToleranceMeters) {
+                return Vector3(0f, 0f, target.altitudeAglMeters)
+            }
+        }
+        
+        val endpoint = localTargetFor(state, target)
+        val start = previousPathAnchorFor(state, progress) ?: Vector3(state.northMeters, state.eastMeters, state.altitudeAglMeters)
+        
+        // 2D calculations (North-East plane)
+        val legN = endpoint.x - start.x
+        val legE = endpoint.y - start.y
+        val legLenSq = legN * legN + legE * legE
+        val legLen = sqrt(legLenSq)
+        
+        if (legLen < 0.1f) {
+            // Target is virtually at start, just command velocity towards target
+            val errN = endpoint.x - state.northMeters
+            val errE = endpoint.y - state.eastMeters
+            val dist = sqrt(errN * errN + errE * errE)
+            if (dist < 0.1f) return Vector3(0f, 0f, endpoint.z)
+            
+            // Decel speed calculation
+            val decelLimit = sqrt(2 * 1.5f * dist)
+            val targetSpeed = speed.coerceAtMost(decelLimit)
+            return Vector3(
+                x = (errN / dist) * targetSpeed,
+                y = (errE / dist) * targetSpeed,
+                z = endpoint.z
+            )
+        }
+        
+        // Vector from start to drone
+        val droneN = state.northMeters - start.x
+        val droneE = state.eastMeters - start.y
+        
+        // Project drone onto the leg vector (2D along track)
+        val t = ((droneN * legN + droneE * legE) / legLenSq).coerceIn(0f, 1f)
+        
+        // Along-track projection point
+        val projN = start.x + t * legN
+        val projE = start.y + t * legE
+        
+        // Remaining distance to endpoint along track
+        val remainingDist = sqrt((endpoint.x - projN) * (endpoint.x - projN) + (endpoint.y - projE) * (endpoint.y - projE))
+        
+        // Target speed along track with smooth physical braking/deceleration
+        val alongTrackLimit = sqrt(2 * 1.5f * remainingDist)
+        val alongTrackSpeed = speed.coerceAtMost(alongTrackLimit)
+        
+        // Along-track velocity vector (unit direction of leg * speed)
+        val unitLegN = legN / legLen
+        val unitLegE = legE / legLen
+        val velAlongN = unitLegN * alongTrackSpeed
+        val velAlongE = unitLegE * alongTrackSpeed
+        
+        // Cross-track error vector (from projection point to drone)
+        val crossN = state.northMeters - projN
+        val crossE = state.eastMeters - projE
+        
+        // Cross-track correction velocity (K_cross = 1.0f)
+        val kCross = 1.0f
+        val velCrossN = -crossN * kCross
+        val velCrossE = -crossE * kCross
+        
+        // Combine along-track and cross-track velocities
+        var totalVelN = velAlongN + velCrossN
+        var totalVelE = velAlongE + velCrossE
+        
+        // Clamp total velocity magnitude to `speed`
+        val totalVelMag = sqrt(totalVelN * totalVelN + totalVelE * totalVelE)
+        if (totalVelMag > speed) {
+            val scale = speed / totalVelMag
+            totalVelN *= scale
+            totalVelE *= scale
+        }
+        
+        // Smoothly interpolate altitude target
+        val targetAlt = start.z + (endpoint.z - start.z) * t
+        
+        return Vector3(x = totalVelN, y = totalVelE, z = targetAlt)
     }
 
     private fun previousPathAnchorFor(state: DroneState, progress: MissionProgress): Vector3? {

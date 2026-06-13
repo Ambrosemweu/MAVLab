@@ -27,7 +27,15 @@ android {
     lint {
         disable += "NullSafeMutableLiveData"
     }
+
+    applicationVariants.all {
+        outputs.all {
+            val output = this as? com.android.build.gradle.api.ApkVariantOutput
+            output?.outputFileName = "MAVlab.apk"
+        }
+    }
 }
+
 
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
