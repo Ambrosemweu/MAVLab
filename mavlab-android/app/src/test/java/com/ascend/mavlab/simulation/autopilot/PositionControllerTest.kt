@@ -39,4 +39,26 @@ class PositionControllerTest {
         assertEquals(0f, input.yaw, absoluteTolerance = 0.001f)
         assertTrue(input.pitch > 0f)
     }
+
+    @Test
+    fun lowerMissionSpeedReducesForwardCommand() {
+        val slow = PositionController().computePilotInput(
+            state = DroneState(yawRadians = 0f),
+            targetNorthMeters = 100f,
+            targetEastMeters = 0f,
+            targetAltitudeMeters = 10f,
+            dt = 0.02f,
+            maxHorizontalSpeedMS = 1f,
+        )
+        val fast = PositionController().computePilotInput(
+            state = DroneState(yawRadians = 0f),
+            targetNorthMeters = 100f,
+            targetEastMeters = 0f,
+            targetAltitudeMeters = 10f,
+            dt = 0.02f,
+            maxHorizontalSpeedMS = 7.5f,
+        )
+
+        assertTrue(fast.pitch > slow.pitch)
+    }
 }

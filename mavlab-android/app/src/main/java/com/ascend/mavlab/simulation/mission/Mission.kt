@@ -18,6 +18,7 @@ data class MissionItem(
     val autocontinue: Boolean = true,
     val localNorthMeters: Float? = null,
     val localEastMeters: Float? = null,
+    val speedMetersPerSecond: Float? = null,
 )
 
 enum class MissionCommand(val mavCmdId: Int) {
@@ -25,7 +26,8 @@ enum class MissionCommand(val mavCmdId: Int) {
     TAKEOFF(22),
     LAND(21),
     RTL(20),
-    LOITER_TIME(19);
+    LOITER_TIME(19),
+    CHANGE_SPEED(178);
 
     companion object {
         fun fromMavCmdId(mavCmdId: Int): MissionCommand {

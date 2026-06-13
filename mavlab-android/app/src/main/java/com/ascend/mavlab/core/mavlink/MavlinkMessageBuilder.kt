@@ -1,6 +1,7 @@
 package com.ascend.mavlab.core.mavlink
 
 import com.ascend.mavlab.simulation.engine.DroneState
+import com.ascend.mavlab.simulation.mission.MissionCommand
 import com.ascend.mavlab.simulation.mission.MissionItem
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -258,11 +259,12 @@ class MavlinkMessageBuilder(
         targetSystem: Int = MavlinkGroundStationSystemId,
         targetComponent: Int = MavlinkGroundStationComponentId,
     ): ByteArray {
+        val commandParams = missionCommandParams(item)
         val payload = littleEndian(37)
-            .putFloat(0f)
-            .putFloat(item.acceptanceRadiusMeters)
-            .putFloat(0f)
-            .putFloat(0f)
+            .putFloat(commandParams[0])
+            .putFloat(commandParams[1])
+            .putFloat(commandParams[2])
+            .putFloat(commandParams[3])
             .putInt((item.latitudeDeg * 1e7).roundToInt())
             .putInt((item.longitudeDeg * 1e7).roundToInt())
             .putFloat(item.altitudeAglMeters)
@@ -283,11 +285,12 @@ class MavlinkMessageBuilder(
         targetSystem: Int,
         targetComponent: Int,
     ): ByteArray {
+        val commandParams = missionCommandParams(item)
         val payload = littleEndian(37)
-            .putFloat(0f)
-            .putFloat(item.acceptanceRadiusMeters)
-            .putFloat(0f)
-            .putFloat(0f)
+            .putFloat(commandParams[0])
+            .putFloat(commandParams[1])
+            .putFloat(commandParams[2])
+            .putFloat(commandParams[3])
             .putFloat(item.latitudeDeg.toFloat())
             .putFloat(item.longitudeDeg.toFloat())
             .putFloat(item.altitudeAglMeters)
@@ -300,6 +303,14 @@ class MavlinkMessageBuilder(
             .putU8(if (item.autocontinue) 1 else 0)
             .array()
         return frame(messageId = 39, crcExtra = 254, payload = payload)
+    }
+
+    private fun missionCommandParams(item: MissionItem): FloatArray {
+        return if (item.command == MissionCommand.CHANGE_SPEED) {
+            floatArrayOf(1f, item.speedMetersPerSecond ?: 0f, -1f, 0f)
+        } else {
+            floatArrayOf(0f, item.acceptanceRadiusMeters, 0f, 0f)
+        }
     }
 
     private fun frame(messageId: Int, crcExtra: Int, payload: ByteArray): ByteArray {

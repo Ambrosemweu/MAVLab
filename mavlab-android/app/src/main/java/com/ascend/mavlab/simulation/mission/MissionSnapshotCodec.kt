@@ -17,6 +17,7 @@ object MissionSnapshotCodec {
                         item.autocontinue.toString(),
                         item.localNorthMeters?.toString().orEmpty(),
                         item.localEastMeters?.toString().orEmpty(),
+                        item.speedMetersPerSecond?.toString().orEmpty(),
                     ).joinToString(FieldSeparator),
                 )
             }
@@ -34,7 +35,7 @@ object MissionSnapshotCodec {
         return runCatching {
             lines.drop(1).map { line ->
                 val fields = line.split(FieldSeparator, limit = FieldCount)
-                if (fields.size != FieldCount) error("Invalid mission snapshot line")
+                if (fields.size !in LegacyFieldCount..FieldCount) error("Invalid mission snapshot line")
                 MissionItem(
                     sequence = fields[0].toInt(),
                     command = MissionCommand.valueOf(fields[1]),
@@ -45,6 +46,7 @@ object MissionSnapshotCodec {
                     autocontinue = fields[6].toBooleanStrict(),
                     localNorthMeters = fields[7].toFloatOrNull(),
                     localEastMeters = fields[8].toFloatOrNull(),
+                    speedMetersPerSecond = fields.getOrNull(9)?.toFloatOrNull(),
                 )
             }
         }.getOrElse { emptyList() }
@@ -52,5 +54,6 @@ object MissionSnapshotCodec {
 
     private const val Version = "MAVLAB_MISSION_V1"
     private const val FieldSeparator = "\t"
-    private const val FieldCount = 9
+    private const val LegacyFieldCount = 9
+    private const val FieldCount = 10
 }

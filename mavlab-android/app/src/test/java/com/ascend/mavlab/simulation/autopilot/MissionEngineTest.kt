@@ -90,6 +90,30 @@ class MissionEngineTest {
         assertEquals(0, progress.lastReachedSequence)
     }
 
+    @Test
+    fun updateImmediatelyAdvancesPastChangeSpeedCommand() {
+        val engine = MissionEngine()
+        engine.load(
+            listOf(
+                missionItem(sequence = 0).copy(
+                    command = MissionCommand.CHANGE_SPEED,
+                    latitudeDeg = 0.0,
+                    longitudeDeg = 0.0,
+                    altitudeAglMeters = 0f,
+                    speedMetersPerSecond = 7.5f,
+                ),
+                missionItem(sequence = 1),
+            ),
+        )
+
+        val progress = engine.update(com.ascend.mavlab.simulation.engine.DroneState())
+
+        assertFalse(progress.complete)
+        assertEquals(1, progress.currentIndex)
+        assertEquals(0, progress.lastReachedSequence)
+        assertEquals(1, progress.activeTarget?.sequence)
+    }
+
     private fun missionItem(sequence: Int): MissionItem {
         return MissionItem(
             sequence = sequence,

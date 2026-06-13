@@ -55,6 +55,7 @@ class MissionUploadSession(
                 longitudeDeg = longitudeDeg,
                 altitudeAglMeters = packet.payload.leFloat(24),
                 acceptanceRadiusMeters = packet.payload.leFloat(4),
+                speedMetersPerSecond = packet.payload.leFloat(4),
                 autocontinue = packet.payload[36].toInt() != 0,
             )
         }
@@ -68,6 +69,7 @@ class MissionUploadSession(
                 longitudeDeg = packet.payload.leFloat(20).toDouble(),
                 altitudeAglMeters = packet.payload.leFloat(24),
                 acceptanceRadiusMeters = packet.payload.leFloat(4),
+                speedMetersPerSecond = packet.payload.leFloat(4),
                 autocontinue = packet.payload[36].toInt() != 0,
             )
         }
@@ -79,21 +81,30 @@ class MissionUploadSession(
             longitudeDeg: Double,
             altitudeAglMeters: Float,
             acceptanceRadiusMeters: Float,
+            speedMetersPerSecond: Float,
             autocontinue: Boolean,
         ): MissionItem? {
-            if (!latitudeDeg.isFinite() || !longitudeDeg.isFinite() || !altitudeAglMeters.isFinite()) {
+            val command = MissionCommand.fromMavCmdId(commandId)
+            if (command != MissionCommand.CHANGE_SPEED &&
+                (!latitudeDeg.isFinite() || !longitudeDeg.isFinite() || !altitudeAglMeters.isFinite())
+            ) {
                 return null
             }
             return MissionItem(
                 sequence = sequence,
-                command = MissionCommand.fromMavCmdId(commandId),
-                latitudeDeg = latitudeDeg,
-                longitudeDeg = longitudeDeg,
-                altitudeAglMeters = altitudeAglMeters.coerceAtLeast(0f),
+                command = command,
+                latitudeDeg = latitudeDeg.takeIf { it.isFinite() } ?: 0.0,
+                longitudeDeg = longitudeDeg.takeIf { it.isFinite() } ?: 0.0,
+                altitudeAglMeters = altitudeAglMeters.takeIf { it.isFinite() }?.coerceAtLeast(0f) ?: 0f,
                 acceptanceRadiusMeters = acceptanceRadiusMeters
                     .takeIf { it.isFinite() && it > 0f }
                     ?: 2f,
                 autocontinue = autocontinue,
+                speedMetersPerSecond = if (command == MissionCommand.CHANGE_SPEED) {
+                    speedMetersPerSecond.takeIf { it.isFinite() && it > 0f }
+                } else {
+                    null
+                },
             )
         }
     }

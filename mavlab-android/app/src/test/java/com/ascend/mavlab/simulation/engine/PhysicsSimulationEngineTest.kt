@@ -187,6 +187,130 @@ class PhysicsSimulationEngineTest {
     }
 
     @Test
+    fun autoTakeoffClimbsBeforeFlyingToTakeoffPosition() {
+        val engine = PhysicsSimulationEngine()
+        val takeoff = MissionItem(
+            sequence = 1,
+            command = MissionCommand.TAKEOFF,
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            altitudeAglMeters = 50f,
+            localNorthMeters = 12f,
+            localEastMeters = -9f,
+        )
+        val progress = MissionProgress(
+            items = listOf(
+                takeoff.copy(sequence = 0, command = MissionCommand.WAYPOINT, altitudeAglMeters = 0f),
+                takeoff,
+            ),
+            currentIndex = 1,
+            complete = false,
+            activeTarget = takeoff,
+        )
+
+        val climbTarget = engine.previewAutoPathTarget(
+            state = DroneState(northMeters = 2f, eastMeters = 3f, altitudeAglMeters = 20f),
+            progress = progress,
+            target = takeoff,
+        )
+        assertEquals(2f, climbTarget.x, absoluteTolerance = 0.001f)
+        assertEquals(3f, climbTarget.y, absoluteTolerance = 0.001f)
+        assertEquals(50f, climbTarget.z, absoluteTolerance = 0.001f)
+
+        val horizontalTarget = engine.previewAutoPathTarget(
+            state = DroneState(northMeters = 2f, eastMeters = 3f, altitudeAglMeters = 49f),
+            progress = progress,
+            target = takeoff,
+        )
+        assertEquals(12f, horizontalTarget.x, absoluteTolerance = 0.001f)
+        assertEquals(-9f, horizontalTarget.y, absoluteTolerance = 0.001f)
+        assertEquals(50f, horizontalTarget.z, absoluteTolerance = 0.001f)
+    }
+
+    @Test
+    fun autoMissionUsesLatestUploadedSpeedCommand() {
+        val engine = PhysicsSimulationEngine()
+        val speed = MissionItem(
+            sequence = 1,
+            command = MissionCommand.CHANGE_SPEED,
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            altitudeAglMeters = 0f,
+            speedMetersPerSecond = 7.5f,
+        )
+        val waypoint = MissionItem(
+            sequence = 2,
+            command = MissionCommand.WAYPOINT,
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            altitudeAglMeters = 20f,
+            localNorthMeters = 100f,
+            localEastMeters = 0f,
+        )
+
+        val speedBeforeCommand = engine.previewAutoMissionSpeed(
+            MissionProgress(
+                items = listOf(speed, waypoint),
+                currentIndex = 0,
+                complete = false,
+                activeTarget = speed,
+            ),
+        )
+        val speedAfterCommand = engine.previewAutoMissionSpeed(
+            MissionProgress(
+                items = listOf(speed, waypoint),
+                currentIndex = 1,
+                complete = false,
+                activeTarget = waypoint,
+            ),
+        )
+
+        assertEquals(7.5f, speedBeforeCommand, absoluteTolerance = 0.001f)
+        assertEquals(7.5f, speedAfterCommand, absoluteTolerance = 0.001f)
+    }
+
+    @Test
+    fun autoPathLookaheadScalesWithUploadedMissionSpeed() {
+        val engine = PhysicsSimulationEngine()
+        val speed = MissionItem(
+            sequence = 0,
+            command = MissionCommand.CHANGE_SPEED,
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            altitudeAglMeters = 0f,
+            speedMetersPerSecond = 20f,
+        )
+        val start = MissionItem(
+            sequence = 1,
+            command = MissionCommand.WAYPOINT,
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            altitudeAglMeters = 20f,
+            localNorthMeters = 0f,
+            localEastMeters = 0f,
+        )
+        val end = start.copy(
+            sequence = 2,
+            localNorthMeters = 100f,
+            localEastMeters = 0f,
+        )
+
+        val target = engine.previewAutoPathTarget(
+            state = DroneState(northMeters = 0f, eastMeters = 0f, altitudeAglMeters = 20f),
+            progress = MissionProgress(
+                items = listOf(speed, start, end),
+                currentIndex = 2,
+                complete = false,
+                activeTarget = end,
+            ),
+            target = end,
+        )
+
+        assertEquals(30f, target.x, absoluteTolerance = 0.05f)
+        assertEquals(0f, target.y, absoluteTolerance = 0.05f)
+    }
+
+    @Test
     fun autoPathTargetTracksLineSegmentWithLookahead() {
         val engine = PhysicsSimulationEngine()
         val start = MissionItem(

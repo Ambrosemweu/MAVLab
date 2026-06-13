@@ -320,7 +320,11 @@ class PhysicsSimulationEngine(
         progress: MissionProgress,
         target: MissionItem,
     ): Vector3 {
-        return pathTargetFor(state, progress, target)
+        return pathTargetFor(state, progress, target, missionSpeedFor(progress))
+    }
+
+    internal fun previewAutoMissionSpeed(progress: MissionProgress): Float {
+        return missionSpeedFor(progress)
     }
 
     fun noteInbound(message: String) {
@@ -421,7 +425,8 @@ class PhysicsSimulationEngine(
                     autopilot.setMode(FlightMode.LOITER, state)
                     PilotInput(throttle = 0.5f)
                 } else {
-                    val localTarget = pathTargetFor(state, progress, target)
+                    val missionSpeed = missionSpeedFor(progress)
+                    val localTarget = pathTargetFor(state, progress, target, missionSpeed)
                     autopilot.setTargetAltitude(target.altitudeAglMeters)
                     positionController.computePilotInput(
                         state = state,
@@ -429,6 +434,7 @@ class PhysicsSimulationEngine(
                         targetEastMeters = localTarget.y,
                         targetAltitudeMeters = target.altitudeAglMeters,
                         dt = dt,
+                        maxHorizontalSpeedMS = missionSpeed,
                     )
                 }
             }
@@ -576,8 +582,19 @@ class PhysicsSimulationEngine(
         state: DroneState,
         progress: MissionProgress,
         target: MissionItem,
+        missionSpeedMetersPerSecond: Float,
     ): Vector3 {
-        if (target.command == MissionCommand.TAKEOFF || target.command == MissionCommand.LAND) {
+        if (target.command == MissionCommand.TAKEOFF) {
+            if (state.altitudeAglMeters < target.altitudeAglMeters - TakeoffHorizontalGateAltitudeToleranceMeters) {
+                return Vector3(
+                    x = state.northMeters,
+                    y = state.eastMeters,
+                    z = target.altitudeAglMeters,
+                )
+            }
+            return localTargetFor(state, target)
+        }
+        if (target.command == MissionCommand.LAND) {
             return localTargetFor(state, target)
         }
         val endpoint = localTargetFor(state, target)
@@ -591,7 +608,12 @@ class PhysicsSimulationEngine(
         val vehicleEast = state.eastMeters - start.y
         val alongTrack = ((vehicleNorth * legNorth + vehicleEast * legEast) / (legLength * legLength))
             .coerceIn(0f, 1f)
-        val lookahead = (PathLookaheadMeters / legLength).coerceIn(0f, 1f)
+        val lookaheadMeters = max(
+            PathLookaheadMeters,
+            missionSpeedMetersPerSecond.coerceAtLeast(DefaultMissionSpeedMetersPerSecond) *
+                MissionSpeedLookaheadSeconds,
+        )
+        val lookahead = (lookaheadMeters / legLength).coerceIn(0f, 1f)
         val targetFraction = (alongTrack + lookahead).coerceAtMost(1f)
         val altitude = start.z + (endpoint.z - start.z) * targetFraction
         return Vector3(
@@ -599,6 +621,17 @@ class PhysicsSimulationEngine(
             y = start.y + legEast * targetFraction,
             z = altitude,
         )
+    }
+
+    private fun missionSpeedFor(progress: MissionProgress): Float {
+        return progress.items
+            .take(progress.currentIndex + 1)
+            .asReversed()
+            .firstNotNullOfOrNull { item ->
+                item.speedMetersPerSecond
+                    ?.takeIf { item.command == MissionCommand.CHANGE_SPEED && it.isFinite() && it > 0f }
+            }
+            ?: DefaultMissionSpeedMetersPerSecond
     }
 
     private fun previousPathAnchorFor(state: DroneState, progress: MissionProgress): Vector3? {
@@ -651,6 +684,9 @@ class PhysicsSimulationEngine(
         const val TICK_MS = 10L
         const val METERS_PER_LAT_DEG = 111_320.0
         const val PathLookaheadMeters = 8f
+        const val MissionSpeedLookaheadSeconds = 1.5f
+        const val TakeoffHorizontalGateAltitudeToleranceMeters = 1.5f
+        const val DefaultMissionSpeedMetersPerSecond = 3.0f
         const val MinimumAirborneReturnAltitudeMeters = 8f
         const val AirborneAltitudeThresholdMeters = 0.5f
     }

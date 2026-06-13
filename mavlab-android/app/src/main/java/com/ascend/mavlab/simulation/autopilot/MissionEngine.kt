@@ -52,6 +52,18 @@ class MissionEngine {
     fun update(state: DroneState): MissionProgress {
         val progress = mutableProgress.value
         val current = progress.activeTarget ?: return progress
+        if (current.command == MissionCommand.CHANGE_SPEED) {
+            val nextIndex = progress.currentIndex + 1
+            val next = progress.items.getOrNull(nextIndex)
+            val updated = progress.copy(
+                currentIndex = nextIndex,
+                complete = next == null,
+                lastReachedSequence = current.sequence,
+                activeTarget = next,
+            )
+            mutableProgress.value = updated
+            return updated
+        }
         val distance = distanceMeters(state, current)
         val altitudeError = abs(state.altitudeAglMeters - current.altitudeAglMeters)
         if (distance <= effectiveAcceptanceRadius(current) && altitudeError <= altitudeToleranceMeters(current)) {

@@ -50,6 +50,7 @@ class MavlinkUdpServer(
     private var socket: DatagramSocket? = null
     private var telemetryJob: Job? = null
     private var receiveJob: Job? = null
+    private var gcsConnectionJob: Job? = null
     private var lastPeer: UdpDestination? = null
     private var lastReachedSequenceSent: Int? = null
     private var missionUploadSession: MissionUploadSession? = null
@@ -73,6 +74,7 @@ class MavlinkUdpServer(
         )
         telemetryJob = scope.launch { telemetryLoop(destinations) }
         receiveJob = scope.launch { receiveLoop() }
+        gcsConnectionJob = scope.launch { gcsConnectionLoop() }
     }
 
     private fun sendImmediateTelemetry() {
@@ -98,8 +100,13 @@ class MavlinkUdpServer(
     fun stopNow() {
         telemetryJob?.cancel()
         receiveJob?.cancel()
+        gcsConnectionJob?.cancel()
         socket?.close()
         socket = null
+        mutableIdentityStatus.value = mutableIdentityStatus.value.copy(
+            gcsConnected = false,
+            gcsHeartbeatSeriesStartedAtMs = null,
+        )
         mutableStatus.value = "Stopped"
         Log.i(TAG, "MAVLink stopped")
     }
@@ -193,9 +200,11 @@ class MavlinkUdpServer(
 
     private fun handleInbound(data: ByteArray, length: Int, peer: UdpDestination?) {
         val packet = MavlinkParser.parse(data, length) ?: return
+        val timestampMs = System.currentTimeMillis()
+        noteGcsPacket(packet, timestampMs)
         logInbound(packet, peer, length, "received")
         when (packet.messageId) {
-            0 -> handleHeartbeat(packet, peer, length)
+            0 -> handleHeartbeat(packet, peer, length, timestampMs)
             11 -> handleSetMode(packet, peer)
             20 -> handleParamRequestRead(packet, peer, length)
             21 -> sendParams(packet, peer, length)
@@ -213,7 +222,22 @@ class MavlinkUdpServer(
         }
     }
 
-    private fun handleHeartbeat(packet: MavlinkPacket, peer: UdpDestination?, length: Int) {
+    private fun noteGcsPacket(packet: MavlinkPacket, timestampMs: Long) {
+        mutableIdentityStatus.value = mutableIdentityStatus.value.copy(
+            lastGcsSystemId = packet.systemId,
+            lastGcsComponentId = packet.componentId,
+            lastGcsMessageAtMs = timestampMs,
+        )
+    }
+
+    private suspend fun gcsConnectionLoop() {
+        while (scope.coroutineContext.isActive) {
+            delay(1_000L)
+            mutableIdentityStatus.value = mutableIdentityStatus.value.refreshGcsConnection(System.currentTimeMillis())
+        }
+    }
+
+    private fun handleHeartbeat(packet: MavlinkPacket, peer: UdpDestination?, length: Int, timestampMs: Long) {
         val collision = packet.systemId == vehicleSystemId
         val result = if (collision) {
             "gcs-heartbeat SYSID_COLLISION"
@@ -223,13 +247,15 @@ class MavlinkUdpServer(
         logInbound(packet, peer, length, result)
         if (collision) {
             val message = "QGC/GCS is using MAVLab vehicle SYSID $vehicleSystemId. Set QGC MAVLink System ID to $DefaultQgcSystemId."
-            mutableIdentityStatus.value = mutableIdentityStatus.value.copy(
-                lastGcsSystemId = packet.systemId,
-                lastGcsComponentId = packet.componentId,
-                identityConflict = true,
-                recommendedGcsSystemId = DefaultQgcSystemId,
-                message = message,
-            )
+            mutableIdentityStatus.value = mutableIdentityStatus.value
+                .withGcsHeartbeat(timestampMs)
+                .copy(
+                    lastGcsSystemId = packet.systemId,
+                    lastGcsComponentId = packet.componentId,
+                    identityConflict = true,
+                    recommendedGcsSystemId = DefaultQgcSystemId,
+                    message = message,
+                )
             mutableStatus.value = "MAVLink identity conflict: set QGC SYSID $DefaultQgcSystemId"
             simLoop.noteInbound("MAVLink SYSID conflict: GCS=${packet.systemId}, vehicle=$vehicleSystemId")
             simLoop.noteAck("SYSID conflict")
@@ -239,13 +265,15 @@ class MavlinkUdpServer(
                     "set QGC MAVLink System ID to $DefaultQgcSystemId.",
             )
         } else {
-            mutableIdentityStatus.value = mutableIdentityStatus.value.copy(
-                lastGcsSystemId = packet.systemId,
-                lastGcsComponentId = packet.componentId,
-                identityConflict = false,
-                recommendedGcsSystemId = DefaultQgcSystemId,
-                message = "",
-            )
+            mutableIdentityStatus.value = mutableIdentityStatus.value
+                .withGcsHeartbeat(timestampMs)
+                .copy(
+                    lastGcsSystemId = packet.systemId,
+                    lastGcsComponentId = packet.componentId,
+                    identityConflict = false,
+                    recommendedGcsSystemId = DefaultQgcSystemId,
+                    message = "",
+                )
             if (mutableStatus.value.startsWith("MAVLink identity conflict")) {
                 mutableStatus.value = "Running UDP ${socket?.localPort ?: config.localBindPort} -> QGC ${config.sameDeviceQgcPort}"
             }

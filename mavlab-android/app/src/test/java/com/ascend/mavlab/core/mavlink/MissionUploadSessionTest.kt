@@ -84,6 +84,24 @@ class MissionUploadSessionTest {
     }
 
     @Test
+    fun missionItemIntParsesChangeSpeedCommand() {
+        val item = MissionUploadSession.parseMissionItemInt(
+            missionItemIntPacket(
+                sequence = 1,
+                commandId = 178,
+                param2 = 7.5f,
+                latitudeDeg = 0.0,
+                longitudeDeg = 0.0,
+                altitudeMeters = 0f,
+            ),
+        )
+
+        assertNotNull(item)
+        assertEquals(MissionCommand.CHANGE_SPEED, item.command)
+        assertEquals(7.5f, item.speedMetersPerSecond)
+    }
+
+    @Test
     fun staleUploadSessionExpires() {
         val session = MissionUploadSession(
             expectedCount = 1,
@@ -102,17 +120,24 @@ class MissionUploadSessionTest {
             .array()
     }
 
-    private fun missionItemIntPacket(sequence: Int): MavlinkPacket {
+    private fun missionItemIntPacket(
+        sequence: Int,
+        commandId: Int = 16,
+        param2: Float = 2f,
+        latitudeDeg: Double = -1.2921,
+        longitudeDeg: Double = 36.8219,
+        altitudeMeters: Float = 10f,
+    ): MavlinkPacket {
         val payload = littleEndian(38)
             .putFloat(0f)
-            .putFloat(2f)
+            .putFloat(param2)
             .putFloat(0f)
             .putFloat(0f)
-            .putInt((-1.2921 * 1e7).toInt())
-            .putInt((36.8219 * 1e7).toInt())
-            .putFloat(10f)
+            .putInt((latitudeDeg * 1e7).toInt())
+            .putInt((longitudeDeg * 1e7).toInt())
+            .putFloat(altitudeMeters)
             .putU16(sequence)
-            .putU16(16)
+            .putU16(commandId)
             .putU8(1)
             .putU8(1)
             .putU8(6)

@@ -24,6 +24,7 @@ class PositionController(
         targetEastMeters: Float,
         targetAltitudeMeters: Float,
         dt: Float,
+        maxHorizontalSpeedMS: Float = maxSpeed,
     ): PilotInput {
         // 1. Position loop (Proportional only): Target Position -> Desired Velocity
         val errorNorth = targetNorthMeters - state.northMeters
@@ -36,8 +37,19 @@ class PositionController(
         }
         val translationScale = translationScaleForYawError(yawError)
 
-        val desiredVelNorth = (errorNorth * KpPos).coerceIn(-maxSpeed, maxSpeed) * translationScale
-        val desiredVelEast = (errorEast * KpPos).coerceIn(-maxSpeed, maxSpeed) * translationScale
+        val speedLimit = maxHorizontalSpeedMS
+            .takeIf { it.isFinite() && it > 0f }
+            ?: maxSpeed
+        var desiredVelNorth = errorNorth * KpPos
+        var desiredVelEast = errorEast * KpPos
+        val desiredSpeed = kotlin.math.sqrt(desiredVelNorth * desiredVelNorth + desiredVelEast * desiredVelEast)
+        if (desiredSpeed > speedLimit) {
+            val scale = speedLimit / desiredSpeed
+            desiredVelNorth *= scale
+            desiredVelEast *= scale
+        }
+        desiredVelNorth *= translationScale
+        desiredVelEast *= translationScale
 
         // 2. Velocity loop (PID): Desired Velocity -> Tilt Commands
         val velErrorNorth = desiredVelNorth - state.northVelocityMS
