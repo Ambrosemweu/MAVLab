@@ -147,8 +147,11 @@ class PhysicsSimulationEngine(
     }
 
     fun land(authority: ControlAuthority = ControlAuthority.CONTROLLER) {
+        val current = mutableState.value
+        captureLoiterTarget(current)
+        positionController.reset()
         autopilot.land()
-        mutableState.value = mutableState.value.copy(
+        mutableState.value = current.copy(
             mode = FlightMode.LAND,
             controlAuthority = authority,
         )
@@ -350,6 +353,13 @@ class PhysicsSimulationEngine(
         return missionSpeedFor(progress)
     }
 
+    internal fun previewLandingPilotInput(
+        state: DroneState,
+        dt: Float,
+    ): PilotInput {
+        return landingPilotInput(state, dt)
+    }
+
     fun noteInbound(message: String) {
         mutableState.value = mutableState.value.copy(lastInboundMessage = message)
     }
@@ -461,6 +471,7 @@ class PhysicsSimulationEngine(
                     )
                 }
             }
+            autopilot.mode == FlightMode.LAND -> landingPilotInput(state, dt)
             autopilot.mode == FlightMode.RTL -> {
                 val rtlAltitudeMeters = if (state.altitudeAglMeters > AirborneAltitudeThresholdMeters) {
                     max(homeAltitudeMeters, MinimumAirborneReturnAltitudeMeters)
@@ -479,6 +490,17 @@ class PhysicsSimulationEngine(
             }
             else -> pilotInput
         }
+    }
+
+    private fun landingPilotInput(state: DroneState, dt: Float): PilotInput {
+        return positionController.computePilotInput(
+            state = state,
+            targetNorthMeters = loiterNorthMeters,
+            targetEastMeters = loiterEastMeters,
+            targetAltitudeMeters = autopilot.targetAltitudeM,
+            dt = dt,
+            maxHorizontalSpeedMS = LandingHorizontalHoldSpeedMps,
+        )
     }
 
     private fun applyFailsafes(state: DroneState): DroneState {
@@ -805,6 +827,7 @@ class PhysicsSimulationEngine(
         const val MissionSpeedLookaheadSeconds = 1.5f
         const val TakeoffHorizontalGateAltitudeToleranceMeters = 1.5f
         const val DefaultMissionSpeedMetersPerSecond = 3.0f
+        const val LandingHorizontalHoldSpeedMps = 1.5f
         const val MinimumAirborneReturnAltitudeMeters = 8f
         const val AirborneAltitudeThresholdMeters = 0.5f
     }

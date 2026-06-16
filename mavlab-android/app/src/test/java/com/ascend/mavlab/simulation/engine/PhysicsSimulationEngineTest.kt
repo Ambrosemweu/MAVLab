@@ -74,6 +74,30 @@ class PhysicsSimulationEngineTest {
     }
 
     @Test
+    fun landModeHoldsPositionAndBrakesHorizontalVelocity() {
+        val engine = PhysicsSimulationEngine()
+
+        engine.takeoff(8f, ControlAuthority.GCS_DIRECT)
+        engine.setPilotInput(PilotInput(roll = 1f, pitch = 1f, throttle = 0.6f))
+        engine.land(ControlAuthority.GCS_DIRECT)
+
+        val input = engine.previewLandingPilotInput(
+            state = DroneState(
+                armed = true,
+                mode = FlightMode.LAND,
+                controlAuthority = ControlAuthority.GCS_DIRECT,
+                altitudeAglMeters = 5f,
+                northVelocityMS = 3f,
+                eastVelocityMS = -2f,
+            ),
+            dt = 0.1f,
+        )
+
+        assertTrue(input.pitch < -0.01f)
+        assertTrue(input.roll < -0.01f)
+    }
+
+    @Test
     fun autoMissionAdvancesTargetAndMovesPhysicsState() {
         val engine = PhysicsSimulationEngine()
         val initial = engine.state.value

@@ -126,7 +126,7 @@ private fun SimHud(
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            HudText("SIM  ${state.controlAuthority.displayName}", strong = true)
+            HudText("SIM  Physical behavior", strong = true)
             HudText("${state.mode.displayName}  ${if (state.armed) "ARM" else "DISARM"}", strong = true)
         }
 
@@ -170,18 +170,19 @@ private fun SimHud(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                HudText("N %.1f  E %.1f".format(state.northMeters, state.eastMeters))
+                HudText("AUTH ${state.controlAuthority.displayName}")
                 HudText("WP ${waypointLabel(state, mission)}")
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                HudText("RPM ${modelController.rpmSummary(state)}")
+                HudText("N %.1f  E %.1f".format(state.northMeters, state.eastMeters))
                 HudText(
                     "HDG ${state.headingDegrees}  THR ${state.throttlePercent}%",
                 )
             }
+            HudText("RPM ${modelController.rpmSummary(state)}")
         }
     }
 }

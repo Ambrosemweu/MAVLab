@@ -40,7 +40,7 @@ fun MissionScreen(modifier: Modifier = Modifier) {
         ) {
             Text("Mission", style = MaterialTheme.typography.headlineMedium)
             Text(
-                text = "QGC/demo mission execution and waypoint progress.",
+                text = "Autonomous route execution for QGroundControl uploads, demo missions, and waypoint progress.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
             )
@@ -62,7 +62,7 @@ private fun MissionControls() {
             onClick = AppRuntime::loadDemoMission,
             modifier = Modifier.weight(1f),
         ) {
-            Text("Load demo")
+            Text("Load route")
         }
         OutlinedButton(
             onClick = AppRuntime::startAutoMission,

@@ -1,6 +1,27 @@
 # MAVLab Architecture
 
-MAVLab is planned as a standalone Android-first education simulator.
+MAVLab by Ascend Labs is a phone-based drone digital twin and training platform
+for Android.
+
+## v1.5 Surface Model
+
+The primary app surfaces are `Cockpit`, `Controller`, `Mission`, `SIM`, and
+`Ops`.
+
+- Cockpit is live operations, telemetry, safety state, and MAVLink status.
+- Controller is local/manual control through phone sensors and fallback inputs.
+- Mission is autonomous route execution, QGC uploads, and waypoint progress.
+- SIM is physical behavior visualization.
+- Ops is diagnostics, logs, export staging, QGC setup, and release checks.
+
+State flows through the simulation runtime before it reaches UI surfaces:
+
+```text
+Controller input or QGC command
+  -> PhysicsSimulationEngine / MissionEngine / Autopilot / FailureInjector
+  -> DroneState
+  -> Cockpit + Controller + Mission + SIM + Ops + FlightRecorder
+```
 
 ## Active Phase Order
 

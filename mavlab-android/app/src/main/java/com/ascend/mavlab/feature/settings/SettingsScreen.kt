@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -34,7 +35,10 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun SettingsScreen(modifier: Modifier = Modifier) {
+fun SettingsScreen(
+    modifier: Modifier = Modifier,
+    onReplayOnboarding: () -> Unit = {},
+) {
     val state by AppRuntime.state.collectAsState()
     val mission by AppRuntime.missionProgress.collectAsState()
     val uploadStatus by AppRuntime.missionUploadStatus.collectAsState()
@@ -53,10 +57,20 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
         ) {
             Text("Ops", style = MaterialTheme.typography.headlineMedium)
             Text(
-                text = "MAVLink, QGC, recording, and runtime diagnostics.",
+                text = "Diagnostics, logs, QGC readiness, and export staging for MAVLab operations.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
             )
+            InfoCard(
+                title = "About MAVLab",
+                body = "MAVLab by Ascend Labs is a phone-based drone digital twin and training platform. Cockpit is live operations, Controller is local/manual control, Mission is autonomous route execution, SIM is physical behavior visualization, and Ops is diagnostics, logs, export, and setup.",
+            )
+            Button(
+                onClick = onReplayOnboarding,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Replay onboarding")
+            }
             GcsConnectionIndicator(
                 connected = gcsConnected,
                 identityStatus = identityStatus,

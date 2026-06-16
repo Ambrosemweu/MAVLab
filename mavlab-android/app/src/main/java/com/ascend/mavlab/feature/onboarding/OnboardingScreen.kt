@@ -4,6 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -57,7 +59,7 @@ fun OnboardingScreen(
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
-                            text = "GCS digital twin simulator",
+                            text = "by Ascend Labs",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -75,8 +77,8 @@ fun OnboardingScreen(
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
                         )
-                        FeatureRow(pageIndex)
-                        if (pageIndex == 2) {
+                        FeatureRow(page.chips)
+                        if (page.showQGroundControlAction) {
                             OutlinedButton(
                                 onClick = {
                                     val intent = Intent(
@@ -150,15 +152,13 @@ fun OnboardingScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FeatureRow(pageIndex: Int) {
-    val labels = when (pageIndex) {
-        0 -> listOf("Flight SIM", "MAVLink", "QGC")
-        1 -> listOf("Physics", "Tilt control", "SIM")
-        2 -> listOf("QGC", "UDP", "Telemetry")
-        else -> listOf("Cockpit", "Mission", "Ops")
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun FeatureRow(labels: List<String>) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         labels.forEach { label ->
             Surface(
                 color = MaterialTheme.colorScheme.surfaceVariant,

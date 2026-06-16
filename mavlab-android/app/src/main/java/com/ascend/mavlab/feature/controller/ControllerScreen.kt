@@ -94,7 +94,7 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
         ) {
             Text("Controller", style = MaterialTheme.typography.headlineMedium)
             Text(
-                text = "Phone sensors or custom inputs drive the simulated drone.",
+                text = "Local/manual control for the MAVLab digital twin. QGC missions take authority while AUTO is active.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
             )

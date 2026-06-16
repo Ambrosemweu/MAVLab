@@ -36,13 +36,39 @@ import com.ascend.mavlab.feature.settings.SettingsScreen
 private enum class MavLabTab(
     val label: String,
     val title: String,
+    val description: String,
     val icon: ImageVector,
 ) {
-    Cockpit("Cockpit", "Flight Cockpit", Icons.Filled.Analytics),
-    Controller("Controller", "Phone Flight Controls", Icons.Filled.ControlCamera),
-    Mission("Mission", "GCS Mission", Icons.Filled.Route),
-    Sim("SIM", "3D Flight SIM", Icons.Filled.Height),
-    Ops("Ops", "Operations", Icons.Filled.Settings),
+    Cockpit(
+        label = "Cockpit",
+        title = "Live Operations Cockpit",
+        description = "Telemetry, safety state, mission awareness",
+        icon = Icons.Filled.Analytics,
+    ),
+    Controller(
+        label = "Controller",
+        title = "Local Manual Control",
+        description = "Phone sensors, manual input, quick test controls",
+        icon = Icons.Filled.ControlCamera,
+    ),
+    Mission(
+        label = "Mission",
+        title = "Autonomous Mission Execution",
+        description = "QGC upload, waypoint progress, AUTO control",
+        icon = Icons.Filled.Route,
+    ),
+    Sim(
+        label = "SIM",
+        title = "Physical Behavior Visualization",
+        description = "3D attitude, altitude, motors, mission context",
+        icon = Icons.Filled.Height,
+    ),
+    Ops(
+        label = "Ops",
+        title = "Diagnostics, Logs, Export",
+        description = "MAVLink status, QGC setup, flight review",
+        icon = Icons.Filled.Settings,
+    ),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,9 +98,9 @@ fun MavLabAppShell() {
             TopAppBar(
                 title = {
                     Column {
-                        Text("MAVLab", style = MaterialTheme.typography.titleMedium)
+                        Text("MAVLab by Ascend Labs", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            selectedTab.title,
+                            "${selectedTab.title} - ${selectedTab.description}",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -112,7 +138,13 @@ fun MavLabAppShell() {
             MavLabTab.Controller -> ControllerScreen(modifier)
             MavLabTab.Mission -> MissionScreen(modifier)
             MavLabTab.Sim -> Drone3DScreen(modifier)
-            MavLabTab.Ops -> SettingsScreen(modifier)
+            MavLabTab.Ops -> SettingsScreen(
+                modifier = modifier,
+                onReplayOnboarding = {
+                    preferences.edit().putBoolean("onboarding_complete", false).apply()
+                    onboardingComplete = false
+                },
+            )
         }
     }
 }

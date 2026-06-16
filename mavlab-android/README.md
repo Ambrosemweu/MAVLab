@@ -1,19 +1,27 @@
 # MAVLab Android
 
-MAVLab is a standalone, offline-first drone education simulator for Android.
+MAVLab by Ascend Labs is a phone-based drone digital twin and training platform
+for Android.
 
 ## Current Scope
 
-The app now includes Phase 0-6 functionality:
+The v1.5 app is organized around five MVP surfaces:
+
+- Cockpit: live operations, telemetry, safety state, and MAVLink status
+- Controller: local/manual control with phone sensors and fallback inputs
+- Mission: QGroundControl uploads, autonomous route execution, and waypoint progress
+- SIM: 3D physical behavior visualization
+- Ops: diagnostics, logs, export staging, QGC setup, and release checks
+
+Current implementation includes:
 
 - Android Compose shell and foreground simulation service
-- MAVLink v2 UDP telemetry and basic QGroundControl command handling
+- MAVLink v2 UDP telemetry and QGroundControl command handling
 - Quadcopter physics, motor mixing, PID stabilization, takeoff, landing, battery model
 - Phone tilt controller with calibration and manual fallback controls
 - Telemetry dashboard cards and rolling charts
 - SceneView-based 3D drone model tab
-- Failure Lab and Mission Lab
-- Seven guided lessons
+- Failure, mission, and lesson code retained for reuse under the v1.5 surfaces
 - First-launch onboarding
 - CI and release metadata scaffolding
 
