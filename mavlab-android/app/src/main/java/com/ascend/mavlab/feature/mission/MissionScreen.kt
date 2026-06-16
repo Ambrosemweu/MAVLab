@@ -2,6 +2,8 @@ package com.ascend.mavlab.feature.mission
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -25,6 +28,7 @@ import com.ascend.mavlab.simulation.mission.MissionItem
 import com.ascend.mavlab.simulation.mission.MissionProgress
 import com.ascend.mavlab.simulation.mission.MissionUploadStatus
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MissionScreen(modifier: Modifier = Modifier) {
     val droneState by AppRuntime.state.collectAsState()
@@ -47,7 +51,9 @@ fun MissionScreen(modifier: Modifier = Modifier) {
 
             MissionStatusCard(droneState = droneState, mission = mission, uploadStatus = uploadStatus)
             MissionControls()
-            WaypointList(mission = mission)
+            MissionMonitoringCard(droneState = droneState, mission = mission)
+            WaypointList(droneState = droneState, mission = mission)
+            QgcWorkflowCard(uploadStatus = uploadStatus, mission = mission)
         }
     }
 }
@@ -80,61 +86,110 @@ private fun MissionControls() {
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun MissionStatusCard(
     droneState: DroneState,
     mission: MissionProgress,
     uploadStatus: MissionUploadStatus,
 ) {
+    val progressPercent = missionProgressPercent(mission)
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = if (mission.loaded) {
-                    "Mission loaded"
-                } else {
-                    "No mission loaded"
-                },
-                style = MaterialTheme.typography.titleMedium,
+            Text(missionRunStatus(droneState, mission), style = MaterialTheme.typography.titleMedium)
+            LinearProgressIndicator(
+                progress = { progressPercent / 100f },
+                modifier = Modifier.fillMaxWidth(),
             )
-            Text(
-                text = if (mission.loaded) {
-                    "Progress: ${mission.completedCount}/${mission.items.size}"
-                } else {
-                    "Progress: none"
-                },
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text("Mode: ${droneState.mode.displayName}", style = MaterialTheme.typography.bodyMedium)
-            Text("Control: ${droneState.controlAuthority.displayName}", style = MaterialTheme.typography.bodyMedium)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                MissionMetric("Progress", "${mission.completedCount}/${mission.items.size.coerceAtLeast(1)} reached")
+                MissionMetric("Complete", "$progressPercent%")
+                MissionMetric("Mode", droneState.mode.displayName)
+                MissionMetric("Authority", droneState.controlAuthority.displayName)
+            }
             Text(
                 text = uploadStatus.displayText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.tertiary,
             )
             Text(
-                text = mission.activeTarget?.let {
-                    "Active target: waypoint ${it.sequence + 1}, %.1f m AGL".format(it.altitudeAglMeters)
-                } ?: "Active target: none",
+                text = "Objective: ${missionObjectiveLabel(mission)}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MissionMonitoringCard(
+    droneState: DroneState,
+    mission: MissionProgress,
+) {
+    val distance = missionDistanceToActiveMeters(droneState, mission)
+    val targetSpeed = missionTargetSpeedMetersPerSecond(mission)
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("Mission monitor", style = MaterialTheme.typography.titleMedium)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                MissionMetric("Next distance", distance?.let { "%.1f m".format(it) } ?: "No target")
+                MissionMetric("Ground speed", "%.2f m/s".format(droneState.groundSpeedMS))
+                MissionMetric("Target speed", targetSpeed?.let { "%.1f m/s".format(it) } ?: "Default")
+                MissionMetric("ETA", missionEtaLabel(distance, droneState, targetSpeed))
+                MissionMetric("Vehicle", "N %.1f / E %.1f".format(droneState.northMeters, droneState.eastMeters))
+                MissionMetric("Altitude", "%.1f m AGL".format(droneState.altitudeAglMeters))
+            }
             Text(
-                text = "Vehicle: N %.1f m, E %.1f m, Alt %.1f m".format(
-                    droneState.northMeters,
-                    droneState.eastMeters,
-                    droneState.altitudeAglMeters,
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.76f),
+                text = if (mission.loaded) {
+                    "Replay/export hook: available from Ops after recording or export is enabled."
+                } else {
+                    "Upload a QGC mission or load a demo route to populate replay/export context."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.70f),
             )
         }
     }
 }
 
 @Composable
-private fun WaypointList(mission: MissionProgress) {
+private fun MissionMetric(
+    label: String,
+    value: String,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(label, style = MaterialTheme.typography.labelMedium)
+            Text(value, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@Composable
+private fun WaypointList(
+    droneState: DroneState,
+    mission: MissionProgress,
+) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -151,7 +206,7 @@ private fun WaypointList(mission: MissionProgress) {
             }
 
             mission.items.forEach { item ->
-                WaypointRow(item = item, mission = mission)
+                WaypointRow(item = item, droneState = droneState, mission = mission)
             }
         }
     }
@@ -160,26 +215,58 @@ private fun WaypointList(mission: MissionProgress) {
 @Composable
 private fun WaypointRow(
     item: MissionItem,
+    droneState: DroneState,
     mission: MissionProgress,
 ) {
-    val status = when {
-        mission.complete || item.sequence < mission.currentIndex -> "Reached"
-        item.sequence == mission.currentIndex -> "Active"
-        else -> "Queued"
-    }
+    val status = waypointStatusLabel(item, mission)
+    val distance = distanceToItemMeters(droneState, item)
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
             text = "#${item.sequence + 1} ${item.command.name} - $status",
-            style = MaterialTheme.typography.bodyLarge,
+            style = if (status == "Active") {
+                MaterialTheme.typography.titleSmall
+            } else {
+                MaterialTheme.typography.bodyLarge
+            },
+            color = if (status == "Active") {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
         )
         Text(
-            text = "%.6f, %.6f | %.1f m AGL".format(
-                item.latitudeDeg,
-                item.longitudeDeg,
-                item.altitudeAglMeters,
-            ),
+            text = "${waypointDetailLabel(item)} | %.1f m from vehicle".format(distance),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
         )
+    }
+}
+
+@Composable
+private fun QgcWorkflowCard(
+    uploadStatus: MissionUploadStatus,
+    mission: MissionProgress,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("QGroundControl workflow", style = MaterialTheme.typography.titleMedium)
+            Text("Upload: ${uploadStatus.displayText.removePrefix("Upload: ")}", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = if (mission.loaded) {
+                    "Route visible in-app. AUTO will publish MISSION_CURRENT and reached items while flying."
+                } else {
+                    "Waiting for MISSION_COUNT from QGC or a demo route."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = "Reconnect note: uploaded missions persist locally until Clear is pressed.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.70f),
+            )
+        }
     }
 }

@@ -192,17 +192,17 @@ Relevant test anchors already exist under
 
 ### Phase 4 - SIM / 3D Visualization Upgrade
 
-- [ ] SIM makes telemetry feel physical.
-- [ ] Propellers respond to simulated motor state.
-- [ ] Failed motor/GPS/battery state is visually obvious.
-- [ ] Mission waypoints and home marker are visible when mission exists.
-- [ ] SIM reads from the common simulation state.
+- [x] SIM makes telemetry feel physical.
+- [x] Propellers respond to simulated motor state.
+- [x] Failed motor/GPS/battery state is visually obvious.
+- [x] Mission waypoints and home marker are visible when mission exists.
+- [x] SIM reads from the common simulation state.
 
 ### Phase 5 - Mission View and QGroundControl Workflow Polish
 
-- [ ] User can upload a QGC mission and see it in-app.
-- [ ] User can understand which waypoint is active.
-- [ ] User can explain mission progress using the UI.
+- [x] User can upload a QGC mission and see it in-app.
+- [x] User can understand which waypoint is active.
+- [x] User can explain mission progress using the UI.
 - [ ] Real QGC same-phone and desktop-Wi-Fi tests pass.
 
 ### Phase 6 - Failure Lab / Scenario Explanation Polish
@@ -236,9 +236,9 @@ Relevant test anchors already exist under
   and export.
 - [x] Cockpit shows attitude, altitude, battery, GPS, MAVLink, flight mode,
   armed state, speed, mission item, and authority.
-- [ ] SIM visually reflects drone attitude, altitude, motor state, failures,
+- [x] SIM visually reflects drone attitude, altitude, motor state, failures,
   mission path, waypoints, and home.
-- [ ] Mission tab shows upload status, waypoint list, active waypoint, progress,
+- [x] Mission tab shows upload status, waypoint list, active waypoint, progress,
   distance, speed, ETA, and objective.
 - [ ] Failure presets include explanations, telemetry signatures, operator
   response, and safety lessons.

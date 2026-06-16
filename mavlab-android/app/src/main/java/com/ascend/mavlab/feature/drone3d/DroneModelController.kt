@@ -85,9 +85,9 @@ class DroneModelController {
 
     private companion object {
         const val SceneHorizontalRangeMeters = 45f
-        const val SceneHorizontalMaxOffset = 1.25f
+        const val SceneHorizontalMaxOffset = 0.85f
         const val SceneAltitudeRangeMeters = 28f
-        const val SceneAltitudeMaxOffset = 1.85f
+        const val SceneAltitudeMaxOffset = 1.2f
         const val MinimumAnimatedRpm = 50f
         const val AnimationClipRevolutionsPerMinute = 60f
         const val NanosPerSecond = 1_000_000_000f
