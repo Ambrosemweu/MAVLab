@@ -29,12 +29,18 @@ class FlightRecorderTest {
     fun writesTelemetryHeaderAndRow() {
         withRecorder { recorder, baseDir ->
             recorder.startSession("unit test", sessionId = "test-session")
-            recorder.appendTelemetry(DroneState(armed = true, northMeters = 3f), timestampMs = 2000L)
+            recorder.appendTelemetry(
+                state = DroneState(armed = true, northMeters = 3f),
+                timestampMs = 2000L,
+                activeWaypoint = 2,
+                failureFlags = "motor_failure"
+            )
 
             val lines = baseDir.resolve("mavlab/flights/test-session/telemetry.csv").readLines()
             assertEquals(2, lines.size)
-            assertTrue(lines.first().startsWith("timestampMs,uptimeMs,armed,mode"))
-            assertTrue(lines[1].startsWith("2000,0,true,STABILIZE"))
+            assertTrue(lines.first().startsWith("timestampMs,session_id,uptimeMs,armed,mode"))
+            assertTrue(lines[1].startsWith("2000,test-session,0,true,STABILIZE"))
+            assertTrue(lines[1].contains(",2,motor_failure"))
         }
     }
 
@@ -107,6 +113,70 @@ class FlightRecorderTest {
             assertEquals(2000L, restored.status.value.lastSession?.endedAtMs)
         } finally {
             baseDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun reportsSessionListingNewestFirst() {
+        val baseDir = Files.createTempDirectory("mavlab-flight-recorder-test").toFile()
+        try {
+            val recorder = FlightRecorder(baseDir, clockMs = { 1000L })
+            
+            // Create session 1
+            recorder.startSession("session 1", sessionId = "20260610-100000-000")
+            recorder.closeSession("done 1", endedAtMs = 2000L)
+            
+            // Create session 2
+            val recorderSecond = FlightRecorder(baseDir, clockMs = { 3000L })
+            recorderSecond.startSession("session 2", sessionId = "20260610-110000-000")
+            recorderSecond.closeSession("done 2", endedAtMs = 4000L)
+
+            val sessions = recorderSecond.listSessions()
+            assertEquals(2, sessions.size)
+            assertEquals("20260610-110000-000", sessions[0].id)
+            assertEquals("20260610-100000-000", sessions[1].id)
+        } finally {
+            baseDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun generatesMarkdownReportOnClose() {
+        withRecorder { recorder, baseDir ->
+            recorder.startSession("unit test", sessionId = "test-session")
+            
+            // Append telemetry to ensure max altitude / battery ranges are parsed
+            recorder.appendTelemetry(
+                state = DroneState(armed = true, altitudeAglMeters = 5.5f, batteryRemainingPercent = 90),
+                timestampMs = 1500L
+            )
+            recorder.appendTelemetry(
+                state = DroneState(armed = true, altitudeAglMeters = 10.2f, batteryRemainingPercent = 85),
+                timestampMs = 2000L
+            )
+            recorder.appendTelemetry(
+                state = DroneState(armed = true, altitudeAglMeters = 2.0f, batteryRemainingPercent = 80),
+                timestampMs = 2500L
+            )
+
+            // Inject events to check safety notes and timeline
+            recorder.appendEvent(FlightEvent(1600L, "failure_motor", "motor 1 failure"))
+            recorder.appendEvent(FlightEvent(1700L, "mode_changed", "RTL"))
+
+            recorder.closeSession("done", endedAtMs = 3000L)
+
+            val reportFile = baseDir.resolve("mavlab/flights/test-session/report.md")
+            assertTrue(reportFile.isFile)
+
+            val content = reportFile.readText()
+            assertTrue(content.contains("# MAVLab Flight Report"))
+            assertTrue(content.contains("Session ID:** test-session"))
+            assertTrue(content.contains("Max altitude:** 10.2 m AGL"))
+            assertTrue(content.contains("Battery start:** 90%"))
+            assertTrue(content.contains("Battery end:** 80%"))
+            assertTrue(content.contains("Motor failure was injected"))
+            assertTrue(content.contains("mode_changed"))
+            assertTrue(content.contains("Student / Operator Notes"))
         }
     }
 

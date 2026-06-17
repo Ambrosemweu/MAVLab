@@ -541,6 +541,9 @@ class PhysicsSimulationEngine(
             gpsSatellites = if (failures.gpsEnabled) 12u else 0u,
             headingDegrees = (((state.headingDegrees + headingOffset).toInt() % 360 + 360) % 360).toShort(),
             lastInboundMessage = when {
+                failures.lostLinkActive -> "Lost link active"
+                failures.unsafeMissionReserveActive -> "Unsafe mission reserve"
+                kotlin.math.abs(failures.barometerOffsetMeters) > 0.05f -> "Barometer offset %.1f m".format(failures.barometerOffsetMeters)
                 !failures.gpsEnabled -> "GPS unavailable"
                 failures.hasMotorFailure -> "Motor failure mask ${failures.motorFailureMask}"
                 failures.windSpeedMs > 0f -> "Wind %.1f m/s".format(failures.windSpeedMs)

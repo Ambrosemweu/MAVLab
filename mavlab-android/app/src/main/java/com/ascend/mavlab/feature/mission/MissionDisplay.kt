@@ -2,6 +2,7 @@ package com.ascend.mavlab.feature.mission
 
 import com.ascend.mavlab.simulation.engine.DroneState
 import com.ascend.mavlab.simulation.engine.FlightMode
+import com.ascend.mavlab.simulation.failures.FailureState
 import com.ascend.mavlab.simulation.mission.MissionCommand
 import com.ascend.mavlab.simulation.mission.MissionItem
 import com.ascend.mavlab.simulation.mission.MissionProgress
@@ -80,6 +81,17 @@ internal fun missionEtaLabel(
     return when {
         seconds < 60 -> "${seconds}s"
         else -> "${seconds / 60}m ${seconds % 60}s"
+    }
+}
+
+internal fun missionFailureWarnings(failures: FailureState): List<String> {
+    return buildList {
+        if (!failures.gpsEnabled) add("GPS unavailable: do not start or continue AUTO.")
+        if (failures.lostLinkActive) add("Lost link active: verify GCS control before mission changes.")
+        if (failures.unsafeMissionReserveActive) add("Unsafe reserve: shorten the mission or recharge before AUTO.")
+        if (failures.batteryDrainMultiplier >= 8f) add("Battery drain elevated: preserve landing reserve.")
+        if (failures.windSpeedMs >= 7f) add("Wind drift active: increase waypoint and landing clearance.")
+        if (kotlin.math.abs(failures.barometerOffsetMeters) > 0.05f) add("Barometer offset active: avoid low-altitude autonomous segments.")
     }
 }
 

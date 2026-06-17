@@ -325,7 +325,7 @@ Build these pages:
    - Cockpit, Controller, Mission, SIM, Ops.
 
 4. Connect to QGroundControl.
-   - Explain same-phone split-screen and desktop same-Wi-Fi workflows.
+   - Explain same-phone and desktop same-Wi-Fi workflows.
 
 5. First simulated takeoff.
    - Tell the learner where arm/takeoff/land controls live.

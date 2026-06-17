@@ -48,9 +48,13 @@ object LessonEngine {
             "gps_drift" -> failures.gpsNoiseMultiplier >= 4.5f
             "windy_day" -> failures.windSpeedMs >= 7f
             "motor_failure" -> failures.hasMotorFailure
-            "battery_low" -> failures.batteryDrainMultiplier >= 9f
+            "battery_low" -> failures.batteryDrainMultiplier >= 7.5f
+            "battery_critical" -> failures.batteryDrainMultiplier >= 14f
             "compass_interference" -> kotlin.math.abs(failures.compassOffsetDeg) >= 40f
             "heavy_payload" -> failures.payloadMassKg >= 0.9f
+            "lost_link" -> failures.lostLinkActive
+            "barometer_issue" -> kotlin.math.abs(failures.barometerOffsetMeters) > 0.05f
+            "unsafe_mission_reserve" -> failures.unsafeMissionReserveActive
             else -> false
         }
     }

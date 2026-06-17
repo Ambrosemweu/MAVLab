@@ -18,6 +18,9 @@ data class FailureState(
     val motorFailureMask: Int = 0,
     val batteryDrainMultiplier: Float = 1f,
     val payloadMassKg: Float = 0f,
+    val lostLinkActive: Boolean = false,
+    val barometerOffsetMeters: Float = 0f,
+    val unsafeMissionReserveActive: Boolean = false,
 ) {
     val hasMotorFailure: Boolean get() = motorFailureMask != 0
     val activeCount: Int
@@ -31,6 +34,9 @@ data class FailureState(
             hasMotorFailure,
             batteryDrainMultiplier > 1.05f,
             payloadMassKg > 0.05f,
+            lostLinkActive,
+            kotlin.math.abs(barometerOffsetMeters) > 0.05f,
+            unsafeMissionReserveActive,
         ).count { it }
 }
 
@@ -47,6 +53,9 @@ class FailureInjector {
     fun setWindGustsMs(value: Float) = update { it.copy(windGustsMs = value.coerceIn(0f, 8f)) }
     fun setBatteryDrainMultiplier(value: Float) = update { it.copy(batteryDrainMultiplier = value.coerceIn(1f, 15f)) }
     fun setPayloadMassKg(value: Float) = update { it.copy(payloadMassKg = value.coerceIn(0f, 2.5f)) }
+    fun setLostLinkActive(active: Boolean) = update { it.copy(lostLinkActive = active) }
+    fun setBarometerOffsetMeters(value: Float) = update { it.copy(barometerOffsetMeters = value.coerceIn(-8f, 8f)) }
+    fun setUnsafeMissionReserveActive(active: Boolean) = update { it.copy(unsafeMissionReserveActive = active) }
 
     fun setMotorFailed(index: Int, failed: Boolean) {
         require(index in 0..3) { "Motor index must be 0..3." }

@@ -21,6 +21,7 @@ import com.ascend.mavlab.simulation.mission.MissionUploadStatus
 import com.ascend.mavlab.simulation.recording.FlightEvent
 import com.ascend.mavlab.simulation.recording.FlightRecorder
 import com.ascend.mavlab.simulation.recording.FlightRecordingStatus
+import java.io.File
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sign
@@ -77,6 +78,7 @@ object AppRuntime {
         if (flightRecorder == null) {
             flightRecorder = FlightRecorder(appContext.filesDir)
         }
+        refreshSessionHistory()
         restorePersistedMission(appContext)
         if (mavlinkServer == null) {
             val id = stableSystemId(appContext)
@@ -84,8 +86,14 @@ object AppRuntime {
             mavlinkServer = MavlinkUdpServer(
                 simLoop = simLoop,
                 config = MavlinkSocketConfig(systemId = id),
-                onMissionLoaded = { items -> MissionPersistence.save(appContext, items) },
-                onMissionCleared = { MissionPersistence.clear(appContext) },
+                onMissionLoaded = { items ->
+                    MissionPersistence.save(appContext, items)
+                    recordFailureEvent("mission_upload", "${items.size} items uploaded")
+                },
+                onMissionCleared = {
+                    MissionPersistence.clear(appContext)
+                    recordFailureEvent("mission_cleared", "mission cleared")
+                },
             )
         }
         simLoop.start()
@@ -101,8 +109,46 @@ object AppRuntime {
         phoneSensorJob?.cancel()
         phoneSensorJob = null
         flightRecorder?.closeSession("runtime stopped")
+        refreshSessionHistory()
         syncRecordingStatus()
         simLoop.stop()
+    }
+
+    fun refreshSessionHistory() {
+        val recorder = flightRecorder ?: return
+        val history = recorder.listSessions()
+        val currentStatus = mutableRecordingStatus.value
+        mutableRecordingStatus.value = currentStatus.copy(sessionHistory = history)
+    }
+
+    fun shareSession(context: Context, sessionId: String) {
+        val recorder = flightRecorder ?: return
+        val dir = recorder.sessionDirectory(sessionId) ?: return
+        val files = dir.listFiles() ?: return
+        if (files.isEmpty()) return
+
+        val uris = ArrayList<android.net.Uri>()
+        val authority = "com.ascend.mavlab.fileprovider"
+        for (file in files) {
+            try {
+                val uri = androidx.core.content.FileProvider.getUriForFile(context, authority, file)
+                uris.add(uri)
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+
+        if (uris.isEmpty()) return
+
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
+            type = "*/*"
+            putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, uris)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val chooser = android.content.Intent.createChooser(intent, "Export Session Files").apply {
+            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(chooser)
     }
 
     fun setArmed(armed: Boolean) {
@@ -151,50 +197,77 @@ object AppRuntime {
 
     fun applyFailureScenario(scenario: FailureScenario) {
         simLoop.failureInjector.applyScenario(scenario)
+        recordFailureEvent(scenario.logEventName, "${scenario.title}: ${scenario.affectedState}")
     }
 
     fun resetFailures() {
+        recordFailureEvent("failure_reset", "all failures cleared")
         simLoop.failureInjector.resetAll()
     }
 
     fun setGpsEnabled(enabled: Boolean) {
         simLoop.failureInjector.setGpsEnabled(enabled)
+        recordFailureEvent("failure_manual_gps", "gpsEnabled=$enabled")
     }
 
     fun setGpsNoiseMultiplier(value: Float) {
         simLoop.failureInjector.setGpsNoiseMultiplier(value)
+        recordFailureEvent("failure_manual_gps_noise", "gpsNoiseMultiplier=%.1f".format(value))
     }
 
     fun setCompassEnabled(enabled: Boolean) {
         simLoop.failureInjector.setCompassEnabled(enabled)
+        recordFailureEvent("failure_manual_compass", "compassEnabled=$enabled")
     }
 
     fun setCompassOffsetDeg(value: Float) {
         simLoop.failureInjector.setCompassOffsetDeg(value)
+        recordFailureEvent("failure_manual_compass_offset", "compassOffsetDeg=%.0f".format(value))
     }
 
     fun setWindSpeedMs(value: Float) {
         simLoop.failureInjector.setWindSpeedMs(value)
+        recordFailureEvent("failure_manual_wind_speed", "windSpeedMs=%.1f".format(value))
     }
 
     fun setWindDirectionDeg(value: Float) {
         simLoop.failureInjector.setWindDirectionDeg(value)
+        recordFailureEvent("failure_manual_wind_direction", "windDirectionDeg=%.0f".format(value))
     }
 
     fun setWindGustsMs(value: Float) {
         simLoop.failureInjector.setWindGustsMs(value)
+        recordFailureEvent("failure_manual_wind_gusts", "windGustsMs=%.1f".format(value))
     }
 
     fun setMotorFailed(index: Int, failed: Boolean) {
         simLoop.failureInjector.setMotorFailed(index, failed)
+        recordFailureEvent("failure_manual_motor", "motor=${index + 1}, failed=$failed")
     }
 
     fun setBatteryDrainMultiplier(value: Float) {
         simLoop.failureInjector.setBatteryDrainMultiplier(value)
+        recordFailureEvent("failure_manual_battery", "batteryDrainMultiplier=%.1f".format(value))
     }
 
     fun setPayloadMassKg(value: Float) {
         simLoop.failureInjector.setPayloadMassKg(value)
+        recordFailureEvent("failure_manual_payload", "payloadMassKg=%.1f".format(value))
+    }
+
+    fun setLostLinkActive(active: Boolean) {
+        simLoop.failureInjector.setLostLinkActive(active)
+        recordFailureEvent("failure_manual_lost_link", "lostLinkActive=$active")
+    }
+
+    fun setBarometerOffsetMeters(value: Float) {
+        simLoop.failureInjector.setBarometerOffsetMeters(value)
+        recordFailureEvent("failure_manual_barometer", "barometerOffsetMeters=%.1f".format(value))
+    }
+
+    fun setUnsafeMissionReserveActive(active: Boolean) {
+        simLoop.failureInjector.setUnsafeMissionReserveActive(active)
+        recordFailureEvent("failure_manual_unsafe_reserve", "unsafeMissionReserveActive=$active")
     }
 
     fun loadDemoMission() {
@@ -244,6 +317,11 @@ object AppRuntime {
             var previousMode = state.value.mode
             var previousAuthority = state.value.controlAuthority
             var previousMissionSignature = missionSignature(missionProgress.value)
+            var previousGcsConnected = mavlinkIdentityStatus.value.gcsConnected
+            var previousLastReachedSequence: Int? = null
+            var previousMissionComplete = missionProgress.value.complete
+            var batteryWarned = false
+            var batteryCriticalWarned = false
 
             while (isActive) {
                 val recorder = flightRecorder
@@ -255,14 +333,21 @@ object AppRuntime {
                 val current = state.value
                 val mission = missionProgress.value
                 val currentMissionSignature = missionSignature(mission)
+                val gcsConnected = mavlinkIdentityStatus.value.gcsConnected
                 val sessionActive = recorder.activeSession() != null
 
                 if (current.armed && !sessionActive) {
                     recorder.startSession(recordingStartReason(current))
                     recorder.saveMissionSnapshot(mission)
+                    batteryWarned = false
+                    batteryCriticalWarned = false
+                    previousLastReachedSequence = mission.lastReachedSequence
+                    previousMissionComplete = mission.complete
+                    refreshSessionHistory()
                 }
 
-                if (recorder.activeSession() != null) {
+                val activeSession = recorder.activeSession()
+                if (activeSession != null) {
                     if (!previousArmed && current.armed) {
                         recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "vehicle_armed", current.controlAuthority.displayName))
                     }
@@ -276,21 +361,77 @@ object AppRuntime {
                         recorder.saveMissionSnapshot(mission)
                         recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "mission_snapshot", "${mission.items.size} items"))
                     }
-                    recorder.appendTelemetry(current)
+
+                    // GCS Connection State Changes
+                    if (gcsConnected != previousGcsConnected) {
+                        val eventType = if (gcsConnected) "qgc_connected" else "qgc_disconnected"
+                        val eventMsg = if (gcsConnected) "GCS connected" else "GCS disconnected"
+                        recorder.appendEvent(FlightEvent(System.currentTimeMillis(), eventType, eventMsg))
+                    }
+
+                    // Waypoint Reached / Mission Complete
+                    if (mission.loaded) {
+                        val lastReached = mission.lastReachedSequence
+                        if (lastReached != null && lastReached != previousLastReachedSequence) {
+                            recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "waypoint_reached", "wp=$lastReached"))
+                            previousLastReachedSequence = lastReached
+                        }
+                        if (mission.complete && !previousMissionComplete) {
+                            recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "mission_complete", "all waypoints completed"))
+                        }
+                    }
+
+                    // Battery Warnings
+                    val batPercent = current.batteryRemainingPercent.toInt()
+                    if (batPercent <= 15 && !batteryCriticalWarned) {
+                        recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "battery_warning", "battery critical ($batPercent%)"))
+                        batteryCriticalWarned = true
+                        batteryWarned = true
+                    } else if (batPercent <= 30 && !batteryWarned) {
+                        recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "battery_warning", "battery low ($batPercent%)"))
+                        batteryWarned = true
+                    }
+
+                    val activeWp = if (mission.loaded) mission.currentIndex else -1
+                    val failFlags = formatFailureFlags(failures.value)
+                    recorder.appendTelemetry(current, activeWaypoint = activeWp, failureFlags = failFlags)
                 }
 
                 if (previousArmed && !current.armed) {
                     recorder.closeSession("vehicle disarmed")
+                    refreshSessionHistory()
                 }
 
                 previousArmed = current.armed
                 previousMode = current.mode
                 previousAuthority = current.controlAuthority
                 previousMissionSignature = currentMissionSignature
+                previousGcsConnected = gcsConnected
+                if (activeSession != null) {
+                    previousLastReachedSequence = mission.lastReachedSequence
+                    previousMissionComplete = mission.complete
+                }
                 syncRecordingStatus()
                 delay(RecordingSampleMs)
             }
         }
+    }
+
+    private fun formatFailureFlags(state: FailureState): String {
+        val flags = mutableListOf<String>()
+        if (!state.gpsEnabled) flags.add("gps_loss")
+        if (state.gpsNoiseMultiplier > 1.05f) flags.add("gps_drift")
+        if (!state.compassEnabled) flags.add("compass_loss")
+        if (abs(state.compassOffsetDeg) > 0.5f) flags.add("compass_offset")
+        if (state.windSpeedMs > 0.05f) flags.add("wind_speed")
+        if (state.windGustsMs > 0.05f) flags.add("wind_gusts")
+        if (state.hasMotorFailure) flags.add("motor_failure")
+        if (state.batteryDrainMultiplier > 1.05f) flags.add("battery_drain")
+        if (state.payloadMassKg > 0.05f) flags.add("heavy_payload")
+        if (state.lostLinkActive) flags.add("lost_link")
+        if (abs(state.barometerOffsetMeters) > 0.05f) flags.add("barometer_offset")
+        if (state.unsafeMissionReserveActive) flags.add("unsafe_mission_reserve")
+        return flags.joinToString(";")
     }
 
     private fun startPhoneSensorMonitor(context: Context) {
@@ -341,6 +482,11 @@ object AppRuntime {
 
     private fun syncRecordingStatus() {
         flightRecorder?.let { mutableRecordingStatus.value = it.status.value }
+    }
+
+    private fun recordFailureEvent(type: String, message: String) {
+        flightRecorder?.appendEvent(FlightEvent(System.currentTimeMillis(), type, message))
+        syncRecordingStatus()
     }
 
     private fun recordingStartReason(state: com.ascend.mavlab.simulation.engine.DroneState): String {

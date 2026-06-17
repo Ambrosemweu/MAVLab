@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ascend.mavlab.core.common.AppRuntime
 import com.ascend.mavlab.simulation.engine.DroneState
+import com.ascend.mavlab.simulation.failures.FailureState
 import com.ascend.mavlab.simulation.mission.MissionItem
 import com.ascend.mavlab.simulation.mission.MissionProgress
 import com.ascend.mavlab.simulation.mission.MissionUploadStatus
@@ -34,6 +35,7 @@ fun MissionScreen(modifier: Modifier = Modifier) {
     val droneState by AppRuntime.state.collectAsState()
     val mission by AppRuntime.missionProgress.collectAsState()
     val uploadStatus by AppRuntime.missionUploadStatus.collectAsState()
+    val failures by AppRuntime.failures.collectAsState()
 
     Surface(modifier = modifier.fillMaxSize()) {
         Column(
@@ -50,10 +52,32 @@ fun MissionScreen(modifier: Modifier = Modifier) {
             )
 
             MissionStatusCard(droneState = droneState, mission = mission, uploadStatus = uploadStatus)
+            MissionFailureWarningsCard(failures = failures)
             MissionControls()
             MissionMonitoringCard(droneState = droneState, mission = mission)
             WaypointList(droneState = droneState, mission = mission)
             QgcWorkflowCard(uploadStatus = uploadStatus, mission = mission)
+        }
+    }
+}
+
+@Composable
+private fun MissionFailureWarningsCard(failures: FailureState) {
+    val warnings = missionFailureWarnings(failures)
+    if (warnings.isEmpty()) return
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Mission safety warnings", style = MaterialTheme.typography.titleMedium)
+            warnings.forEach { warning ->
+                Text(
+                    text = warning,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
     }
 }

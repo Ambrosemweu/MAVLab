@@ -2,6 +2,7 @@ package com.ascend.mavlab.feature.mission
 
 import com.ascend.mavlab.simulation.engine.DroneState
 import com.ascend.mavlab.simulation.engine.FlightMode
+import com.ascend.mavlab.simulation.failures.FailureState
 import com.ascend.mavlab.simulation.mission.MissionCommand
 import com.ascend.mavlab.simulation.mission.MissionItem
 import com.ascend.mavlab.simulation.mission.MissionProgress
@@ -69,6 +70,26 @@ class MissionDisplayTest {
 
         assertEquals("N 12.5 m, E -4.0 m", waypointCoordinateLabel(item))
         assertEquals("N 12.5 m, E -4.0 m | 10.0 m AGL | target 6.3 m/s", waypointDetailLabel(item))
+    }
+
+    @Test
+    fun missionFailureWarningsOnlyShowMissionRelevantFailures() {
+        assertEquals(emptyList(), missionFailureWarnings(FailureState()))
+
+        val warnings = missionFailureWarnings(
+            FailureState(
+                gpsEnabled = false,
+                lostLinkActive = true,
+                unsafeMissionReserveActive = true,
+                barometerOffsetMeters = 3f,
+            ),
+        )
+
+        assertEquals(4, warnings.size)
+        assertEquals("GPS unavailable: do not start or continue AUTO.", warnings[0])
+        assertEquals("Lost link active: verify GCS control before mission changes.", warnings[1])
+        assertEquals("Unsafe reserve: shorten the mission or recharge before AUTO.", warnings[2])
+        assertEquals("Barometer offset active: avoid low-altitude autonomous segments.", warnings[3])
     }
 
     private fun missionItem(

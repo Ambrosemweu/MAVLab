@@ -38,6 +38,7 @@ import com.ascend.mavlab.core.ui.components.TelemetryCard
 import com.ascend.mavlab.feature.drone3d.AltitudeInstrument
 import com.ascend.mavlab.simulation.engine.DroneState
 import com.ascend.mavlab.simulation.engine.FlightMode
+import com.ascend.mavlab.simulation.failures.FailureState
 import com.ascend.mavlab.simulation.mission.MissionProgress
 import com.ascend.mavlab.simulation.mission.MissionUploadStatus
 import kotlinx.coroutines.delay
@@ -53,6 +54,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
     val uploadStatus by AppRuntime.missionUploadStatus.collectAsState()
     val recording by AppRuntime.recordingStatus.collectAsState()
     val identityStatus by AppRuntime.mavlinkIdentityStatus.collectAsState()
+    val failures by AppRuntime.failures.collectAsState()
     val sensorSource by AppRuntime.phoneSensorSource.collectAsState()
     val sensorOrientation by AppRuntime.phoneSensorOrientation.collectAsState()
     val usePhoneAttitude = shouldUsePhoneAttitudeForCockpit(sensorSource, state, mission)
@@ -92,6 +94,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
             CockpitStatusStrip(
                 state = state,
                 mavlinkLabel = mavlinkStatusLabel(status, identityStatus),
+                failures = failures,
             )
             PrimaryInstruments(
                 state = state,
@@ -115,6 +118,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
                 TelemetryCard("Mode", state.mode.displayName, Modifier.weight(1f), accent = true)
                 TelemetryCard("Control", state.controlAuthority.displayName, Modifier.weight(1f), accent = true)
                 TelemetryCard("Recording", if (recording.active) "Active" else "Idle", Modifier.weight(1f), accent = recording.active)
+                TelemetryCard("Failures", failureStatusLabel(failures), Modifier.weight(1f), accent = failures.activeCount > 0)
                 TelemetryCard("Armed", if (state.armed) "Yes" else "No", Modifier.weight(1f))
                 TelemetryCard("Ground speed", "%.2f m/s".format(state.groundSpeedMS), Modifier.weight(1f))
                 TelemetryCard("Vertical speed", "%.2f m/s".format(state.verticalSpeedMS), Modifier.weight(1f))
@@ -155,6 +159,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
 private fun CockpitStatusStrip(
     state: DroneState,
     mavlinkLabel: String,
+    failures: FailureState,
 ) {
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
@@ -190,6 +195,11 @@ private fun CockpitStatusStrip(
             label = "MAVLink",
             value = mavlinkLabel,
             color = if (mavlinkLabel == "QGC connected") SafeGreen else MaterialTheme.colorScheme.outline,
+        )
+        StatusPill(
+            label = "Failures",
+            value = failureStatusLabel(failures),
+            color = if (failures.activeCount > 0) CriticalRed else SafeGreen,
         )
     }
 }
@@ -435,6 +445,10 @@ private fun degreesValue(radians: Float): Float = radians * 180f / PI.toFloat()
 
 private fun rpmSummary(state: DroneState): String {
     return state.motors.joinToString(" / ") { "%.0f".format(it.rpm) }
+}
+
+private fun failureStatusLabel(failures: FailureState): String {
+    return if (failures.activeCount == 0) "Clear" else "${failures.activeCount} active"
 }
 
 @Composable

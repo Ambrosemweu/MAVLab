@@ -1,19 +1,29 @@
 package com.ascend.mavlab.feature.labs
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
@@ -23,6 +33,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -40,6 +53,9 @@ fun LabsScreen(modifier: Modifier = Modifier) {
     val failures by AppRuntime.failures.collectAsState()
     val mission by AppRuntime.missionProgress.collectAsState()
 
+    var catalogExpanded by remember { mutableStateOf(false) }
+    val activeScenarioCount = FailureScenarios.count { isScenarioActive(it, failures) }
+
     Surface(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -53,14 +69,56 @@ fun LabsScreen(modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+
+            // Collapsible scenario catalog header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                FailureScenarios.forEach { scenario ->
-                    ScenarioChip(scenario)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Scenario Catalog",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    if (activeScenarioCount > 0) {
+                        Text(
+                            text = "$activeScenarioCount active",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+                OutlinedButton(onClick = { catalogExpanded = !catalogExpanded }) {
+                    Icon(
+                        imageVector = if (catalogExpanded) Icons.Filled.KeyboardArrowUp
+                        else Icons.Filled.KeyboardArrowDown,
+                        contentDescription = if (catalogExpanded) "Collapse" else "Expand",
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(if (catalogExpanded) "Hide" else "Show")
                 }
             }
+
+            AnimatedVisibility(
+                visible = catalogExpanded,
+                enter = expandVertically(),
+                exit = shrinkVertically(),
+            ) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FailureScenarios.forEach { scenario ->
+                        ScenarioChip(
+                            scenario = scenario,
+                            isActive = isScenarioActive(scenario, failures),
+                        )
+                    }
+                }
+            }
+
             Button(onClick = AppRuntime::resetFailures) {
                 Text("Reset all failures")
             }
@@ -74,11 +132,37 @@ fun LabsScreen(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ScenarioChip(scenario: FailureScenario) {
+private fun ScenarioChip(scenario: FailureScenario, isActive: Boolean) {
     FilterChip(
-        selected = false,
+        selected = isActive,
         onClick = { AppRuntime.applyFailureScenario(scenario) },
-        label = { Text(scenario.title) },
+        label = {
+            Text(
+                text = if (isActive) "● ${scenario.title}" else scenario.title,
+            )
+        },
+        colors = if (isActive) {
+            FilterChipDefaults.filterChipColors(
+                selectedContainerColor = when (scenario.severity) {
+                    com.ascend.mavlab.simulation.failures.FailureSeverity.Critical ->
+                        MaterialTheme.colorScheme.errorContainer
+                    com.ascend.mavlab.simulation.failures.FailureSeverity.Warning ->
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    com.ascend.mavlab.simulation.failures.FailureSeverity.Caution ->
+                        MaterialTheme.colorScheme.secondaryContainer
+                },
+                selectedLabelColor = when (scenario.severity) {
+                    com.ascend.mavlab.simulation.failures.FailureSeverity.Critical ->
+                        MaterialTheme.colorScheme.onErrorContainer
+                    com.ascend.mavlab.simulation.failures.FailureSeverity.Warning ->
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                    com.ascend.mavlab.simulation.failures.FailureSeverity.Caution ->
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                },
+            )
+        } else {
+            FilterChipDefaults.filterChipColors()
+        },
     )
 }
 
@@ -315,4 +399,21 @@ private fun MissionStatusCard(
 
 private fun gpsLabel(state: DroneState): String {
     return if (state.gpsFixType.toInt() >= 3) "3D" else "Lost"
+}
+
+private fun isScenarioActive(scenario: FailureScenario, state: FailureState): Boolean {
+    return when (scenario.id) {
+        "gps_loss" -> !state.gpsEnabled
+        "gps_drift" -> state.gpsNoiseMultiplier > 1.05f
+        "windy_day" -> state.windSpeedMs > 0.05f
+        "motor_failure" -> state.hasMotorFailure
+        "battery_low" -> state.batteryDrainMultiplier in 6f..10f
+        "battery_critical" -> state.batteryDrainMultiplier > 10f
+        "compass_interference" -> kotlin.math.abs(state.compassOffsetDeg) > 0.5f
+        "heavy_payload" -> state.payloadMassKg > 0.05f
+        "lost_link" -> state.lostLinkActive
+        "barometer_issue" -> kotlin.math.abs(state.barometerOffsetMeters) > 0.05f
+        "unsafe_mission_reserve" -> state.unsafeMissionReserveActive
+        else -> false
+    }
 }

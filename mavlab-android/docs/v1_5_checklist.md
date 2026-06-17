@@ -207,10 +207,10 @@ Relevant test anchors already exist under
 
 ### Phase 6 - Failure Lab / Scenario Explanation Polish
 
-- [ ] Each failure teaches, not just breaks the drone.
-- [ ] Active failures are visible in Cockpit and SIM.
-- [ ] Flight logs capture failure injection/restoration events.
-- [ ] Failure reset works reliably.
+- [x] Each failure teaches, not just breaks the drone.
+- [x] Active failures are visible in Cockpit and SIM.
+- [x] Flight logs capture failure injection/restoration events.
+- [x] Failure reset works reliably.
 
 ### Phase 7 - Flight Logging, Export, and Review
 
