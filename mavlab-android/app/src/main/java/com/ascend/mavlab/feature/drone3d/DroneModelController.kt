@@ -5,6 +5,7 @@ import io.github.sceneview.math.Position
 import io.github.sceneview.math.Rotation
 import io.github.sceneview.node.ModelNode
 import kotlin.math.PI
+import kotlin.math.ln
 import kotlin.math.tanh
 
 class DroneModelController {
@@ -43,7 +44,15 @@ class DroneModelController {
             .filter { !it.failed && it.rpm > MinimumAnimatedRpm }
             .map { it.rpm.coerceAtLeast(0f) }
         if (activeRpm.isEmpty()) return 0f
-        return activeRpm.average().toFloat() / AnimationClipRevolutionsPerMinute
+        val linearScale = activeRpm.average().toFloat() / AnimationClipRevolutionsPerMinute
+        // Cap the visual speed to prevent stroboscopic aliasing (wagon-wheel effect)
+        // on typical 60fps displays. Above the threshold, scale logarithmically so
+        // higher RPMs still look perceptibly faster without phase-wrapping artifacts.
+        return if (linearScale <= MaxLinearAnimationSpeed) {
+            linearScale
+        } else {
+            MaxLinearAnimationSpeed + LogarithmicSpeedGain * ln(linearScale / MaxLinearAnimationSpeed)
+        }
     }
 
     fun applyPropellerAnimation(modelNode: ModelNode, state: DroneState, animationName: String, frameTimeNanos: Long) {
@@ -90,6 +99,10 @@ class DroneModelController {
         const val SceneAltitudeMaxOffset = 1.2f
         const val MinimumAnimatedRpm = 50f
         const val AnimationClipRevolutionsPerMinute = 60f
+        // At 60fps, MaxLinearAnimationSpeed of 18 advances ~0.30 of the animation
+        // per frame — fast visible spin without aliasing.
+        const val MaxLinearAnimationSpeed = 18f
+        const val LogarithmicSpeedGain = 3f
         const val NanosPerSecond = 1_000_000_000f
         const val MaxFrameDeltaSeconds = 0.1f
         const val MinimumAnimationDurationSeconds = 0.001f

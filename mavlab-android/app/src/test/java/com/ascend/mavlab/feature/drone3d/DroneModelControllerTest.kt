@@ -26,13 +26,27 @@ class DroneModelControllerTest {
     }
 
     @Test
-    fun propellerAnimationSpeedPreservesHighRecordedRpmScale() {
+    fun propellerAnimationSpeedCapsHighRpmToPreventAliasing() {
         val state = DroneState(
             armed = true,
             motors = List(4) { MotorTelemetry(rpm = 6_000f) },
         )
+        val speed = controller.propAnimationSpeed(state)
+        // At 6000 RPM, linear scale would be 100 (6000/60).
+        // With capping: 18 + 3 * ln(100/18) ≈ 23.1
+        // Must be well below the uncapped 100 and within the anti-aliased range.
+        assertTrue(speed > 18f, "Speed should be above linear cap threshold")
+        assertTrue(speed < 30f, "Speed should be logarithmically capped")
+    }
 
-        assertEquals(100f, controller.propAnimationSpeed(state))
+    @Test
+    fun propellerAnimationSpeedIsLinearBelowCap() {
+        val state = DroneState(
+            armed = true,
+            motors = List(4) { MotorTelemetry(rpm = 600f) },
+        )
+        // 600 RPM → linearScale = 10, below the 18 cap → stays linear
+        assertEquals(10f, controller.propAnimationSpeed(state))
     }
 
     @Test
