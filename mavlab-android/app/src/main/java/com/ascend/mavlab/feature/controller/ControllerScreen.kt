@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ascend.mavlab.core.common.AppRuntime
+import kotlinx.coroutines.delay
 import com.ascend.mavlab.core.sensors.OrientationData
 import com.ascend.mavlab.core.sensors.OrientationSource
 import com.ascend.mavlab.simulation.autopilot.PilotInput
@@ -65,9 +66,67 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
     var manualYaw by remember { mutableFloatStateOf(0f) }
     var directRpm by remember { mutableFloatStateOf(0f) }
     var advancedExpanded by remember { mutableStateOf(false) }
+    var isDetectingArmedRpm by remember { mutableStateOf(false) }
+    var wasArmed by remember { mutableStateOf(state.armed) }
 
-    LaunchedEffect(inputMode, inputPaused, directRpm) {
-        if (inputMode == ControllerInputMode.DIRECT_RPM && !inputPaused) {
+    // Detect arming transitions or disarming when in DIRECT_RPM mode
+    LaunchedEffect(state.armed, inputMode) {
+        if (inputMode == ControllerInputMode.DIRECT_RPM) {
+            if (state.armed) {
+                if (!wasArmed) {
+                    // Just armed: trigger detection
+                    isDetectingArmedRpm = true
+                }
+            } else {
+                // Disarmed: reset
+                directRpm = 0f
+                isDetectingArmedRpm = false
+            }
+        }
+        wasArmed = state.armed
+    }
+
+    // Initialize/detect RPM on switching to DIRECT_RPM mode
+    LaunchedEffect(inputMode) {
+        if (inputMode == ControllerInputMode.DIRECT_RPM) {
+            if (state.armed) {
+                val currentRpm = state.motors.map { it.rpm }.average().toFloat()
+                if (currentRpm > 100f) {
+                    directRpm = currentRpm
+                } else {
+                    // Try to detect it dynamically if it spins up shortly
+                    isDetectingArmedRpm = true
+                }
+            } else {
+                directRpm = 0f
+            }
+        }
+    }
+
+    // Monitor motor speeds while detecting arming RPM
+    LaunchedEffect(state.motors, isDetectingArmedRpm) {
+        if (isDetectingArmedRpm) {
+            val currentRpm = state.motors.map { it.rpm }.average().toFloat()
+            if (currentRpm > 100f) {
+                directRpm = currentRpm
+                isDetectingArmedRpm = false
+            }
+        }
+    }
+
+    // Safety timeout for arming detection (e.g. if armed in Stabilize mode with 0 throttle)
+    LaunchedEffect(isDetectingArmedRpm) {
+        if (isDetectingArmedRpm) {
+            delay(500L)
+            if (isDetectingArmedRpm) {
+                isDetectingArmedRpm = false
+            }
+        }
+    }
+
+    // Apply the speed override
+    LaunchedEffect(inputMode, inputPaused, directRpm, isDetectingArmedRpm) {
+        if (inputMode == ControllerInputMode.DIRECT_RPM && !inputPaused && !isDetectingArmedRpm) {
             AppRuntime.setMotorSpeedOverrideRpm(directRpm)
         } else {
             AppRuntime.setMotorSpeedOverrideRpm(null)
