@@ -46,6 +46,7 @@ object AppRuntime {
     private val mutablePhoneSensorRawOrientation = MutableStateFlow(OrientationData())
     private val mutablePhoneSensorOrientation = MutableStateFlow(OrientationData())
     private val mutablePhoneSensorPilotInput = MutableStateFlow(PilotInput(throttle = 0.5f))
+    private val mutableMotorSpeedOverrideRpm = MutableStateFlow<Float?>(null)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var mavlinkServer: MavlinkUdpServer? = null
     private var flightRecorder: FlightRecorder? = null
@@ -66,6 +67,7 @@ object AppRuntime {
     val phoneSensorSource: StateFlow<OrientationSource> = mutablePhoneSensorSource.asStateFlow()
     val phoneSensorOrientation: StateFlow<OrientationData> = mutablePhoneSensorOrientation.asStateFlow()
     val phoneSensorPilotInput: StateFlow<PilotInput> = mutablePhoneSensorPilotInput.asStateFlow()
+    val motorSpeedOverrideRpm: StateFlow<Float?> = mutableMotorSpeedOverrideRpm.asStateFlow()
     val status: StateFlow<String>
         get() = mavlinkServer?.status ?: fallbackStatus.asStateFlow()
     val mavlinkIdentityStatus: StateFlow<MavlinkIdentityStatus>
@@ -213,6 +215,16 @@ object AppRuntime {
     fun resetBattery() {
         simLoop.resetBattery()
         recordFailureEvent("battery_reset", "battery recharged to 100%")
+    }
+
+    fun setMotorSpeedOverrideRpm(rpm: Float?) {
+        mutableMotorSpeedOverrideRpm.value = rpm
+        simLoop.setMotorSpeedOverrideRpm(rpm)
+        if (rpm != null) {
+            recordFailureEvent("motor_rpm_override", "motor RPM override set to ${rpm.toInt()} RPM")
+        } else {
+            recordFailureEvent("motor_rpm_override_cleared", "motor RPM override cleared")
+        }
     }
 
     fun setGpsEnabled(enabled: Boolean) {

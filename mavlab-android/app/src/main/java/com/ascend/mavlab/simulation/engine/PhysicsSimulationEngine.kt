@@ -52,6 +52,8 @@ class PhysicsSimulationEngine(
     private var batteryUsedWh = 0f
     private var homeNorthMeters = 0f
     private var homeEastMeters = 0f
+    @Volatile
+    private var motorSpeedOverrideRpm: Float? = null
     private var homeAltitudeMeters = 0f
     private var loiterNorthMeters = 0f
     private var loiterEastMeters = 0f
@@ -95,6 +97,10 @@ class PhysicsSimulationEngine(
                 .toUInt()
                 .toUShort()
         )
+    }
+
+    fun setMotorSpeedOverrideRpm(rpm: Float?) {
+        motorSpeedOverrideRpm = rpm
     }
 
     fun setArmed(
@@ -390,15 +396,28 @@ class PhysicsSimulationEngine(
         val failures = failureInjector.state.value
         val navigationInput = activePilotInput(current, dt)
         val output = autopilot.computeMotorOutput(current, navigationInput, dt)
-        val failedMotorSpeeds = failureInjector.applyMotorFailures(output.speeds)
+        val overrideRpm = motorSpeedOverrideRpm
+        val baseMotorSpeeds = if (overrideRpm != null) {
+            val radS = overrideRpm * (2f * PI.toFloat()) / 60f
+            FloatArray(4) { radS }
+        } else {
+            output.speeds
+        }
+        val failedMotorSpeeds = failureInjector.applyMotorFailures(baseMotorSpeeds)
         val motorTelemetry = motorTelemetry(
-            commandedSpeeds = output.speeds,
+            commandedSpeeds = baseMotorSpeeds,
             postFailureSpeeds = failedMotorSpeeds,
             failures = failures,
         )
         val environment = EnvironmentModel(windNedMS = failureInjector.windVectorNed())
         val physicsState = physics.step(current, failedMotorSpeeds, dt, environment)
-        val batteryState = updateBattery(physicsState, output.throttle, dt, failures)
+        val effectiveThrottle = if (overrideRpm != null) {
+            val radS = overrideRpm * (2f * PI.toFloat()) / 60f
+            (radS / params.motorMaxSpeedRadS).coerceIn(0f, 1f)
+        } else {
+            output.throttle
+        }
+        val batteryState = updateBattery(physicsState, effectiveThrottle, dt, failures)
         val nowMs = System.currentTimeMillis()
 
         val simulatedState = batteryState.copy(

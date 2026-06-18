@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ascend.mavlab.core.common.AppRuntime
@@ -37,6 +38,7 @@ import com.ascend.mavlab.simulation.autopilot.PilotInput
 import com.ascend.mavlab.simulation.engine.ControlAuthority
 import com.ascend.mavlab.simulation.engine.FlightMode
 import com.ascend.mavlab.simulation.failures.FailureState
+import com.ascend.mavlab.simulation.engine.MotorTelemetry
 import kotlin.math.PI
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -61,7 +63,16 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
     var manualRoll by remember { mutableFloatStateOf(0f) }
     var manualPitch by remember { mutableFloatStateOf(0f) }
     var manualYaw by remember { mutableFloatStateOf(0f) }
+    var directRpm by remember { mutableFloatStateOf(0f) }
     var advancedExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(inputMode, inputPaused, directRpm) {
+        if (inputMode == ControllerInputMode.DIRECT_RPM && !inputPaused) {
+            AppRuntime.setMotorSpeedOverrideRpm(directRpm)
+        } else {
+            AppRuntime.setMotorSpeedOverrideRpm(null)
+        }
+    }
 
     LaunchedEffect(inputMode, inputPaused, throttle, manualYaw, sensorAvailable) {
         val enabled = inputMode == ControllerInputMode.PHONE_SENSORS && sensorAvailable && !inputPaused
@@ -159,6 +170,12 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
                     onRollChange = { manualRoll = it },
                     onPitchChange = { manualPitch = it },
                     onYawChange = { manualYaw = it },
+                )
+                ControllerInputMode.DIRECT_RPM -> DirectRpmControls(
+                    rpm = directRpm,
+                    motorTelemetry = state.motors,
+                    inputPaused = inputPaused,
+                    onRpmChange = { directRpm = it },
                 )
             }
 
@@ -315,6 +332,61 @@ private fun CustomInputControls(
             ControlSlider("Roll", roll, normalizedLabel(roll), -1f, 1f, !inputPaused, onRollChange)
             ControlSlider("Pitch", pitch, normalizedLabel(pitch), -1f, 1f, !inputPaused, onPitchChange)
             ControlSlider("Yaw", yaw, normalizedLabel(yaw), -1f, 1f, !inputPaused, onYawChange)
+        }
+    }
+}
+
+@Composable
+private fun DirectRpmControls(
+    rpm: Float,
+    motorTelemetry: List<MotorTelemetry>,
+    inputPaused: Boolean,
+    onRpmChange: (Float) -> Unit,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Direct Motor RPM Control", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "Bypass the autopilot and set the spin rate of all 4 motors directly. Useful for motor bench testing.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            ControlSlider(
+                label = "Target RPM",
+                value = rpm,
+                valueLabel = "${rpm.toInt()} RPM",
+                min = 0f,
+                max = 10000f,
+                enabled = !inputPaused,
+                onValueChange = onRpmChange
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+            Text("Motor Status (Telemetry)", style = MaterialTheme.typography.labelMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                motorTelemetry.forEachIndexed { index, motor ->
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("M${index + 1}", style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            text = "${motor.rpm.toInt()}",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = if (motor.failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        )
+                        Text("RPM", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
         }
     }
 }
