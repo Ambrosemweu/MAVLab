@@ -28,6 +28,12 @@ class SimulationService : Service() {
         super.onDestroy()
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        AppRuntime.stop()
+        stopSelf()
+        super.onTaskRemoved(rootIntent)
+    }
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(

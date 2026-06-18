@@ -22,4 +22,11 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onDestroy() {
+        if (isFinishing) {
+            stopService(Intent(this, SimulationService::class.java))
+        }
+        super.onDestroy()
+    }
 }
