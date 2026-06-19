@@ -5,8 +5,12 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 jobs:
   release:
+    if: github.repository == 'Labs-Ascend/MAVLab'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -18,10 +22,30 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
-      - name: Build release bundle
-        run: ./gradlew bundleRelease
-      - name: Upload release bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: mavlab-release-aab
-          path: mavlab-android/app/build/outputs/bundle/release/app-release.aab
+      - name: Verify release tag
+        run: |
+          expected_tag="v$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts)"
+          if [ "${GITHUB_REF_NAME}" != "${expected_tag}" ]; then
+            echo "Release tag ${GITHUB_REF_NAME} does not match app version ${expected_tag}." >&2
+            exit 1
+          fi
+      - name: Verify and build release artifacts
+        run: ./gradlew lintDebug testDebugUnitTest assembleDebug bundleRelease
+      - name: Prepare release assets
+        run: |
+          mkdir -p "${GITHUB_WORKSPACE}/release-artifacts"
+          cp app/build/outputs/apk/debug/MAVlab.apk \
+            "${GITHUB_WORKSPACE}/release-artifacts/MAVLab-${GITHUB_REF_NAME}.apk"
+          cp app/build/outputs/bundle/release/app-release.aab \
+            "${GITHUB_WORKSPACE}/release-artifacts/MAVLab-${GITHUB_REF_NAME}.aab"
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            "${GITHUB_WORKSPACE}/release-artifacts/MAVLab-${GITHUB_REF_NAME}.apk" \
+            "${GITHUB_WORKSPACE}/release-artifacts/MAVLab-${GITHUB_REF_NAME}.aab" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "MAVLab ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            --verify-tag

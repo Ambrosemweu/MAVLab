@@ -12,8 +12,8 @@ android {
         applicationId = "com.ascend.mavlab"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 15
+        versionName = "1.5.0"
     }
 
     buildFeatures {
