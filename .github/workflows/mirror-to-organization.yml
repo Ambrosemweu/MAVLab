@@ -1,0 +1,53 @@
+name: Mirror to Labs Ascend
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "**"
+  delete:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-to-labs-ascend
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    if: github.repository == 'Ambrosemweu/Drone-SIM'
+    runs-on: ubuntu-latest
+    env:
+      MIRROR_TOKEN: ${{ secrets.MAVLAB_MIRROR_TOKEN }}
+      TARGET_REPOSITORY: Labs-Ascend/MAVLab
+    steps:
+      - name: Check mirror credentials
+        id: credentials
+        run: |
+          if [ -z "${MIRROR_TOKEN}" ]; then
+            echo "::warning::Add the MAVLAB_MIRROR_TOKEN Actions secret to Ambrosemweu/Drone-SIM."
+            echo "configured=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "configured=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Mirror branches and tags
+        if: steps.credentials.outputs.configured == 'true'
+        env:
+          SOURCE_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          git init --bare repository.git
+          git -C repository.git remote add source \
+            "https://x-access-token:${SOURCE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git -C repository.git fetch --prune source \
+            "+refs/heads/*:refs/heads/*" \
+            "+refs/tags/*:refs/tags/*"
+          git -C repository.git push --prune \
+            "https://x-access-token:${MIRROR_TOKEN}@github.com/${TARGET_REPOSITORY}.git" \
+            "+refs/heads/*:refs/heads/*" \
+            "+refs/tags/*:refs/tags/*"
