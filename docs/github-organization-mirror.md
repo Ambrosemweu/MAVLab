@@ -2,7 +2,7 @@
 
 The `Mirror to Labs Ascend` workflow keeps:
 
-- Source: `Ambrosemweu/Drone-SIM`
+- Source: `Ambrosemweu/MAVLab`
 - Mirror: `Labs-Ascend/MAVLab`
 
 in sync after branch pushes, tag pushes, and branch or tag deletions.
@@ -14,7 +14,7 @@ in sync after branch pushes, tag pushes, and branch or tag deletions.
 2. Grant the token repository `Contents: Read and write` permission. Also grant
    workflow-file write permission if GitHub presents it separately.
 3. If the organization uses SAML SSO, authorize the token for `Labs-Ascend`.
-4. In `Ambrosemweu/Drone-SIM`, open **Settings > Secrets and variables >
+4. In `Ambrosemweu/MAVLab`, open **Settings > Secrets and variables >
    Actions**.
 5. Add a repository secret named `MAVLAB_MIRROR_TOKEN`.
 6. Open **Actions > Mirror to Labs Ascend** and run the workflow once.

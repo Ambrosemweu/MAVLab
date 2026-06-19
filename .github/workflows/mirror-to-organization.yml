@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   mirror:
-    if: github.repository == 'Ambrosemweu/Drone-SIM'
+    if: github.repository == 'Ambrosemweu/MAVLab'
     runs-on: ubuntu-latest
     env:
       MIRROR_TOKEN: ${{ secrets.MAVLAB_MIRROR_TOKEN }}
@@ -28,7 +28,7 @@ jobs:
         id: credentials
         run: |
           if [ -z "${MIRROR_TOKEN}" ]; then
-            echo "::warning::Add the MAVLAB_MIRROR_TOKEN Actions secret to Ambrosemweu/Drone-SIM."
+            echo "::warning::Add the MAVLAB_MIRROR_TOKEN Actions secret to Ambrosemweu/MAVLab."
             echo "configured=false" >> "${GITHUB_OUTPUT}"
           else
             echo "configured=true" >> "${GITHUB_OUTPUT}"
