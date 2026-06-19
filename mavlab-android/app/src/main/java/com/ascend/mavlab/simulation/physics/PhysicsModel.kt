@@ -108,6 +108,8 @@ class PhysicsModel(
         val groundSpeed = sqrt(newNorthVelocity * newNorthVelocity + newEastVelocity * newEastVelocity)
         val heading = ((Math.toDegrees(newYaw.toDouble()).roundToInt() + 360) % 360).toShort()
 
+        val terrainMslMeters = state.altitudeMslMeters - state.altitudeAglMeters
+
         return state.copy(
             latitudeDeg = state.latitudeDeg + latChange,
             longitudeDeg = state.longitudeDeg + lonChange,
@@ -116,7 +118,7 @@ class PhysicsModel(
             northVelocityMS = if (onGround) 0f else newNorthVelocity,
             eastVelocityMS = if (onGround) 0f else newEastVelocity,
             altitudeAglMeters = newAltitudeAgl,
-            altitudeMslMeters = BASE_MSL_METERS + newAltitudeAgl,
+            altitudeMslMeters = terrainMslMeters + newAltitudeAgl,
             verticalSpeedMS = newVerticalVelocity,
             rollRadians = newRoll,
             pitchRadians = newPitch,
@@ -139,6 +141,5 @@ class PhysicsModel(
 
     private companion object {
         const val METERS_PER_LAT_DEG = 111_320.0
-        const val BASE_MSL_METERS = 1805f
     }
 }

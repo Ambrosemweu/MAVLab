@@ -6,6 +6,7 @@ import com.ascend.mavlab.simulation.mission.MissionItem
 import com.ascend.mavlab.simulation.mission.MissionProgress
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
@@ -19,6 +20,38 @@ class PhysicsSimulationEngineTest {
     }
 
     @Test
+    fun setHomeLocationWhileDisarmedUpdatesGcsVisiblePosition() {
+        val engine = PhysicsSimulationEngine()
+
+        val changed = engine.setHomeLocation(SimLocation.London)
+        engine.tickForTest()
+
+        val state = engine.state.value
+        assertTrue(changed)
+        assertEquals(SimLocation.London.latitudeDeg, state.latitudeDeg, absoluteTolerance = 0.000001)
+        assertEquals(SimLocation.London.longitudeDeg, state.longitudeDeg, absoluteTolerance = 0.000001)
+        assertEquals(SimLocation.London.altitudeMslMeters, state.altitudeMslMeters, absoluteTolerance = 0.01f)
+        assertEquals(0f, state.altitudeAglMeters)
+        assertEquals(0f, state.northMeters)
+        assertEquals(0f, state.eastMeters)
+    }
+
+    @Test
+    fun setHomeLocationIsRejectedWhileArmed() {
+        val engine = PhysicsSimulationEngine()
+        engine.setArmed(true)
+        val before = engine.state.value
+
+        val changed = engine.setHomeLocation(SimLocation.Dubai)
+
+        val after = engine.state.value
+        assertFalse(changed)
+        assertEquals(before.latitudeDeg, after.latitudeDeg)
+        assertEquals(before.longitudeDeg, after.longitudeDeg)
+        assertEquals(before.altitudeMslMeters, after.altitudeMslMeters)
+    }
+
+    @Test
     fun disarmedMotorsReportZeroRpm() {
         val engine = PhysicsSimulationEngine()
 
@@ -26,6 +59,22 @@ class PhysicsSimulationEngineTest {
 
         assertTrue(engine.state.value.motors.all { it.rpm == 0f })
         assertTrue(engine.state.value.motors.all { it.command == 0f })
+    }
+
+    @Test
+    fun directRpmOverrideDoesNotSpinMotorsWhileDisarmed() {
+        val engine = PhysicsSimulationEngine()
+
+        engine.setMotorSpeedOverrideRpm(6000f)
+        engine.tickForTest()
+
+        assertTrue(engine.state.value.motors.all { it.rpm == 0f })
+        assertTrue(engine.state.value.motors.all { it.command == 0f })
+
+        engine.setArmed(true)
+        engine.tickForTest()
+
+        assertTrue(engine.state.value.motors.all { it.rpm > 5900f })
     }
 
     @Test

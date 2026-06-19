@@ -1,4 +1,4 @@
-package com.ascend.mavlab.feature.controller
+package com.ascend.mavlab.core.common
 
 enum class ControllerInputMode(val label: String) {
     PHONE_SENSORS("Phone sensors"),

@@ -24,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -32,6 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ascend.mavlab.core.common.AppRuntime
+import com.ascend.mavlab.core.common.ControllerInputMode
+import com.ascend.mavlab.core.common.ControllerInputState
 import kotlinx.coroutines.delay
 import com.ascend.mavlab.core.sensors.OrientationData
 import com.ascend.mavlab.core.sensors.OrientationSource
@@ -54,27 +55,29 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
     val source by AppRuntime.phoneSensorSource.collectAsState()
     val calibratedOrientation by AppRuntime.phoneSensorOrientation.collectAsState()
     val phoneSensorPilotInput by AppRuntime.phoneSensorPilotInput.collectAsState()
+    val controllerInputs by AppRuntime.controllerInputState.collectAsState()
     val soundSettings by AppRuntime.soundSettings.collectAsState()
     val soundDebugState by AppRuntime.soundDebugState.collectAsState()
     val config = remember { ControlConfig() }
     val sensorAvailable = source != OrientationSource.Unavailable
     val inputPaused = state.controlAuthority == ControlAuthority.GCS_MISSION
 
-    var inputMode by remember {
-        mutableStateOf(
-            if (sensorAvailable) ControllerInputMode.PHONE_SENSORS else ControllerInputMode.CUSTOM_INPUT,
-        )
-    }
-    var pilotInput by remember { mutableStateOf(PilotInput(throttle = 0.5f)) }
-    var throttle by remember { mutableFloatStateOf(0.5f) }
-    var manualRoll by remember { mutableFloatStateOf(0f) }
-    var manualPitch by remember { mutableFloatStateOf(0f) }
-    var manualYaw by remember { mutableFloatStateOf(0f) }
-    var directRpm by remember { mutableFloatStateOf(0f) }
+    val inputMode = controllerInputs.inputMode
+    val throttle = controllerInputs.throttle
+    val manualRoll = controllerInputs.manualRoll
+    val manualPitch = controllerInputs.manualPitch
+    val manualYaw = controllerInputs.manualYaw
+    val directRpm = controllerInputs.directRpm
     var advancedExpanded by remember { mutableStateOf(false) }
     var soundLabExpanded by remember { mutableStateOf(false) }
     var isDetectingArmedRpm by remember { mutableStateOf(false) }
     var wasArmed by remember { mutableStateOf(state.armed) }
+
+    LaunchedEffect(sensorAvailable, inputMode) {
+        if (!sensorAvailable && inputMode == ControllerInputMode.PHONE_SENSORS) {
+            AppRuntime.setControllerInputMode(ControllerInputMode.CUSTOM_INPUT)
+        }
+    }
 
     // Detect arming transitions or disarming when in DIRECT_RPM mode
     LaunchedEffect(state.armed, inputMode) {
@@ -86,7 +89,7 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
                 }
             } else {
                 // Disarmed: reset
-                directRpm = 0f
+                AppRuntime.setControllerDirectRpm(0f)
                 isDetectingArmedRpm = false
             }
         }
@@ -99,13 +102,13 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
             if (state.armed) {
                 val currentRpm = state.motors.map { it.rpm }.average().toFloat()
                 if (currentRpm > 100f) {
-                    directRpm = currentRpm
+                    AppRuntime.setControllerDirectRpm(currentRpm)
                 } else {
                     // Try to detect it dynamically if it spins up shortly
                     isDetectingArmedRpm = true
                 }
             } else {
-                directRpm = 0f
+                AppRuntime.setControllerDirectRpm(0f)
             }
         }
     }
@@ -115,7 +118,7 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
         if (isDetectingArmedRpm) {
             val currentRpm = state.motors.map { it.rpm }.average().toFloat()
             if (currentRpm > 100f) {
-                directRpm = currentRpm
+                AppRuntime.setControllerDirectRpm(currentRpm)
                 isDetectingArmedRpm = false
             }
         }
@@ -132,8 +135,8 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
     }
 
     // Apply the speed override
-    LaunchedEffect(inputMode, inputPaused, directRpm, isDetectingArmedRpm) {
-        if (inputMode == ControllerInputMode.DIRECT_RPM && !inputPaused && !isDetectingArmedRpm) {
+    LaunchedEffect(inputMode, inputPaused, directRpm, isDetectingArmedRpm, state.armed) {
+        if (inputMode == ControllerInputMode.DIRECT_RPM && state.armed && !inputPaused && !isDetectingArmedRpm) {
             AppRuntime.setMotorSpeedOverrideRpm(directRpm)
         } else {
             AppRuntime.setMotorSpeedOverrideRpm(null)
@@ -145,21 +148,19 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
         AppRuntime.setPhoneSensorThrottle(throttle)
         AppRuntime.setPhoneSensorYawTrim(manualYaw)
         AppRuntime.setPhoneSensorControlEnabled(enabled)
-        if (enabled) {
-            pilotInput = phoneSensorPilotInput
-        }
     }
 
     LaunchedEffect(inputMode, inputPaused, throttle, manualRoll, manualPitch, manualYaw) {
         if (inputMode != ControllerInputMode.CUSTOM_INPUT || inputPaused) return@LaunchedEffect
         AppRuntime.setPhoneSensorControlEnabled(false)
-        pilotInput = PilotInput(
-            roll = manualRoll,
-            pitch = manualPitch,
-            throttle = throttle,
-            yaw = manualYaw,
+        AppRuntime.setPilotInput(
+            PilotInput(
+                roll = manualRoll,
+                pitch = manualPitch,
+                throttle = throttle,
+                yaw = manualYaw,
+            ),
         )
-        AppRuntime.setPilotInput(pilotInput)
     }
 
     Surface(modifier = modifier.fillMaxSize()) {
@@ -200,7 +201,7 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
             InputModeSelector(
                 selected = inputMode,
                 sensorAvailable = sensorAvailable,
-                onSelected = { inputMode = it },
+                onSelected = AppRuntime::setControllerInputMode,
             )
 
             AdvancedTestInputs(
@@ -242,12 +243,10 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
                     manualYaw = manualYaw,
                     inputPaused = inputPaused,
                     onThrottleChange = {
-                        throttle = it
-                        AppRuntime.setPhoneSensorThrottle(it)
+                        AppRuntime.setControllerThrottle(it)
                     },
                     onYawChange = {
-                        manualYaw = it
-                        AppRuntime.setPhoneSensorYawTrim(it)
+                        AppRuntime.setControllerManualYaw(it)
                     },
                 )
                 ControllerInputMode.CUSTOM_INPUT -> CustomInputControls(
@@ -256,16 +255,16 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
                     pitch = manualPitch,
                     yaw = manualYaw,
                     inputPaused = inputPaused,
-                    onThrottleChange = { throttle = it },
-                    onRollChange = { manualRoll = it },
-                    onPitchChange = { manualPitch = it },
-                    onYawChange = { manualYaw = it },
+                    onThrottleChange = AppRuntime::setControllerThrottle,
+                    onRollChange = AppRuntime::setControllerManualRoll,
+                    onPitchChange = AppRuntime::setControllerManualPitch,
+                    onYawChange = AppRuntime::setControllerManualYaw,
                 )
                 ControllerInputMode.DIRECT_RPM -> DirectRpmControls(
                     rpm = directRpm,
                     motorTelemetry = state.motors,
-                    inputPaused = inputPaused,
-                    onRpmChange = { directRpm = it },
+                    inputPaused = inputPaused || !state.armed,
+                    onRpmChange = AppRuntime::setControllerDirectRpm,
                 )
             }
 
@@ -743,7 +742,7 @@ private fun DirectRpmControls(
                 value = rpm,
                 valueLabel = "${rpm.toInt()} RPM",
                 min = 0f,
-                max = 10000f,
+                max = ControllerInputState.MaxDirectRpm,
                 enabled = !inputPaused,
                 onValueChange = onRpmChange
             )

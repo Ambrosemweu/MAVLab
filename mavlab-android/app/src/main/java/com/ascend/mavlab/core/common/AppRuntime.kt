@@ -18,6 +18,7 @@ import com.ascend.mavlab.simulation.audio.DroneSynthQuality
 import com.ascend.mavlab.simulation.engine.ControlAuthority
 import com.ascend.mavlab.simulation.engine.FlightMode
 import com.ascend.mavlab.simulation.engine.PhysicsSimulationEngine
+import com.ascend.mavlab.simulation.engine.SimLocation
 import com.ascend.mavlab.simulation.failures.FailureScenario
 import com.ascend.mavlab.simulation.failures.FailureState
 import com.ascend.mavlab.simulation.mission.MissionProgress
@@ -46,10 +47,12 @@ object AppRuntime {
     private val mutableSystemId = MutableStateFlow(1)
     private val fallbackIdentityStatus = MutableStateFlow(MavlinkIdentityStatus())
     private val mutableRecordingStatus = MutableStateFlow(FlightRecordingStatus())
+    private val mutableSimLocation = MutableStateFlow(SimLocation.Nairobi)
     private val mutablePhoneSensorSource = MutableStateFlow(OrientationSource.Unavailable)
     private val mutablePhoneSensorRawOrientation = MutableStateFlow(OrientationData())
     private val mutablePhoneSensorOrientation = MutableStateFlow(OrientationData())
     private val mutablePhoneSensorPilotInput = MutableStateFlow(PilotInput(throttle = 0.5f))
+    private val mutableControllerInputState = MutableStateFlow(ControllerInputState())
     private val mutableMotorSpeedOverrideRpm = MutableStateFlow<Float?>(null)
     private val fallbackSoundSettings = MutableStateFlow(DroneSoundSettings())
     private val fallbackSoundDebugState = MutableStateFlow(DroneSoundDebugState())
@@ -71,9 +74,11 @@ object AppRuntime {
     val missionProgress: StateFlow<MissionProgress> = simLoop.missionProgress
     val missionUploadStatus: StateFlow<MissionUploadStatus> = simLoop.missionUploadStatus
     val recordingStatus: StateFlow<FlightRecordingStatus> = mutableRecordingStatus.asStateFlow()
+    val simLocation: StateFlow<SimLocation> = mutableSimLocation.asStateFlow()
     val phoneSensorSource: StateFlow<OrientationSource> = mutablePhoneSensorSource.asStateFlow()
     val phoneSensorOrientation: StateFlow<OrientationData> = mutablePhoneSensorOrientation.asStateFlow()
     val phoneSensorPilotInput: StateFlow<PilotInput> = mutablePhoneSensorPilotInput.asStateFlow()
+    val controllerInputState: StateFlow<ControllerInputState> = mutableControllerInputState.asStateFlow()
     val motorSpeedOverrideRpm: StateFlow<Float?> = mutableMotorSpeedOverrideRpm.asStateFlow()
     val soundSettings: StateFlow<DroneSoundSettings>
         get() = droneSoundController?.settings ?: fallbackSoundSettings.asStateFlow()
@@ -100,6 +105,7 @@ object AppRuntime {
             )
         }
         refreshSessionHistory()
+        restoreSimLocation(appContext)
         restorePersistedMission(appContext)
         if (mavlinkServer == null) {
             val id = stableSystemId(appContext)
@@ -177,6 +183,9 @@ object AppRuntime {
 
     fun setArmed(armed: Boolean) {
         simLoop.setArmed(armed, ControlAuthority.CONTROLLER)
+        if (!armed) {
+            resetControllerInputsAfterDisarm()
+        }
     }
 
     fun takeoff(targetAltitudeM: Float = 10f) {
@@ -202,14 +211,42 @@ object AppRuntime {
         }
     }
 
-    fun setPhoneSensorThrottle(value: Float) {
-        phoneSensorThrottle = value.coerceIn(0f, 1f)
+    fun setControllerInputMode(mode: ControllerInputMode) {
+        updateControllerInputState { it.copy(inputMode = mode) }
+    }
+
+    fun setControllerThrottle(value: Float) {
+        val throttle = value.coerceIn(0f, 1f)
+        updateControllerInputState { it.copy(throttle = throttle) }
+        phoneSensorThrottle = throttle
         refreshPhoneSensorPilotInput()
     }
 
-    fun setPhoneSensorYawTrim(value: Float) {
-        phoneSensorYawTrim = value.coerceIn(-1f, 1f)
+    fun setControllerManualRoll(value: Float) {
+        updateControllerInputState { it.copy(manualRoll = value.coerceIn(-1f, 1f)) }
+    }
+
+    fun setControllerManualPitch(value: Float) {
+        updateControllerInputState { it.copy(manualPitch = value.coerceIn(-1f, 1f)) }
+    }
+
+    fun setControllerManualYaw(value: Float) {
+        val yaw = value.coerceIn(-1f, 1f)
+        updateControllerInputState { it.copy(manualYaw = yaw) }
+        phoneSensorYawTrim = yaw
         refreshPhoneSensorPilotInput()
+    }
+
+    fun setControllerDirectRpm(value: Float) {
+        updateControllerInputState { it.copy(directRpm = value.coerceIn(0f, ControllerInputState.MaxDirectRpm)) }
+    }
+
+    fun setPhoneSensorThrottle(value: Float) {
+        setControllerThrottle(value)
+    }
+
+    fun setPhoneSensorYawTrim(value: Float) {
+        setControllerManualYaw(value)
     }
 
     fun calibratePhoneSensors() {
@@ -237,6 +274,28 @@ object AppRuntime {
     fun resetBattery() {
         simLoop.resetBattery()
         recordFailureEvent("battery_reset", "battery recharged to 100%")
+    }
+
+    fun setSimLocation(location: SimLocation): Boolean {
+        if (state.value.armed) return false
+        val safeLocation = location.sanitized()
+        simLoop.clearMission()
+        val applied = simLoop.setHomeLocation(safeLocation)
+        if (!applied) return false
+        mutableSimLocation.value = safeLocation
+        applicationContext?.let { context ->
+            persistSimLocation(context, safeLocation)
+            MissionPersistence.clear(context)
+        }
+        recordFailureEvent(
+            "sim_location_changed",
+            "${safeLocation.label}: %.6f, %.6f @ %.0f m MSL".format(
+                safeLocation.latitudeDeg,
+                safeLocation.longitudeDeg,
+                safeLocation.altitudeMslMeters,
+            ),
+        )
+        return true
     }
 
     fun setMotorSpeedOverrideRpm(rpm: Float?) {
@@ -427,6 +486,33 @@ object AppRuntime {
         simLoop.noteAck("MISSION RESTORED ${items.size}")
     }
 
+    private fun restoreSimLocation(context: Context) {
+        val prefs = context.getSharedPreferences(SimLocationPrefsName, Context.MODE_PRIVATE)
+        val id = prefs.getString(SimLocationKeyId, null) ?: SimLocation.Nairobi.id
+        val location = if (id == SimLocation.CustomId) {
+            SimLocation.custom(
+                latitudeDeg = Double.fromBits(prefs.getLong(SimLocationKeyLatitude, SimLocation.Nairobi.latitudeDeg.toBits())),
+                longitudeDeg = Double.fromBits(prefs.getLong(SimLocationKeyLongitude, SimLocation.Nairobi.longitudeDeg.toBits())),
+                altitudeMslMeters = Float.fromBits(prefs.getInt(SimLocationKeyAltitude, SimLocation.Nairobi.altitudeMslMeters.toBits())),
+            )
+        } else {
+            SimLocation.byId(id)
+        }
+        if (simLoop.setHomeLocation(location)) {
+            mutableSimLocation.value = location
+        }
+    }
+
+    private fun persistSimLocation(context: Context, location: SimLocation) {
+        context.getSharedPreferences(SimLocationPrefsName, Context.MODE_PRIVATE)
+            .edit()
+            .putString(SimLocationKeyId, location.id)
+            .putLong(SimLocationKeyLatitude, location.latitudeDeg.toBits())
+            .putLong(SimLocationKeyLongitude, location.longitudeDeg.toBits())
+            .putInt(SimLocationKeyAltitude, location.altitudeMslMeters.toBits())
+            .apply()
+    }
+
     private fun startRecordingMonitor() {
         if (recordingJob != null) return
         recordingJob = scope.launch {
@@ -515,6 +601,7 @@ object AppRuntime {
                 }
 
                 if (previousArmed && !current.armed) {
+                    resetControllerInputsAfterDisarm()
                     recorder.closeSession("vehicle disarmed")
                     refreshSessionHistory()
                 }
@@ -610,6 +697,21 @@ object AppRuntime {
         }
     }
 
+    private fun updateControllerInputState(transform: (ControllerInputState) -> ControllerInputState) {
+        mutableControllerInputState.value = transform(mutableControllerInputState.value).sanitized()
+    }
+
+    private fun resetControllerInputsAfterDisarm() {
+        mutableControllerInputState.value = ControllerInputState()
+        phoneSensorThrottle = ControllerInputState.DefaultThrottle
+        phoneSensorYawTrim = 0f
+        phoneSensorControlEnabled = false
+        mutableMotorSpeedOverrideRpm.value = null
+        simLoop.setMotorSpeedOverrideRpm(null)
+        simLoop.setPilotInput(PilotInput(throttle = ControllerInputState.DefaultThrottle))
+        refreshPhoneSensorPilotInput()
+    }
+
     private fun recordFailureEvent(type: String, message: String) {
         flightRecorder?.appendEvent(FlightEvent(System.currentTimeMillis(), type, message))
         syncRecordingStatus()
@@ -635,4 +737,9 @@ object AppRuntime {
     private const val PhoneSensorMaxYawAngleRad = 0.7853982f
     private const val PhoneSensorDeadzoneRad = 0.05235988f
     private const val PhoneSensorExpo = 1.45f
+    private const val SimLocationPrefsName = "mavlab_sim_location"
+    private const val SimLocationKeyId = "id"
+    private const val SimLocationKeyLatitude = "latitude"
+    private const val SimLocationKeyLongitude = "longitude"
+    private const val SimLocationKeyAltitude = "altitude_msl"
 }

@@ -51,17 +51,17 @@ private enum class MavLabTab(
         description = "Phone sensors, manual input, quick test controls",
         icon = Icons.Filled.ControlCamera,
     ),
-    Mission(
-        label = "Mission",
-        title = "Autonomous Mission Execution",
-        description = "QGC upload, waypoint progress, AUTO control",
-        icon = Icons.Filled.Route,
-    ),
     Sim(
         label = "SIM",
         title = "Physical Behavior Visualization",
         description = "3D attitude, altitude, motors, mission context",
         icon = Icons.Filled.Height,
+    ),
+    Mission(
+        label = "Mission",
+        title = "Autonomous Mission Execution",
+        description = "QGC upload, waypoint progress, AUTO control",
+        icon = Icons.Filled.Route,
     ),
     Ops(
         label = "Ops",

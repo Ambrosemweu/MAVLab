@@ -103,6 +103,41 @@ class PhysicsSimulationEngine(
         motorSpeedOverrideRpm = rpm
     }
 
+    fun setHomeLocation(location: SimLocation): Boolean {
+        val safeLocation = location.sanitized()
+        val current = mutableState.value
+        if (current.armed) return false
+        homeNorthMeters = 0f
+        homeEastMeters = 0f
+        homeAltitudeMeters = 0f
+        loiterNorthMeters = 0f
+        loiterEastMeters = 0f
+        guidedNorthMeters = 0f
+        guidedEastMeters = 0f
+        guidedAltitudeMeters = 0f
+        mutableState.value = current.copy(
+            latitudeDeg = safeLocation.latitudeDeg,
+            longitudeDeg = safeLocation.longitudeDeg,
+            northMeters = 0f,
+            eastMeters = 0f,
+            northVelocityMS = 0f,
+            eastVelocityMS = 0f,
+            altitudeMslMeters = safeLocation.altitudeMslMeters,
+            altitudeAglMeters = 0f,
+            verticalSpeedMS = 0f,
+            groundSpeedMS = 0f,
+            rollRadians = 0f,
+            pitchRadians = 0f,
+            rollSpeedRadS = 0f,
+            pitchSpeedRadS = 0f,
+            yawSpeedRadS = 0f,
+            motors = List(4) { MotorTelemetry() },
+            lastAck = "SIM LOCATION ${safeLocation.label}",
+        )
+        positionController.reset()
+        return true
+    }
+
     fun setArmed(
         armed: Boolean,
         authority: ControlAuthority = ControlAuthority.CONTROLLER,
@@ -396,7 +431,7 @@ class PhysicsSimulationEngine(
         val failures = failureInjector.state.value
         val navigationInput = activePilotInput(current, dt)
         val output = autopilot.computeMotorOutput(current, navigationInput, dt)
-        val overrideRpm = motorSpeedOverrideRpm
+        val overrideRpm = motorSpeedOverrideRpm?.takeIf { current.armed }
         val baseMotorSpeeds = if (overrideRpm != null) {
             val radS = overrideRpm * (2f * PI.toFloat()) / 60f
             FloatArray(4) { radS }
