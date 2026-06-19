@@ -1,4 +1,4 @@
-name: Mirror to Labs Ascend
+name: Mirror to Personal Repository
 
 on:
   push:
@@ -13,22 +13,22 @@ permissions:
   contents: read
 
 concurrency:
-  group: mirror-to-labs-ascend
+  group: mirror-to-personal-repository
   cancel-in-progress: false
 
 jobs:
   mirror:
-    if: github.repository == 'Ambrosemweu/MAVLab'
+    if: github.repository == 'Labs-Ascend/MAVLab'
     runs-on: ubuntu-latest
     env:
       MIRROR_TOKEN: ${{ secrets.MAVLAB_MIRROR_TOKEN }}
-      TARGET_REPOSITORY: Labs-Ascend/MAVLab
+      TARGET_REPOSITORY: Ambrosemweu/MAVLab
     steps:
       - name: Check mirror credentials
         id: credentials
         run: |
           if [ -z "${MIRROR_TOKEN}" ]; then
-            echo "::warning::Add the MAVLAB_MIRROR_TOKEN Actions secret to Ambrosemweu/MAVLab."
+            echo "::warning::Add the MAVLAB_MIRROR_TOKEN Actions secret to Labs-Ascend/MAVLab."
             echo "configured=false" >> "${GITHUB_OUTPUT}"
           else
             echo "configured=true" >> "${GITHUB_OUTPUT}"
