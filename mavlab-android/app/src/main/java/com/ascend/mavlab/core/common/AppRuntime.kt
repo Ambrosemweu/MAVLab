@@ -11,6 +11,10 @@ import com.ascend.mavlab.core.sensors.OrientationSource
 import com.ascend.mavlab.core.sensors.PhoneSensorRepository
 import com.ascend.mavlab.core.sensors.SensorCalibration
 import com.ascend.mavlab.simulation.autopilot.PilotInput
+import com.ascend.mavlab.simulation.audio.DroneSoundController
+import com.ascend.mavlab.simulation.audio.DroneSoundDebugState
+import com.ascend.mavlab.simulation.audio.DroneSoundSettings
+import com.ascend.mavlab.simulation.audio.DroneSynthQuality
 import com.ascend.mavlab.simulation.engine.ControlAuthority
 import com.ascend.mavlab.simulation.engine.FlightMode
 import com.ascend.mavlab.simulation.engine.PhysicsSimulationEngine
@@ -47,9 +51,12 @@ object AppRuntime {
     private val mutablePhoneSensorOrientation = MutableStateFlow(OrientationData())
     private val mutablePhoneSensorPilotInput = MutableStateFlow(PilotInput(throttle = 0.5f))
     private val mutableMotorSpeedOverrideRpm = MutableStateFlow<Float?>(null)
+    private val fallbackSoundSettings = MutableStateFlow(DroneSoundSettings())
+    private val fallbackSoundDebugState = MutableStateFlow(DroneSoundDebugState())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var mavlinkServer: MavlinkUdpServer? = null
     private var flightRecorder: FlightRecorder? = null
+    private var droneSoundController: DroneSoundController? = null
     private var recordingJob: Job? = null
     private var phoneSensorJob: Job? = null
     private var applicationContext: Context? = null
@@ -68,6 +75,10 @@ object AppRuntime {
     val phoneSensorOrientation: StateFlow<OrientationData> = mutablePhoneSensorOrientation.asStateFlow()
     val phoneSensorPilotInput: StateFlow<PilotInput> = mutablePhoneSensorPilotInput.asStateFlow()
     val motorSpeedOverrideRpm: StateFlow<Float?> = mutableMotorSpeedOverrideRpm.asStateFlow()
+    val soundSettings: StateFlow<DroneSoundSettings>
+        get() = droneSoundController?.settings ?: fallbackSoundSettings.asStateFlow()
+    val soundDebugState: StateFlow<DroneSoundDebugState>
+        get() = droneSoundController?.debugState ?: fallbackSoundDebugState.asStateFlow()
     val status: StateFlow<String>
         get() = mavlinkServer?.status ?: fallbackStatus.asStateFlow()
     val mavlinkIdentityStatus: StateFlow<MavlinkIdentityStatus>
@@ -79,6 +90,14 @@ object AppRuntime {
         applicationContext = appContext
         if (flightRecorder == null) {
             flightRecorder = FlightRecorder(appContext.filesDir)
+        }
+        if (droneSoundController == null) {
+            droneSoundController = DroneSoundController(
+                context = appContext,
+                state = state,
+                failures = failures,
+                scope = scope,
+            )
         }
         refreshSessionHistory()
         restorePersistedMission(appContext)
@@ -100,6 +119,7 @@ object AppRuntime {
         }
         simLoop.start()
         mavlinkServer?.start(appContext)
+        droneSoundController?.start()
         startPhoneSensorMonitor(appContext)
         startRecordingMonitor()
     }
@@ -110,6 +130,8 @@ object AppRuntime {
         recordingJob = null
         phoneSensorJob?.cancel()
         phoneSensorJob = null
+        droneSoundController?.release()
+        droneSoundController = null
         flightRecorder?.closeSession("runtime stopped")
         refreshSessionHistory()
         syncRecordingStatus()
@@ -224,6 +246,79 @@ object AppRuntime {
             recordFailureEvent("motor_rpm_override", "motor RPM override set to ${rpm.toInt()} RPM")
         } else {
             recordFailureEvent("motor_rpm_override_cleared", "motor RPM override cleared")
+        }
+    }
+
+    fun setDroneSoundEnabled(enabled: Boolean) {
+        updateDroneSoundSettings { it.copy(enabled = enabled) }
+    }
+
+    fun setDroneSoundMasterVolume(volume: Float) {
+        updateDroneSoundSettings { it.copy(masterVolume = volume) }
+    }
+
+    fun setDroneSoundRoughness(value: Float) {
+        updateDroneSoundSettings { it.copy(roughness = value) }
+    }
+
+    fun setDroneSoundPerMotorMix(value: Float) {
+        updateDroneSoundSettings { it.copy(perMotorMix = value) }
+    }
+
+    fun setDroneSoundAlertEnabled(enabled: Boolean) {
+        updateDroneSoundSettings { it.copy(alertsEnabled = enabled) }
+    }
+
+    fun setDroneSoundTestMode(enabled: Boolean) {
+        updateDroneSoundSettings { it.copy(testMode = enabled) }
+    }
+
+    fun setDroneSoundTestRpm(rpm: Float) {
+        updateDroneSoundSettings { it.copy(testRpm = rpm) }
+    }
+
+    fun setDroneSoundProceduralEnabled(enabled: Boolean) {
+        updateDroneSoundSettings { it.copy(proceduralEnabled = enabled) }
+    }
+
+    fun setDroneSoundSampleBedAmount(value: Float) {
+        updateDroneSoundSettings { it.copy(sampleBedAmount = value) }
+    }
+
+    fun setDroneSoundBladeHarmonicsAmount(value: Float) {
+        updateDroneSoundSettings { it.copy(bladeHarmonicsAmount = value) }
+    }
+
+    fun setDroneSoundPropWashAmount(value: Float) {
+        updateDroneSoundSettings { it.copy(propWashAmount = value) }
+    }
+
+    fun setDroneSoundMotorWhineAmount(value: Float) {
+        updateDroneSoundSettings { it.copy(motorWhineAmount = value) }
+    }
+
+    fun setDroneSoundBladeCount(value: Int) {
+        updateDroneSoundSettings { it.copy(bladeCount = value) }
+    }
+
+    fun setDroneSoundAcousticProfile(profileId: String) {
+        updateDroneSoundSettings { it.copy(acousticProfileId = profileId) }
+    }
+
+    fun setDroneSoundSynthQuality(quality: DroneSynthQuality) {
+        updateDroneSoundSettings { it.copy(synthQuality = quality) }
+    }
+
+    fun setDroneSoundShowAcousticTelemetry(enabled: Boolean) {
+        updateDroneSoundSettings { it.copy(showAcousticTelemetry = enabled) }
+    }
+
+    fun resetDroneSoundSettings() {
+        val controller = droneSoundController
+        if (controller != null) {
+            controller.resetSettings()
+        } else {
+            fallbackSoundSettings.value = DroneSoundSettings()
         }
     }
 
@@ -504,6 +599,15 @@ object AppRuntime {
 
     private fun syncRecordingStatus() {
         flightRecorder?.let { mutableRecordingStatus.value = it.status.value }
+    }
+
+    private fun updateDroneSoundSettings(transform: (DroneSoundSettings) -> DroneSoundSettings) {
+        val controller = droneSoundController
+        if (controller != null) {
+            controller.updateSettings(transform)
+        } else {
+            fallbackSoundSettings.value = transform(fallbackSoundSettings.value).sanitized()
+        }
     }
 
     private fun recordFailureEvent(type: String, message: String) {

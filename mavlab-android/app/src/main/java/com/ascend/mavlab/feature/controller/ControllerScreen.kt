@@ -36,6 +36,10 @@ import kotlinx.coroutines.delay
 import com.ascend.mavlab.core.sensors.OrientationData
 import com.ascend.mavlab.core.sensors.OrientationSource
 import com.ascend.mavlab.simulation.autopilot.PilotInput
+import com.ascend.mavlab.simulation.audio.DroneAcousticProfile
+import com.ascend.mavlab.simulation.audio.DroneSoundDebugState
+import com.ascend.mavlab.simulation.audio.DroneSoundSettings
+import com.ascend.mavlab.simulation.audio.DroneSynthQuality
 import com.ascend.mavlab.simulation.engine.ControlAuthority
 import com.ascend.mavlab.simulation.engine.FlightMode
 import com.ascend.mavlab.simulation.failures.FailureState
@@ -50,6 +54,8 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
     val source by AppRuntime.phoneSensorSource.collectAsState()
     val calibratedOrientation by AppRuntime.phoneSensorOrientation.collectAsState()
     val phoneSensorPilotInput by AppRuntime.phoneSensorPilotInput.collectAsState()
+    val soundSettings by AppRuntime.soundSettings.collectAsState()
+    val soundDebugState by AppRuntime.soundDebugState.collectAsState()
     val config = remember { ControlConfig() }
     val sensorAvailable = source != OrientationSource.Unavailable
     val inputPaused = state.controlAuthority == ControlAuthority.GCS_MISSION
@@ -66,6 +72,7 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
     var manualYaw by remember { mutableFloatStateOf(0f) }
     var directRpm by remember { mutableFloatStateOf(0f) }
     var advancedExpanded by remember { mutableStateOf(false) }
+    var soundLabExpanded by remember { mutableStateOf(false) }
     var isDetectingArmedRpm by remember { mutableStateOf(false) }
     var wasArmed by remember { mutableStateOf(state.armed) }
 
@@ -202,6 +209,30 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
                 onExpandedChange = { advancedExpanded = it },
             )
 
+            DroneSoundLabCard(
+                settings = soundSettings,
+                debugState = soundDebugState,
+                expanded = soundLabExpanded,
+                onExpandedChange = { soundLabExpanded = it },
+                onEnabledChange = AppRuntime::setDroneSoundEnabled,
+                onMasterVolumeChange = AppRuntime::setDroneSoundMasterVolume,
+                onPerMotorMixChange = AppRuntime::setDroneSoundPerMotorMix,
+                onRoughnessChange = AppRuntime::setDroneSoundRoughness,
+                onAlertsEnabledChange = AppRuntime::setDroneSoundAlertEnabled,
+                onTestModeChange = AppRuntime::setDroneSoundTestMode,
+                onTestRpmChange = AppRuntime::setDroneSoundTestRpm,
+                onProceduralEnabledChange = AppRuntime::setDroneSoundProceduralEnabled,
+                onSampleBedAmountChange = AppRuntime::setDroneSoundSampleBedAmount,
+                onBladeHarmonicsAmountChange = AppRuntime::setDroneSoundBladeHarmonicsAmount,
+                onPropWashAmountChange = AppRuntime::setDroneSoundPropWashAmount,
+                onMotorWhineAmountChange = AppRuntime::setDroneSoundMotorWhineAmount,
+                onBladeCountChange = AppRuntime::setDroneSoundBladeCount,
+                onAcousticProfileChange = AppRuntime::setDroneSoundAcousticProfile,
+                onSynthQualityChange = AppRuntime::setDroneSoundSynthQuality,
+                onShowAcousticTelemetryChange = AppRuntime::setDroneSoundShowAcousticTelemetry,
+                onReset = AppRuntime::resetDroneSoundSettings,
+            )
+
             when (inputMode) {
                 ControllerInputMode.PHONE_SENSORS -> PhoneSensorControls(
                     pilotInput = phoneSensorPilotInput,
@@ -290,6 +321,299 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
                 )
             }
 
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DroneSoundLabCard(
+    settings: DroneSoundSettings,
+    debugState: DroneSoundDebugState,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onEnabledChange: (Boolean) -> Unit,
+    onMasterVolumeChange: (Float) -> Unit,
+    onPerMotorMixChange: (Float) -> Unit,
+    onRoughnessChange: (Float) -> Unit,
+    onAlertsEnabledChange: (Boolean) -> Unit,
+    onTestModeChange: (Boolean) -> Unit,
+    onTestRpmChange: (Float) -> Unit,
+    onProceduralEnabledChange: (Boolean) -> Unit,
+    onSampleBedAmountChange: (Float) -> Unit,
+    onBladeHarmonicsAmountChange: (Float) -> Unit,
+    onPropWashAmountChange: (Float) -> Unit,
+    onMotorWhineAmountChange: (Float) -> Unit,
+    onBladeCountChange: (Int) -> Unit,
+    onAcousticProfileChange: (String) -> Unit,
+    onSynthQualityChange: (DroneSynthQuality) -> Unit,
+    onShowAcousticTelemetryChange: (Boolean) -> Unit,
+    onReset: () -> Unit,
+) {
+    var advancedAcousticsExpanded by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        OutlinedButton(
+            onClick = { onExpandedChange(!expanded) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (expanded) "Hide Advanced sound inputs" else "Advanced sound inputs")
+        }
+        if (!expanded) return@Column
+
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Sound test inputs", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "Simulation-driven motor sound. Tune the acoustic response while using Controller or Direct RPM mode.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            SwitchRow(
+                label = "Sound enabled",
+                checked = settings.enabled,
+                onCheckedChange = onEnabledChange,
+            )
+            ControlSlider(
+                label = "Master volume",
+                value = settings.masterVolume,
+                valueLabel = "${(settings.masterVolume * 100f).toInt()}%",
+                onValueChange = onMasterVolumeChange,
+            )
+            ControlSlider(
+                label = "Per-motor mix",
+                value = settings.perMotorMix,
+                valueLabel = "${(settings.perMotorMix * 100f).toInt()}%",
+                onValueChange = onPerMotorMixChange,
+            )
+            ControlSlider(
+                label = "Roughness",
+                value = settings.roughness,
+                valueLabel = "${(settings.roughness * 100f).toInt()}%",
+                onValueChange = onRoughnessChange,
+            )
+            SwitchRow(
+                label = "Alerts enabled",
+                checked = settings.alertsEnabled,
+                onCheckedChange = onAlertsEnabledChange,
+            )
+            SwitchRow(
+                label = "Sound test mode",
+                checked = settings.testMode,
+                onCheckedChange = onTestModeChange,
+            )
+            Text(
+                text = "Audio-only test. Does not affect simulation state.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            ControlSlider(
+                label = "Test RPM",
+                value = settings.testRpm,
+                valueLabel = "${settings.testRpm.toInt()} RPM",
+                min = 0f,
+                max = DroneSoundSettings.MaxReferenceRpm,
+                enabled = settings.testMode,
+                onValueChange = onTestRpmChange,
+            )
+            AdvancedAcousticsControls(
+                settings = settings,
+                expanded = advancedAcousticsExpanded,
+                onExpandedChange = { advancedAcousticsExpanded = it },
+                onProceduralEnabledChange = onProceduralEnabledChange,
+                onSampleBedAmountChange = onSampleBedAmountChange,
+                onBladeHarmonicsAmountChange = onBladeHarmonicsAmountChange,
+                onPropWashAmountChange = onPropWashAmountChange,
+                onMotorWhineAmountChange = onMotorWhineAmountChange,
+                onBladeCountChange = onBladeCountChange,
+                onAcousticProfileChange = onAcousticProfileChange,
+                onSynthQualityChange = onSynthQualityChange,
+                onShowAcousticTelemetryChange = onShowAcousticTelemetryChange,
+            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SoundReadout("Avg RPM", debugState.averageRpm.toInt().toString())
+                SoundReadout("RPM spread", "${debugState.rpmSpreadPercent.toInt()}%")
+                SoundReadout("Sound rate", "%.2fx".format(debugState.averagePlaybackRate))
+                SoundReadout("Roughness", "${(debugState.roughness * 100f).toInt()}%")
+                SoundReadout("Active motors", "${debugState.activeMotorCount}/4")
+                SoundReadout("Alert", debugState.alertLabel)
+            }
+            if (settings.showAcousticTelemetry) {
+                AcousticTelemetryReadouts(debugState)
+            }
+            OutlinedButton(
+                onClick = onReset,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Reset sound")
+            }
+        }
+    }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AdvancedAcousticsControls(
+    settings: DroneSoundSettings,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onProceduralEnabledChange: (Boolean) -> Unit,
+    onSampleBedAmountChange: (Float) -> Unit,
+    onBladeHarmonicsAmountChange: (Float) -> Unit,
+    onPropWashAmountChange: (Float) -> Unit,
+    onMotorWhineAmountChange: (Float) -> Unit,
+    onBladeCountChange: (Int) -> Unit,
+    onAcousticProfileChange: (String) -> Unit,
+    onSynthQualityChange: (DroneSynthQuality) -> Unit,
+    onShowAcousticTelemetryChange: (Boolean) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        OutlinedButton(
+            onClick = { onExpandedChange(!expanded) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (expanded) "Hide Advanced acoustics" else "Advanced acoustics")
+        }
+        if (!expanded) return@Column
+
+        Text(
+            text = "Blade-pass frequency = blade count x RPM / 60. MAVLab uses this to synthesize rotor harmonics above the sample loop.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SwitchRow(
+            label = "Procedural layer",
+            checked = settings.proceduralEnabled,
+            onCheckedChange = onProceduralEnabledChange,
+        )
+        ControlSlider(
+            label = "Sample bed",
+            value = settings.sampleBedAmount,
+            valueLabel = "${(settings.sampleBedAmount * 100f).toInt()}%",
+            onValueChange = onSampleBedAmountChange,
+        )
+        ControlSlider(
+            label = "Blade harmonics",
+            value = settings.bladeHarmonicsAmount,
+            valueLabel = "${(settings.bladeHarmonicsAmount * 100f).toInt()}%",
+            onValueChange = onBladeHarmonicsAmountChange,
+        )
+        ControlSlider(
+            label = "Prop wash",
+            value = settings.propWashAmount,
+            valueLabel = "${(settings.propWashAmount * 100f).toInt()}%",
+            onValueChange = onPropWashAmountChange,
+        )
+        ControlSlider(
+            label = "Motor whine",
+            value = settings.motorWhineAmount,
+            valueLabel = "${(settings.motorWhineAmount * 100f).toInt()}%",
+            onValueChange = onMotorWhineAmountChange,
+        )
+        Text("Blade count", style = MaterialTheme.typography.labelLarge)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            listOf(2, 3, 4).forEach { count ->
+                FilterChip(
+                    selected = settings.bladeCount == count,
+                    onClick = { onBladeCountChange(count) },
+                    label = { Text(count.toString()) },
+                )
+            }
+        }
+        Text("Acoustic profile", style = MaterialTheme.typography.labelLarge)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            DroneAcousticProfile.all.forEach { profile ->
+                FilterChip(
+                    selected = settings.acousticProfileId == profile.id,
+                    onClick = { onAcousticProfileChange(profile.id) },
+                    label = { Text(profile.label) },
+                )
+            }
+        }
+        Text("Synth quality", style = MaterialTheme.typography.labelLarge)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            DroneSynthQuality.entries.forEach { quality ->
+                FilterChip(
+                    selected = settings.synthQuality == quality,
+                    onClick = { onSynthQualityChange(quality) },
+                    label = { Text(quality.label) },
+                )
+            }
+        }
+        SwitchRow(
+            label = "Show acoustic telemetry",
+            checked = settings.showAcousticTelemetry,
+            onCheckedChange = onShowAcousticTelemetryChange,
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AcousticTelemetryReadouts(debugState: DroneSoundDebugState) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SoundReadout("Blade-pass frequency", "${debugState.averageBladePassHz.toInt()} Hz")
+        SoundReadout("BPF M1/M2/M3/M4", debugState.motorBladePassLabel)
+        SoundReadout("Harmonics", debugState.harmonicCount.toString())
+        SoundReadout("Prop wash", "${debugState.propWashPercent.toInt()}%")
+        SoundReadout("Motor whine", "${debugState.motorWhinePercent.toInt()}%")
+        SoundReadout("Synth", debugState.synthStatus)
+        SoundReadout("Sample rate", "${debugState.sampleRateHz} Hz")
+        SoundReadout("Buffer", "${debugState.bufferFrames} frames")
+        SoundReadout("Underruns", debugState.underrunCount.toString())
+    }
+}
+
+@Composable
+private fun SwitchRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge)
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun SoundReadout(label: String, value: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(label, style = MaterialTheme.typography.labelMedium)
+            Text(value, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
