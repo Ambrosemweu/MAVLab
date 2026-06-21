@@ -7,10 +7,13 @@ This script provides a 7–10 minute step-by-step guide for presenters, instruct
 ## 1. Setup & Onboarding (1 Minute)
 
 1. **Launch MAVLab** on the Android device.
-2. **Onboarding Walkthrough:**
-   - Explain the concept of MAVLab: a digital twin simulator for drone operations education.
+2. **Open with the problem statement:**
+   - Drone simulation is powerful, but beginners are usually pushed straight into ROS, Gazebo, ArduPilot/PX4 SITL, Docker, MAVProxy, and networking setup.
+   - MAVLab gives them the friendly first layer: learn the drone concepts on a phone first, then graduate into the professional stack.
+3. **Onboarding Walkthrough:**
+   - Explain the concept of MAVLab: a user-friendly drone simulation and digital-twin app for drone operations education.
    - Point out the tabs: **Cockpit** (telemetry dashboard), **Controller** (joysticks/sensors), **SIM** (3D rendering), **Mission** (autonomous paths), and **Ops** (settings & flight logs).
-3. Tap **Get Started** to load the main dashboard.
+4. Tap **Get Started** to load the main dashboard.
 
 ---
 

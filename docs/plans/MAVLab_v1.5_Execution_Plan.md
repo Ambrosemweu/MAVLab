@@ -2,9 +2,9 @@
 
 > **For Hermes / future agents:** Use the `subagent-driven-development` skill to implement this plan phase-by-phase. Do not improvise product direction. Follow the naming, architecture invariants, acceptance tests, and file paths below.
 
-**Goal:** Ship MAVLab v1.5 as a polished, demo-ready, bootcamp-ready Android drone digital twin and training app.
+**Goal:** Ship MAVLab v1.5 as a polished, demo-ready, bootcamp-ready Android drone digital twin and training app that makes drone simulation approachable before learners have to master ROS, Gazebo, ArduPilot/PX4 SITL, Docker, MAVProxy, Linux networking, or professional simulator infrastructure.
 
-**Product thesis:** MAVLab v1.5 should make the current app feel credible, teachable, and impressive before expanding into bigger v2 systems. It should polish the core loop: onboard learner -> connect/control/simulate -> run mission -> inject failure -> review/export flight.
+**Product thesis:** MAVLab v1.5 should make the current app feel credible, teachable, and impressive before expanding into bigger v2 systems. It should polish the core loop: onboard learner -> explain the toolchain cliff -> connect/control/simulate -> run mission -> inject failure -> review/export flight.
 
 **Reference roadmap:** `/home/ambrose/Documents/Obsidian Vault/Ascend Operating System/Ascend Labs/MAVLab_Future_Roadmap.md`, section `# 1. MAVLab v1.5 — Polish the Current Core`.
 
@@ -18,11 +18,11 @@
 
 ### 0.1 Product positioning
 
-MAVLab is not “just a simulator.”
+MAVLab is not “just a simulator” and not another expert-only robotics stack.
 
 Use this framing everywhere:
 
-> MAVLab is a phone-based drone digital twin and training platform.
+> MAVLab is a user-friendly phone-based drone digital twin and training platform that makes drone simulation approachable before learners have to master ROS, Gazebo, ArduPilot/PX4 SITL, Docker, MAVProxy, Linux networking, or professional simulator infrastructure.
 
 v1.5 must strengthen this through polish, explainability, visual feedback, QGroundControl readiness, flight review, and export.
 

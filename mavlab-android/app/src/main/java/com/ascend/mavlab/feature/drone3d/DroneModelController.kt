@@ -1,6 +1,7 @@
 package com.ascend.mavlab.feature.drone3d
 
 import com.ascend.mavlab.simulation.engine.DroneState
+import com.google.android.filament.TransformManager
 import io.github.sceneview.math.Position
 import io.github.sceneview.math.Rotation
 import io.github.sceneview.node.ModelNode
@@ -11,6 +12,8 @@ import kotlin.math.tanh
 class DroneModelController {
     private var propellerAnimationPhaseSeconds = 0f
     private var lastPropellerFrameNanos: Long? = null
+    private var boundModelNode: ModelNode? = null
+    private var propellerTransforms: List<PropellerTransformBinding?> = emptyList()
 
     fun bodyPosition(state: DroneState): Position {
         return Position(
@@ -61,6 +64,7 @@ class DroneModelController {
             animator.getAnimationName(index) == animationName
         } ?: return
         val durationSeconds = animator.getAnimationDuration(animationIndex).coerceAtLeast(MinimumAnimationDurationSeconds)
+        val transforms = bindPropellerTransforms(modelNode)
         val previousFrameNanos = lastPropellerFrameNanos
         lastPropellerFrameNanos = frameTimeNanos
         if (previousFrameNanos != null) {
@@ -72,6 +76,7 @@ class DroneModelController {
             )
         }
         animator.applyAnimation(animationIndex, propellerAnimationPhaseSeconds)
+        freezeStoppedPropellerTransforms(transforms, state)
     }
 
     internal fun propellerAnimationPhaseSeconds(
@@ -86,13 +91,63 @@ class DroneModelController {
         return next % duration
     }
 
+    internal fun propellerShouldFreeze(state: DroneState, motorIndex: Int): Boolean {
+        val motor = state.motors.getOrNull(motorIndex) ?: return true
+        return motor.failed || motor.rpm <= MinimumAnimatedRpm
+    }
+
+    private fun bindPropellerTransforms(modelNode: ModelNode): List<PropellerTransformBinding?> {
+        if (boundModelNode !== modelNode) {
+            boundModelNode = modelNode
+            lastPropellerFrameNanos = null
+            propellerAnimationPhaseSeconds = 0f
+            val transformManager = modelNode.engine.transformManager
+            propellerTransforms = PropellerNodeNames.map { name ->
+                val entity = modelNode.model.getFirstEntityByName(name)
+                if (entity != 0 && transformManager.hasComponent(entity)) {
+                    PropellerTransformBinding(
+                        transformManager = transformManager,
+                        transformInstance = transformManager.getInstance(entity),
+                    )
+                } else {
+                    null
+                }
+            }
+        }
+        return propellerTransforms
+    }
+
+    private fun freezeStoppedPropellerTransforms(
+        transforms: List<PropellerTransformBinding?>,
+        state: DroneState,
+    ) {
+        transforms.forEachIndexed { index, binding ->
+            binding ?: return@forEachIndexed
+            if (propellerShouldFreeze(state, index)) {
+                val frozenTransform = binding.frozenTransform
+                    ?: binding.transformManager.getTransform(binding.transformInstance, FloatArray(16)).copyOf()
+                        .also { binding.frozenTransform = it }
+                binding.transformManager.setTransform(binding.transformInstance, frozenTransform)
+            } else {
+                binding.frozenTransform = null
+            }
+        }
+    }
+
     private fun inspectionOffset(value: Float, rangeMeters: Float, maxOffset: Float): Float {
         return (tanh((value / rangeMeters).toDouble()) * maxOffset).toFloat()
     }
 
     private fun radiansToDegrees(radians: Float): Float = radians * 180f / PI.toFloat()
 
+    private data class PropellerTransformBinding(
+        val transformManager: TransformManager,
+        val transformInstance: Int,
+        var frozenTransform: FloatArray? = null,
+    )
+
     private companion object {
+        val PropellerNodeNames = listOf("Prop_FL", "Prop_FR", "Prop_RL", "Prop_RR")
         const val SceneHorizontalRangeMeters = 45f
         const val SceneHorizontalMaxOffset = 0.85f
         const val SceneAltitudeRangeMeters = 28f

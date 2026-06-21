@@ -74,6 +74,24 @@ class DroneModelControllerTest {
     }
 
     @Test
+    fun stoppedTransformDecisionFollowsIndividualMotorTelemetry() {
+        val state = DroneState(
+            armed = true,
+            motors = listOf(
+                MotorTelemetry(rpm = 600f),
+                MotorTelemetry(rpm = 600f, failed = true),
+                MotorTelemetry(rpm = 900f),
+                MotorTelemetry(rpm = 0f),
+            ),
+        )
+
+        assertFalse(controller.propellerShouldFreeze(state, 0))
+        assertTrue(controller.propellerShouldFreeze(state, 1))
+        assertFalse(controller.propellerShouldFreeze(state, 2))
+        assertTrue(controller.propellerShouldFreeze(state, 3))
+    }
+
+    @Test
     fun propellerAnimationSpeedIgnoresDisarmedFailedAndStoppedMotors() {
         val disarmed = DroneState(
             armed = false,

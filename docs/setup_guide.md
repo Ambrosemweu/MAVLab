@@ -1,11 +1,13 @@
 # MAVLab Setup Guide
 
+MAVLab's core learning loop is designed to run from one Android-first app. You do not need ROS, Gazebo, ArduPilot SITL, PX4 SITL, Docker, Python bridges, cloud servers, or Linux networking knowledge to start learning drone simulation concepts.
+
 ## Install
 
 1. Install MAVLab on an Android 8.0+ phone.
 2. Install QGroundControl if you want ground-station integration.
 3. Open MAVLab and complete onboarding.
-4. Use the Lessons tab for the guided curriculum.
+4. Use the guided surfaces to learn the basics: Cockpit, Controller, Mission, SIM, and Ops.
 
 ## QGroundControl
 

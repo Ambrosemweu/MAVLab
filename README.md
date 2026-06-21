@@ -1,6 +1,12 @@
 # MAVLab by Ascend Labs
 
-MAVLab is an Android-first drone systems simulation and digital twin platform. Built for classroom training, hands-on bootcamps, and flight operators, MAVLab operates completely offline on a phone, helping students learn autopilot structures, physics, telemetry protocols (MAVLink), control mechanisms, failure conditions, and autonomous missions.
+<p align="center">
+  <img src="assets/Screenshot_20260620_184419.jpg" alt="MAVLab Android drone simulator interface" width="420">
+</p>
+
+MAVLab makes drone simulation approachable. It is an Android-first drone systems simulation and digital-twin platform for learners who want to understand drones without first fighting the steep learning curve of ROS, Gazebo, ArduPilot/PX4 SITL, Docker, MAVProxy, Linux networking, and multi-window simulator setup.
+
+Built for classroom training, hands-on bootcamps, and flight operators, MAVLab operates completely offline on a phone. It helps students learn autopilot structures, physics, telemetry protocols (MAVLink), control mechanisms, failure conditions, and autonomous missions through a friendly app before they graduate into the full professional toolchain.
 
 Active implementation codebase: [mavlab-android/](file:///home/ambrose/Downloads/Ascend/Drone%20SIM/mavlab-android/).
 
@@ -54,6 +60,8 @@ MAVLab integrates directly with QGroundControl:
 
 ## Project Documentation
 
+- **[Product Purpose](docs/product_purpose.md):** Why MAVLab exists: lowering the drone-simulation learning curve before ROS/Gazebo/SITL.
+- **[Vault Documentation Sync Map](docs/vault_documentation_sync_map.md):** Which Obsidian vault docs should drive GitHub documentation updates.
 - **[Architecture & Design Model](docs/architecture.md):** In-depth look at state flows, control authorities, and logging lifecycle.
 - **[Protocol Invariants & Guardrails](docs/protocol_guardrails.md):** Guidelines for GCS connections and packet rules.
 - **[7-Minute Demonstration Script](docs/v1_5_demo_script.md):** Narration script for live bootcamps and presentations.

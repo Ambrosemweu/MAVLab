@@ -24,9 +24,9 @@ That direction is useful, but the `Learn` tab makes the app feel like a classroo
 
 MAVLab should become:
 
-> **A phone-based drone digital twin simulator that connects to real GCS software, accepts uploaded missions, simulates flight, and visualizes realistic drone component behavior in 3D.**
+> **A user-friendly phone-based drone digital twin simulator that makes drone simulation approachable before learners have to master ROS, Gazebo, ArduPilot/PX4 SITL, Docker, MAVProxy, Linux networking, or professional simulator infrastructure; it connects to real GCS software, accepts uploaded missions, simulates flight, and visualizes realistic drone component behavior in 3D.**
 
-The educational value should come from operating the simulator, observing real telemetry, testing missions, injecting failures, and seeing the vehicle react — not from a static lesson tab.
+The educational value should come from operating the simulator, observing real telemetry, testing missions, injecting failures, and seeing the vehicle react — not from a static lesson tab or from forcing beginners to assemble the full professional simulation toolchain before they understand the drone.
 
 ### 1.3 New product pillars
 

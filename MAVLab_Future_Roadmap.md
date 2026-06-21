@@ -4,11 +4,11 @@ A detailed product and R&D direction note for MAVLab, the Ascend Labs phone-base
 
 ## Positioning
 
-MAVLab should not be positioned as “just a simulator.”
+MAVLab should not be positioned as “just a simulator.” It should also not be positioned as another expert-only robotics stack.
 
-A stronger positioning is:
+The sharper positioning is:
 
-> MAVLab is a phone-based drone digital twin and training platform.
+> MAVLab is a user-friendly phone-based drone digital twin and training platform that makes drone simulation approachable before learners have to master ROS, Gazebo, ArduPilot/PX4 SITL, Docker, MAVProxy, Linux networking, or professional simulator infrastructure.
 
 This gives it room to become:
 
@@ -487,7 +487,7 @@ This turns MAVLab into a practical R&D simulator.
 
 # 6. MAVLab + Real Autopilot Ecosystems
 
-MAVLab could integrate more deeply with real drone software stacks.
+MAVLab could integrate more deeply with real drone software stacks, but these should be treated as graduation paths, not prerequisites. The core MAVLab learner should be able to start phone-first; ROS, Gazebo, ArduPilot SITL, PX4 SITL, Webots, JSBSim, and hardware-in-the-loop come after the concepts are visible.
 
 ## 6.1 ArduPilot SITL
 

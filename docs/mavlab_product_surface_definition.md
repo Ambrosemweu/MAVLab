@@ -22,11 +22,13 @@
 
 ## 1. Product Frame
 
-MAVLab is not a lesson app.
+MAVLab is not a lesson app, and it is not a thin wrapper around expert-only drone simulation tools.
 
 MAVLab is:
 
-> A phone-based drone digital twin simulator that can be controlled either by built-in phone/manual inputs or by real GCS software such as QGroundControl, then visualizes the resulting drone state through cockpit telemetry and a functional 3D twin.
+> A user-friendly phone-based drone simulation and digital-twin platform that lets learners understand drone systems before they have to master ROS, Gazebo, ArduPilot/PX4 SITL, Docker, MAVProxy, Linux networking, or professional simulator infrastructure. It can be controlled either by built-in phone/manual inputs or by real GCS software such as QGroundControl, then visualizes the resulting drone state through cockpit telemetry and a functional 3D twin.
+
+The core product job is to flatten the drone-simulation learning curve: one friendly app first, professional toolchains later.
 
 The educational value should come from operation:
 
