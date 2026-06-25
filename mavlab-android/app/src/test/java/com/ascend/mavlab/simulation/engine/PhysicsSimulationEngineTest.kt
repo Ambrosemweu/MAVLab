@@ -4,6 +4,7 @@ import com.ascend.mavlab.simulation.autopilot.PilotInput
 import com.ascend.mavlab.simulation.mission.MissionCommand
 import com.ascend.mavlab.simulation.mission.MissionItem
 import com.ascend.mavlab.simulation.mission.MissionProgress
+import com.ascend.mavlab.simulation.physics.QuadcopterParams
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -481,6 +482,28 @@ class PhysicsSimulationEngineTest {
         // It is associated with the preceding NAV command (wp1), so it should apply while flying to wp1.
         val speed = engine.previewAutoMissionSpeed(progress)
         assertEquals(12.0f, speed)
+    }
+
+    @Test
+    fun depletedBatteryDisarmsDroneAndCutsMotors() {
+        // Create an engine with a tiny battery capacity so it drains instantly
+        val params = QuadcopterParams(batteryCapacityWh = 0.0001f)
+        val engine = PhysicsSimulationEngine(params = params)
+
+        // It should start armed and motors spinning
+        engine.setArmed(true)
+        engine.tickForTest()
+        assertTrue(engine.state.value.armed)
+        assertTrue(engine.state.value.motors.all { it.rpm > 0f })
+
+        // The second tick should detect the depleted battery (0%) and disarm + stop motors
+        engine.tickForTest()
+        assertFalse(engine.state.value.armed)
+        assertTrue(engine.state.value.motors.all { it.rpm == 0f })
+
+        // Attempting to re-arm with a depleted battery should be blocked
+        engine.setArmed(true)
+        assertFalse(engine.state.value.armed)
     }
 
 

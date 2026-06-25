@@ -428,10 +428,13 @@ class PhysicsSimulationEngine(
         lastTickNs = nowNs
 
         val current = applyFailsafes(mutableState.value)
+        if (current.batteryRemainingPercent.toInt() <= 0 && autopilot.armed) {
+            autopilot.setArmed(false, current)
+        }
         val failures = failureInjector.state.value
         val navigationInput = activePilotInput(current, dt)
         val output = autopilot.computeMotorOutput(current, navigationInput, dt)
-        val overrideRpm = motorSpeedOverrideRpm?.takeIf { current.armed }
+        val overrideRpm = motorSpeedOverrideRpm?.takeIf { autopilot.armed }
         val baseMotorSpeeds = if (overrideRpm != null) {
             val radS = overrideRpm * (2f * PI.toFloat()) / 60f
             FloatArray(4) { radS }

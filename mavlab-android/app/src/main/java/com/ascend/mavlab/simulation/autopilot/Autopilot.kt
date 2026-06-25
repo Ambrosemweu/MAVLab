@@ -28,6 +28,10 @@ class Autopilot(
         private set
 
     fun setArmed(value: Boolean, state: DroneState) {
+        if (value && state.batteryRemainingPercent.toInt() <= 0) {
+            armed = false
+            return
+        }
         armed = value
         if (value) {
             targetAltitudeM = state.altitudeAglMeters
@@ -51,6 +55,10 @@ class Autopilot(
     }
 
     fun takeoff(state: DroneState, targetAltitude: Float) {
+        if (state.batteryRemainingPercent.toInt() <= 0) {
+            armed = false
+            return
+        }
         armed = true
         mode = FlightMode.GUIDED
         targetAltitudeM = targetAltitude.coerceAtLeast(state.altitudeAglMeters + 0.5f)

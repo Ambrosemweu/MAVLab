@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 
 object AppRuntime {
@@ -652,21 +653,21 @@ object AppRuntime {
             // presses Calibrate.
             if (!phoneSensorCalibration.isCalibrated()) {
                 val warmup = mutableListOf<OrientationData>()
-                repository.orientationFlow().collect { raw ->
+                repository.orientationFlow().take(AutoCalibrationSampleCount).collect { raw ->
                     warmup.add(raw)
                     mutablePhoneSensorRawOrientation.value = raw
                     mutablePhoneSensorSource.value = raw.source
-                    if (warmup.size >= AutoCalibrationSampleCount) {
-                        val avg = OrientationData(
-                            roll = warmup.map { it.roll }.average().toFloat(),
-                            pitch = warmup.map { it.pitch }.average().toFloat(),
-                            yaw = warmup.map { it.yaw }.average().toFloat(),
-                            timestampNanos = raw.timestampNanos,
-                            source = raw.source,
-                        )
-                        phoneSensorCalibration.calibrate(avg)
-                        return@collect
-                    }
+                }
+                if (warmup.isNotEmpty()) {
+                    val last = warmup.last()
+                    val avg = OrientationData(
+                        roll = warmup.map { it.roll }.average().toFloat(),
+                        pitch = warmup.map { it.pitch }.average().toFloat(),
+                        yaw = warmup.map { it.yaw }.average().toFloat(),
+                        timestampNanos = last.timestampNanos,
+                        source = last.source,
+                    )
+                    phoneSensorCalibration.calibrate(avg)
                 }
             }
             repository.orientationFlow().collect { raw ->
