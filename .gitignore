@@ -6,3 +6,18 @@ local.properties
 .vscode/
 captures/
 mavlab-android/app/build/
+
+# Local/internal planning artifacts belong in Obsidian, not the public repo
+phases/
+docs/plans/
+*Execution_Plan*.md
+*execution-plan*.md
+*handoff.md
+*vault_documentation_sync_map.md
+
+# Local Play Store / signing artifacts
+*.jks
+*.keystore
+keystore.properties
+play-account*.json
+service-account*.json
