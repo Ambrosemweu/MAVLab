@@ -113,7 +113,7 @@ class ProceduralDroneSynth(
             AudioFormat.ENCODING_PCM_FLOAT,
         )
         if (minBytes <= 0) return null
-        val bufferBytes = maxOf(minBytes, renderBuffer.size * FloatBytes * 3)
+        val bufferBytes = maxOf(minBytes, renderBuffer.size * FloatBytes * 6)
         return try {
             AudioTrack.Builder()
                 .setAudioAttributes(

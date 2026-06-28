@@ -42,6 +42,7 @@ class DroneSoundController(
     private val mutableDebugState = MutableStateFlow(DroneSoundDebugState())
     private val motorStreamIds = IntArray(MotorCount)
     private val motorVolumes = FloatArray(MotorCount)
+    private val motorRates = FloatArray(MotorCount) { 0.55f }
     private var motorSampleId = 0
     private var warningSampleId = 0
     private var loadedSampleCount = 0
@@ -120,20 +121,23 @@ class DroneSoundController(
             if (index !in 0 until MotorCount) return@forEach
             val targetVolume = motor.volume * sampleBedGain
             motorVolumes[index] = smoothVolume(motorVolumes[index], targetVolume)
+            val targetRate = motor.playbackRate.coerceIn(MinPlaybackRate, MaxPlaybackRate)
             if (motorStreamIds[index] == 0 && motorVolumes[index] > 0.001f) {
+                motorRates[index] = targetRate
                 motorStreamIds[index] = soundPool?.play(
                     motorSampleId,
                     0f,
                     0f,
                     1,
                     -1,
-                    motor.playbackRate.coerceIn(MinPlaybackRate, MaxPlaybackRate),
+                    targetRate,
                 ) ?: 0
             }
             val streamId = motorStreamIds[index]
             if (streamId != 0) {
+                motorRates[index] = smoothRate(motorRates[index], targetRate)
                 val roughJitter = roughRateJitter(index, frame.roughness)
-                val rate = (motor.playbackRate * roughJitter).coerceIn(MinPlaybackRate, MaxPlaybackRate)
+                val rate = (motorRates[index] * roughJitter).coerceIn(MinPlaybackRate, MaxPlaybackRate)
                 soundPool?.setRate(streamId, rate)
                 soundPool?.setVolume(streamId, motorVolumes[index], motorVolumes[index])
             }
@@ -183,6 +187,10 @@ class DroneSoundController(
     private fun smoothVolume(current: Float, target: Float): Float {
         val coefficient = if (target > current) FadeInCoefficient else FadeOutCoefficient
         return (current + (target - current) * coefficient).coerceIn(0f, 1f)
+    }
+
+    private fun smoothRate(current: Float, target: Float): Float {
+        return (current + (target - current) * 0.35f).coerceIn(MinPlaybackRate, MaxPlaybackRate)
     }
 
     private fun roughRateJitter(index: Int, roughness: Float): Float {

@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 
@@ -645,15 +646,19 @@ object AppRuntime {
         val repository = PhoneSensorRepository(sensorManager)
         mutablePhoneSensorSource.value = repository.activeSource()
         phoneSensorJob = scope.launch {
-            // Auto-calibrate: average the first few samples to establish a
-            // stable zero-reference before feeding data into the simulation.
-            // This fixes phones whose rotation-vector sensor reports a non-zero
-            // resting offset that would otherwise push past the deadzone and
-            // cause erratic gyro/altitude readings until the user manually
-            // presses Calibrate.
+            // Auto-calibrate: drop the first batch of sensor samples to let
+            // the Android sensor-fusion filter (Kalman/complementary) converge,
+            // then average a window of subsequent samples to establish a stable
+            // zero-reference. This fixes phones whose rotation-vector sensor
+            // reports a drifting offset during the first ~500ms after
+            // registration, which would otherwise push past the deadzone and
+            // cause erratic gyro/altitude readings.
             if (!phoneSensorCalibration.isCalibrated()) {
                 val warmup = mutableListOf<OrientationData>()
-                repository.orientationFlow().take(AutoCalibrationSampleCount).collect { raw ->
+                repository.orientationFlow()
+                    .drop(AutoCalibrationDropCount)
+                    .take(AutoCalibrationSampleCount)
+                    .collect { raw ->
                     warmup.add(raw)
                     mutablePhoneSensorRawOrientation.value = raw
                     mutablePhoneSensorSource.value = raw.source
@@ -763,7 +768,8 @@ object AppRuntime {
     private const val PhoneSensorMaxYawAngleRad = 0.7853982f
     private const val PhoneSensorDeadzoneRad = 0.05235988f
     private const val PhoneSensorExpo = 1.45f
-    private const val AutoCalibrationSampleCount = 5
+    private const val AutoCalibrationDropCount = 25  // ~500ms at SENSOR_DELAY_GAME
+    private const val AutoCalibrationSampleCount = 20 // ~400ms of averaged readings
     private const val SimLocationPrefsName = "mavlab_sim_location"
     private const val SimLocationKeyId = "id"
     private const val SimLocationKeyLatitude = "latitude"
