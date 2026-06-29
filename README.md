@@ -75,4 +75,4 @@ MAVLab integrates directly with QGroundControl:
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Apache License 2.0. See [LICENSE](LICENSE).
