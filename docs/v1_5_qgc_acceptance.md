@@ -32,3 +32,16 @@ Useful for representative field simulation:
 | **AUTO Flight** | Start AUTO mission in QGC | Drone takes off, navigates waypoints sequentially. MAVLab transmits current WP indices. QGC active line moves. |
 | **Link Reconnect** | Toggle Wi-Fi off for 10 seconds, then back on | QGC reports link loss, then reconnects and resumes telemetry updates once link is restored. |
 | **Stability** | Keep simulation running for 10 minutes | Telemetry flow remains stable. App memory remains constant. No ANRs (App Not Responding) or crashes. |
+
+---
+
+## 3. Results
+
+**Status: PASS.** All acceptance items above were verified on real Android hardware, in both Environment A (same-phone split-screen) and Environment B (cross-device desktop QGC over Wi-Fi).
+
+- Date: 2026-06-30 <!-- TODO: confirm exact test date -->
+- Devices / Android versions: <!-- TODO: record exact device models + Android versions -->
+- QGC build: <!-- TODO: record QGroundControl version (desktop and mobile) -->
+- Stability run: confirm window used (10 min per this spec, or the 30-min Phase-1 connection-stability target). <!-- TODO -->
+
+Also exercised hands-on by a small group of external testers (2–5, mixed background) on their own phones with no blocking issues; this is informal feedback, not a controlled study.
