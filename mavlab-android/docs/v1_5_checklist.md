@@ -203,7 +203,7 @@ Relevant test anchors already exist under
 - [x] User can upload a QGC mission and see it in-app.
 - [x] User can understand which waypoint is active.
 - [x] User can explain mission progress using the UI.
-- [ ] Real QGC same-phone and desktop-Wi-Fi tests pass.
+- [x] Real QGC same-phone and desktop-Wi-Fi tests pass. (Verified 2026-06-30 on real device(s); see `docs/v1_5_qgc_acceptance.md`.)
 
 ### Phase 6 - Failure Lab / Scenario Explanation Polish
 
@@ -244,7 +244,7 @@ Relevant test anchors already exist under
   response, and safety lessons.
 - [ ] Flights produce telemetry CSV, event log, mission snapshot, and a simple
   report.
-- [ ] Same-phone QGC and desktop QGC workflows are tested and documented.
+- [x] Same-phone QGC and desktop QGC workflows are tested and documented. (Verified 2026-06-30; see `docs/v1_5_qgc_acceptance.md`.)
 - [ ] Demo script exists and can be followed without improvisation.
 - [x] Build/test command passes:
   `GRADLE_USER_HOME="$PWD/.gradle" ./gradlew lintDebug testDebugUnitTest assembleDebug`
