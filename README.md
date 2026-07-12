@@ -8,7 +8,17 @@ MAVLab makes drone simulation approachable. It is an Android-first drone systems
 
 Built for classroom training, hands-on bootcamps, and flight operators, MAVLab operates completely offline on a phone. It helps students learn autopilot structures, physics, telemetry protocols (MAVLink), control mechanisms, failure conditions, and autonomous missions through a friendly app before they graduate into the full professional toolchain.
 
-Active implementation codebase: [mavlab-android/](file:///home/ambrose/Downloads/Ascend/Drone%20SIM/mavlab-android/).
+Active implementation codebase: [mavlab-android/](mavlab-android/).
+
+---
+
+## 📄 Technical paper
+
+**MAVLab: A Phone-First Drone Digital-Twin Simulator for Flattening the Drone-Systems Learning Curve** — Kioko & Kaira, Ascend Labs, 2026.
+
+The technical report documents the drone-education tooling cliff, the phone-first architecture, the protocol-first engineering methodology, and live QGroundControl acceptance results.
+
+[Read the paper](docs/paper/mavlab-technical-report.pdf) · [Markdown source](docs/paper/paper.md) · [How to cite](CITATION.cff)
 
 ---
 

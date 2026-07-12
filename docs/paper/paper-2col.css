@@ -1,0 +1,60 @@
+/* Two-column (IEEE/ACM-style) overrides — layered on top of paper.css.
+   Build: pandoc ... --css paper.css --css paper-2col.css ...  */
+
+@page { margin: 1.7cm 1.55cm 1.9cm 1.55cm; }
+
+html { font-size: 9.6pt; }
+
+/* --- IEEE look: Times family (Nimbus Roman is the metric-identical Times here) --- */
+body { font-family: "Nimbus Roman", "Tinos", "Liberation Serif", "Times New Roman", Times, serif; }
+h1, h2, h3, h4 { font-family: "Nimbus Roman", "Tinos", "Liberation Serif", "Times New Roman", Times, serif; color: #111; }
+code, pre, kbd { font-family: "Nimbus Mono PS", "Liberation Mono", "DejaVu Sans Mono", monospace; }
+th { font-family: "Nimbus Roman", "Tinos", "Liberation Serif", Times, serif; }
+
+body {
+  column-count: 2;
+  column-gap: 0.62cm;
+  column-rule: 0.5pt solid #d7dce1;   /* the line down the middle */
+  text-align: justify;
+}
+
+h1 { font-size: 16pt; margin-bottom: .1em; }
+h2 { font-size: 11.5pt; border-bottom: none; margin: .8em 0 .3em; }
+h3 { font-size: 10pt; }
+table { font-size: 8.2pt; }
+pre  { font-size: 7.8pt; }
+code { font-size: 8.4pt; }
+
+/* --- full-width band across both columns: title block + abstract --- */
+#title-block-header,
+h1,
+h1 + p,           /* authors */
+h1 + p + p,       /* affiliation / corresponding / code */
+#abstract,        /* "Abstract" heading */
+#abstract + p     /* abstract text */
+{ column-span: all; }
+
+/* --- every element of the title block centered --- */
+#title-block-header, #title-block-header *,
+h1,
+h1 + p,           /* authors */
+h1 + p + p        /* affiliation / corresponding / code */
+{ text-align: center; }
+
+h1 + p, h1 + p + p { margin: .15em 0; }
+#abstract { text-align: left; }
+#abstract + p { text-align: justify; font-size: 8.9pt; margin: .2em 2% .4em; }
+
+/* --- wide architecture figure (Figure 1, the non-.shot image) + its caption span both columns --- */
+p:has(> img:not(.shot)) { column-span: all; text-align: center; margin: .5em 0 .2em; }
+p:has(> img:not(.shot)) + p { column-span: all; font-size: 8.6pt; }
+
+/* wide appendix tables span both columns (table* exception); keep heading+table together */
+.widetable { column-span: all; margin: .4em 0; break-inside: avoid; }
+.widetable h2 { margin-top: .2em; }
+.widetable table { width: 100%; font-size: 9pt; }
+.widetable td, .widetable th { white-space: normal; }
+
+/* keep blocks whole within a column */
+table, pre, img, blockquote { break-inside: avoid; }
+h2, h3 { break-after: avoid; }
