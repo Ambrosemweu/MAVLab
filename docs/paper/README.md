@@ -3,7 +3,8 @@
 **MAVLab: A Phone-First Drone Digital-Twin Simulator for Flattening the Drone-Systems Learning Curve**
 Ambrose Mweu Kioko and James Wainaina Kaira — Ascend Labs, Ascend Drone Technologies Ltd., Nairobi, Kenya (2026).
 
-- 📄 [`mavlab-technical-report.pdf`](mavlab-technical-report.pdf) — the two-column PDF
+- 🌐 [Published version](https://labs.fly-ascend.com/mavlab-technical-paper.pdf) — on the Ascend Labs website
+- 📄 [`mavlab-technical-report.pdf`](mavlab-technical-report.pdf) — the two-column PDF (in-repo copy)
 - 📝 [`paper.md`](paper.md) — the markdown source
 - 🖼️ [`figures/`](figures/) — architecture diagram and app-surface screenshots
 
