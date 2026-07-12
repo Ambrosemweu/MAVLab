@@ -47,6 +47,16 @@ The technical report documents the drone-education tooling cliff, the phone-firs
 
 ## Quick Start
 
+### Try the prebuilt APK (recommended for first run)
+
+1. Download `MAVLab-v1.5.0.apk` from the [GitHub Releases page](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.5.0).
+2. Install it (Android will prompt you to allow installs from your file manager / browser — normal for sideloaded APKs).
+3. Open **MAVLab**, then open **QGroundControl** side-by-side (split-screen) on the same phone.
+4. QGroundControl auto-detects the vehicle on `127.0.0.1:14550` — arm, take off, and fly missions within the first session.
+5. Prefer desktop QGroundControl? Connect phone and computer to the **same Wi-Fi** and open QGC on the computer; the phone's UDP broadcast links automatically.
+
+Stuck? See [docs/known_first_run_issues.md](docs/known_first_run_issues.md). The full source-build path is below.
+
 ### Build & Deploy
 
 To compile the app, run the tests, and build the debug package:
