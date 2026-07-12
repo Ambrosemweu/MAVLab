@@ -187,23 +187,23 @@ Live QGroundControl acceptance testing has since confirmed this surface end to e
 
 MAVLab's five bottom-navigation surfaces each teach a facet of the systems view (Figure 2).
 
-![MAVLab Cockpit surface](figures/mavlab-cockpit.jpg){width=6.5cm .shot}
+<img src="figures/mavlab-cockpit.jpg" alt="MAVLab Cockpit surface" width="246" class="shot">
 
 *(a) **Cockpit** — attitude/altitude instrument, ground-speed and home-distance readouts, and armed/mode/battery/GPS/failure cards. The MAVLink status line reports the live endpoint (`Running UDP 14551 → QGC 14550 | Vehicle System ID 1`).*
 
-![MAVLab Controller surface](figures/mavlab-controller.jpg){width=6.5cm .shot}
+<img src="figures/mavlab-controller.jpg" alt="MAVLab Controller surface" width="246" class="shot">
 
 *(b) **Controller** — local/manual control with three input modes (Phone sensors, Custom input, Direct RPM); here the phone's game-rotation sensor drives an attitude pad. QGC missions take control authority while AUTO is active.*
 
-![MAVLab SIM 3D digital twin](figures/mavlab-sim-3d.jpg){width=6.5cm .shot}
+<img src="figures/mavlab-sim-3d.jpg" alt="MAVLab SIM 3D digital twin" width="246" class="shot">
 
 *(c) **SIM** — the 3D digital twin, overlaid with live state (altitude, vertical/ground speed, battery voltage, GPS `3D fix 12`, per-motor M1–M4 status, RPM, heading, throttle). The model reflects state, it does not merely decorate.*
 
-![MAVLab Mission surface](figures/mavlab-mission.jpg){width=6.5cm .shot}
+<img src="figures/mavlab-mission.jpg" alt="MAVLab Mission surface" width="246" class="shot">
 
 *(d) **Mission** — autonomous route execution: QGroundControl upload, waypoint progress, and a mission monitor (next-waypoint distance, ground/target speed, ETA, vehicle position, altitude) with Load/Start-Auto/Clear controls.*
 
-![MAVLab Ops surface](figures/mavlab-ops.jpg){width=6.5cm .shot}
+<img src="figures/mavlab-ops.jpg" alt="MAVLab Ops surface" width="246" class="shot">
 
 *(e) **Ops** — diagnostics, logs, export, and setup: GCS-link readiness (`Disconnected — waiting for MAVLink from QGC`) and the selectable GCS start location, here the Nairobi default (−1.2921, 36.8219 @ 1805 m MSL).*
 
