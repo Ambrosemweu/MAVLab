@@ -29,4 +29,5 @@ preferred-citation:
   year: 2026
   institution:
     name: "Ascend Labs, Ascend Drone Technologies Ltd., Nairobi, Kenya"
-  url: "https://labs.fly-ascend.com/mavlab-technical-paper.pdf"
+  doi: "10.5281/zenodo.21319693"
+  url: "https://doi.org/10.5281/zenodo.21319693"

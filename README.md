@@ -14,11 +14,13 @@ Active implementation codebase: [mavlab-android/](mavlab-android/).
 
 ## 📄 Technical paper
 
-**MAVLab: A Phone-First Drone Digital-Twin Simulator for Flattening the Drone-Systems Learning Curve** — Kioko & Kaira, Ascend Labs, 2026.
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21319694.svg)](https://doi.org/10.5281/zenodo.21319694)
+
+**MAVLab: A Phone-First Drone Digital-Twin Simulator for Flattening the Drone-Systems Learning Curve** — Kioko & Kaira, Ascend Labs, 2026. DOI: [10.5281/zenodo.21319694](https://doi.org/10.5281/zenodo.21319694)
 
 The technical report documents the drone-education tooling cliff, the phone-first architecture, the protocol-first engineering methodology, and live QGroundControl acceptance results.
 
-[Read the paper](https://labs.fly-ascend.com/mavlab-technical-paper.pdf) · [In-repo copy](docs/paper/mavlab-technical-report.pdf) · [Markdown source](docs/paper/paper.md) · [How to cite](CITATION.cff)
+[Read the paper (DOI)](https://doi.org/10.5281/zenodo.21319694) · [lab site copy](https://labs.fly-ascend.com/mavlab-technical-paper.pdf) · [Markdown source](docs/paper/paper.md) · [How to cite](CITATION.cff)
 
 ---
 
