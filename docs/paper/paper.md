@@ -6,8 +6,9 @@ authors:
 affiliation: Ascend Labs, Ascend Drone Technologies Ltd., Nairobi, Kenya
 corresponding: Ambrose Mweu Kioko <ambrose@fly-ascend.com>
 repository: https://github.com/Labs-Ascend/MAVLab
-status: Draft v0.1 (markdown)
+status: Technical Report v1.0 (final)
 date: 2026-06-30
+published_url: https://labs.fly-ascend.com/mavlab-technical-paper.pdf
 keywords:
   - drone education
   - MAVLink

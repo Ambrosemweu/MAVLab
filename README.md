@@ -18,7 +18,7 @@ Active implementation codebase: [mavlab-android/](mavlab-android/).
 
 The technical report documents the drone-education tooling cliff, the phone-first architecture, the protocol-first engineering methodology, and live QGroundControl acceptance results.
 
-[Read the paper](docs/paper/mavlab-technical-report.pdf) · [Markdown source](docs/paper/paper.md) · [How to cite](CITATION.cff)
+[Read the paper](https://labs.fly-ascend.com/mavlab-technical-paper.pdf) · [In-repo copy](docs/paper/mavlab-technical-report.pdf) · [Markdown source](docs/paper/paper.md) · [How to cite](CITATION.cff)
 
 ---
 
