@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use MAVLab in your research or teaching, please cite the technical report below."
+title: "MAVLab: A Phone-First Drone Digital-Twin Simulator"
+authors:
+  - family-names: Kioko
+    given-names: Ambrose Mweu
+  - family-names: Kaira
+    given-names: James Wainaina
+license: Apache-2.0
+repository-code: "https://github.com/Labs-Ascend/MAVLab"
+url: "https://github.com/Labs-Ascend/MAVLab"
+keywords:
+  - drone education
+  - MAVLink
+  - digital twin
+  - flight simulation
+  - ArduPilot
+  - QGroundControl
+  - mobile robotics
+  - low-resource learning
+preferred-citation:
+  type: report
+  title: "MAVLab: A Phone-First Drone Digital-Twin Simulator for Flattening the Drone-Systems Learning Curve"
+  authors:
+    - family-names: Kioko
+      given-names: Ambrose Mweu
+    - family-names: Kaira
+      given-names: James Wainaina
+  year: 2026
+  institution:
+    name: "Ascend Labs, Ascend Drone Technologies Ltd., Nairobi, Kenya"
+  url: "https://github.com/Labs-Ascend/MAVLab/blob/main/docs/paper/mavlab-technical-report.pdf"

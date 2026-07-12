@@ -1,0 +1,38 @@
+@page {
+  size: A4;
+  margin: 2cm 1.8cm 2.1cm 1.8cm;
+  @bottom-center { content: counter(page) " / " counter(pages); font-size: 9pt; color: #777; }
+  @bottom-right  { content: "MAVLab v1.5.0 — Ascend Labs"; font-size: 8pt; color: #aaa; }
+}
+html { font-size: 10.8pt; }
+body {
+  font-family: "Source Serif 4", "Liberation Serif", Georgia, serif;
+  line-height: 1.44; color: #141414; text-align: justify; hyphens: auto;
+}
+h1, h2, h3, h4 {
+  font-family: "Source Sans 3", "Liberation Sans", Arial, sans-serif;
+  color: #12233a; line-height: 1.2; break-after: avoid;
+}
+h1 { font-size: 19pt; margin: 0 0 .15em; text-align: left; }
+h2 { font-size: 13.5pt; margin: 1.05em 0 .35em; border-bottom: 1px solid #cdd6df; padding-bottom: 3px; }
+h3 { font-size: 11.4pt; margin: .85em 0 .28em; color: #1c3350; }
+p  { margin: .34em 0; }
+a  { color: #1a4b8c; text-decoration: none; overflow-wrap: anywhere; }
+code { overflow-wrap: anywhere; }
+strong { color: #101820; }
+code { font-family: "DejaVu Sans Mono", monospace; font-size: 8.9pt; background: #f1f4f7; padding: 0 2px; border-radius: 3px; }
+pre  { background: #f6f8fa; border: 1px solid #e3e7ec; border-radius: 5px; padding: 8px 10px; font-size: 8.4pt; break-inside: avoid; white-space: pre-wrap; }
+pre code { background: none; padding: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 9.2pt; margin: .5em 0; break-inside: avoid; }
+th, td { border: 1px solid #cdd6dd; padding: 4px 7px; text-align: left; vertical-align: top; }
+th { background: #eef2f6; font-family: "Source Sans 3", "Liberation Sans", sans-serif; }
+img { max-width: 100%; display: block; margin: .45em auto; }
+img.shot { border: 1px solid #d8dde2; margin: .35em auto .1em; }
+p:has(> img.shot) { text-align: center; margin: .2em 0; }
+img[src*="fig1"] { max-width: 100%; }
+figure, img, table { break-inside: avoid; }
+blockquote { margin: .5em 0; padding: .25em .85em; border-left: 3px solid #b9c4d0; color: #333; background: #f7f9fb; }
+hr { border: none; border-top: 1px solid #dde3e9; margin: 1.0em 0; }
+em { color: #26303a; }
+ul, ol { margin: .3em 0 .3em 0; padding-left: 1.3em; }
+li { margin: .12em 0; }
