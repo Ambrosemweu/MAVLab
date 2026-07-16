@@ -165,6 +165,27 @@ class MavlinkMessageBuilderTest {
     }
 
     @Test
+    fun homePositionUsesMavlinkFieldOrder() {
+        val builder = MavlinkMessageBuilder(systemId = 1, componentId = 1)
+        val home = com.ascend.mavlab.simulation.engine.HomePosition(
+            latitudeDeg = -1.2921,
+            longitudeDeg = 36.8219,
+            altitudeMslMeters = 1805f,
+        )
+
+        val data = builder.homePosition(home)
+        val packet = MavlinkParser.parse(data, length = data.size)
+
+        assertNotNull(packet)
+        assertEquals(242, packet.messageId)
+        assertEquals(52, packet.payload.size)
+        assertEquals(-12_921_000, packet.payload.leInt32(0))
+        assertEquals(368_219_000, packet.payload.leInt32(4))
+        assertEquals(1_805_000, packet.payload.leInt32(8))
+        assertEquals(1f, packet.payload.leFloat(24))
+    }
+
+    @Test
     fun heartbeatCrcIsCorrect() {
         val builder = MavlinkMessageBuilder(systemId = 1, componentId = 1)
         val state = DroneState() // default armed=false, mode=STABILIZE

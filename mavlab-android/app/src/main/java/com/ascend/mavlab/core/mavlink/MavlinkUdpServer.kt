@@ -17,6 +17,7 @@ import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.DatagramChannel
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,12 +53,14 @@ class MavlinkUdpServer(
     private var receiveJob: Job? = null
     private var gcsConnectionJob: Job? = null
     private var lastPeer: UdpDestination? = null
+    private val activePeers = ConcurrentHashMap<UdpDestination, Long>()
     private var lastReachedSequenceSent: Int? = null
     private var missionUploadSession: MissionUploadSession? = null
     @Volatile
     private var telemetryDestinations: List<UdpDestination> = emptyList()
     @Volatile
     private var wpNavSpeed: Float = 300f
+    private var telemetryBurstCount = 0
 
     fun start(context: Context) {
         if (socket != null) return
@@ -82,13 +85,19 @@ class MavlinkUdpServer(
     private fun sendImmediateTelemetry() {
         val state = simLoop.state.value
         val heartbeatData = builder.heartbeat(state)
-        val peer = lastPeer
-        if (peer != null) {
-            send(heartbeatData, peer)
+        val peers = gcsPeers()
+        if (peers.isNotEmpty()) {
+            peers.forEach { send(heartbeatData, it) }
         } else {
             val destinations = telemetryDestinations
             destinations.forEach { send(heartbeatData, it) }
         }
+    }
+
+    private fun gcsPeers(): List<UdpDestination> {
+        val now = System.currentTimeMillis()
+        activePeers.entries.removeIf { now - it.value > PeerActivityTimeoutMs }
+        return activePeers.keys.toList()
     }
 
     override suspend fun start() {
@@ -105,6 +114,8 @@ class MavlinkUdpServer(
         gcsConnectionJob?.cancel()
         socket?.close()
         socket = null
+        activePeers.clear()
+        lastPeer = null
         mutableIdentityStatus.value = mutableIdentityStatus.value.copy(
             gcsConnected = false,
             gcsHeartbeatSeriesStartedAtMs = null,
@@ -137,14 +148,15 @@ class MavlinkUdpServer(
     private fun sendTelemetryBurst(destinations: List<UdpDestination>) {
         val state = simLoop.state.value
         val missionProgress = simLoop.missionProgress.value
-        val peer = lastPeer
+        val peers = gcsPeers()
 
-        if (peer == null) {
+        if (peers.isEmpty()) {
             val heartbeatData = builder.heartbeat(state)
             destinations.forEach { send(heartbeatData, it) }
             return
         }
 
+        telemetryBurstCount += 1
         val messages = buildList {
             add(builder.heartbeat(state))
             add(builder.attitude(state))
@@ -153,6 +165,9 @@ class MavlinkUdpServer(
             add(builder.vfrHud(state))
             add(builder.sysStatus(state))
             add(builder.batteryStatus(state))
+            if (telemetryBurstCount % HomePositionBurstInterval == 0) {
+                add(builder.homePosition(simLoop.homePosition()))
+            }
             if (missionProgress.loaded) {
                 add(builder.missionCurrent(missionProgress.currentIndex.coerceAtMost(missionProgress.items.lastIndex.coerceAtLeast(0))))
                 val reached = missionProgress.lastReachedSequence
@@ -162,7 +177,9 @@ class MavlinkUdpServer(
                 }
             }
         }
-        messages.forEach { send(it, peer) }
+        peers.forEach { peer ->
+            messages.forEach { send(it, peer) }
+        }
     }
 
     private fun send(data: ByteArray, destination: UdpDestination) {
@@ -188,8 +205,8 @@ class MavlinkUdpServer(
             try {
                 currentSocket.receive(packet)
                 val host = packet.address.hostAddress ?: return
-                lastPeer = UdpDestination(host = host, port = packet.port)
-                handleInbound(packet.data.copyOf(packet.length), packet.length, lastPeer)
+                val sender = UdpDestination(host = host, port = packet.port)
+                handleInbound(packet.data.copyOf(packet.length), packet.length, sender)
             } catch (_: SocketTimeoutException) {
                 continue
             } catch (error: Exception) {
@@ -203,6 +220,10 @@ class MavlinkUdpServer(
     private fun handleInbound(data: ByteArray, length: Int, peer: UdpDestination?) {
         val packet = MavlinkParser.parse(data, length) ?: return
         val timestampMs = System.currentTimeMillis()
+        if (peer != null && packet.systemId != vehicleSystemId) {
+            activePeers[peer] = timestampMs
+            lastPeer = peer
+        }
         noteGcsPacket(packet, timestampMs)
         logInbound(packet, peer, length, "received")
         when (packet.messageId) {
@@ -219,6 +240,7 @@ class MavlinkUdpServer(
             45 -> handleMissionClearAll(packet, peer, length)
             51 -> sendRequestedMissionItem(packet, peer)
             73 -> handleMissionItemUpload(packet, peer, legacy = false, length = length)
+            75 -> handleCommandInt(packet, peer)
             76 -> handleCommandLong(packet, peer)
             else -> logInbound(packet, peer, length, "unsupported")
         }
@@ -293,21 +315,61 @@ class MavlinkUdpServer(
         ack(0, MAV_RESULT_ACCEPTED, peer, "SET_MODE")
     }
 
+    private data class CommandInvocation(
+        val command: Int,
+        val param1: Float,
+        val param2: Float,
+        val latitudeDeg: Double,
+        val longitudeDeg: Double,
+        val altitude: Float,
+    )
+
     private fun handleCommandLong(packet: MavlinkPacket, peer: UdpDestination?) {
         if (packet.payload.size < 33) return
         if (!isTargetedToVehicle(packet, targetSystemOffset = 30, label = "COMMAND_LONG")) return
-        val command = packet.payload.leUInt16(28)
-        Log.i(TAG, "rx COMMAND_LONG: command=$command")
-        simLoop.noteInbound("COMMAND_LONG $command")
+        val payload = packet.payload
+        val invocation = CommandInvocation(
+            command = payload.leUInt16(28),
+            param1 = payload.leFloat(0),
+            param2 = payload.leFloat(4),
+            latitudeDeg = payload.leFloat(16).toDouble(),
+            longitudeDeg = payload.leFloat(20).toDouble(),
+            altitude = payload.leFloat(24),
+        )
+        Log.i(TAG, "rx COMMAND_LONG: command=${invocation.command}")
+        simLoop.noteInbound("COMMAND_LONG ${invocation.command}")
+        executeCommand(invocation, peer)
+    }
+
+    private fun handleCommandInt(packet: MavlinkPacket, peer: UdpDestination?) {
+        if (packet.payload.size < 32) return
+        if (!isTargetedToVehicle(packet, targetSystemOffset = 30, label = "COMMAND_INT")) return
+        // MAVLink v2 truncates trailing zero bytes; pad back to the full 35-byte payload.
+        val payload = if (packet.payload.size >= 35) packet.payload else packet.payload.copyOf(35)
+        val invocation = CommandInvocation(
+            command = payload.leUInt16(28),
+            param1 = payload.leFloat(0),
+            param2 = payload.leFloat(4),
+            latitudeDeg = payload.leInt32(16) / 1e7,
+            longitudeDeg = payload.leInt32(20) / 1e7,
+            altitude = payload.leFloat(24),
+        )
+        Log.i(TAG, "rx COMMAND_INT: command=${invocation.command}")
+        simLoop.noteInbound("COMMAND_INT ${invocation.command}")
+        executeCommand(invocation, peer)
+    }
+
+    private fun executeCommand(invocation: CommandInvocation, peer: UdpDestination?) {
+        val command = invocation.command
         when (command) {
             MAV_CMD_COMPONENT_ARM_DISARM -> {
-                val arm = packet.payload.leFloat(0) >= 0.5f
+                val arm = invocation.param1 >= 0.5f
                 simLoop.setArmed(arm, ControlAuthority.GCS_DIRECT)
                 sendImmediateTelemetry()
                 ack(command, MAV_RESULT_ACCEPTED, peer, if (arm) "ARM" else "DISARM")
             }
             MAV_CMD_NAV_TAKEOFF -> {
-                val requestedAltitude = packet.payload.leFloat(24)
+                val requestedAltitude = invocation.altitude
                     .takeIf { it.isFinite() && it > 0f }
                     ?: 10f
                 simLoop.takeoff(requestedAltitude, ControlAuthority.GCS_DIRECT)
@@ -319,11 +381,31 @@ class MavlinkUdpServer(
                 sendImmediateTelemetry()
                 ack(command, MAV_RESULT_ACCEPTED, peer, "LAND")
             }
+            MAV_CMD_DO_SET_HOME -> {
+                val useCurrent = invocation.param1 >= 0.5f ||
+                    (invocation.latitudeDeg == 0.0 && invocation.longitudeDeg == 0.0)
+                val accepted = if (useCurrent) {
+                    simLoop.setHomeToCurrentPosition()
+                } else {
+                    simLoop.setHomeToCoordinates(invocation.latitudeDeg, invocation.longitudeDeg)
+                }
+                if (accepted) sendHomePosition(peer)
+                ack(
+                    command,
+                    if (accepted) MAV_RESULT_ACCEPTED else MAV_RESULT_DENIED,
+                    peer,
+                    if (accepted) "DO_SET_HOME" else "DO_SET_HOME INVALID",
+                )
+            }
+            MAV_CMD_GET_HOME_POSITION -> {
+                sendHomePosition(peer)
+                ack(command, MAV_RESULT_ACCEPTED, peer, "GET_HOME_POSITION")
+            }
             MAV_CMD_SET_MESSAGE_INTERVAL -> {
                 ack(command, MAV_RESULT_ACCEPTED, peer, "SET_MESSAGE_INTERVAL")
             }
             MAV_CMD_REQUEST_MESSAGE -> {
-                handleRequestMessage(packet, peer, command)
+                handleRequestMessage(invocation.param1.toInt(), peer, command)
             }
             MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES -> {
                 sendAutopilotVersion(peer)
@@ -344,7 +426,7 @@ class MavlinkUdpServer(
                 )
             }
             MAV_CMD_DO_SET_MODE -> {
-                val customMode = packet.payload.leFloat(4).toLong().toUInt()
+                val customMode = invocation.param2.toLong().toUInt()
                 val mode = FlightMode.fromCustomMode(customMode)
                 simLoop.setMode(mode, ControlAuthority.GCS_DIRECT)
                 sendImmediateTelemetry()
@@ -363,8 +445,7 @@ class MavlinkUdpServer(
                 ack(command, MAV_RESULT_ACCEPTED, peer, "DO_CANCEL_MAG_CAL")
             }
             MAV_CMD_DO_CHANGE_SPEED -> {
-                val speed = packet.payload.leFloat(4)
-                simLoop.setWpNavSpeed(speed)
+                simLoop.setWpNavSpeed(invocation.param2)
                 ack(command, MAV_RESULT_ACCEPTED, peer, "DO_CHANGE_SPEED")
             }
             else -> {
@@ -373,17 +454,26 @@ class MavlinkUdpServer(
         }
     }
 
-    private fun handleRequestMessage(packet: MavlinkPacket, peer: UdpDestination?, command: Int) {
-        val requestedMessageId = packet.payload.leFloat(0).toInt()
+    private fun handleRequestMessage(requestedMessageId: Int, peer: UdpDestination?, command: Int) {
         when (requestedMessageId) {
             MAVLINK_MSG_ID_AUTOPILOT_VERSION -> {
                 sendAutopilotVersion(peer)
                 ack(command, MAV_RESULT_ACCEPTED, peer, "REQUEST_MESSAGE AUTOPILOT_VERSION")
             }
+            MAVLINK_MSG_ID_HOME_POSITION -> {
+                sendHomePosition(peer)
+                ack(command, MAV_RESULT_ACCEPTED, peer, "REQUEST_MESSAGE HOME_POSITION")
+            }
             else -> {
                 ack(command, MAV_RESULT_UNSUPPORTED, peer, "REQUEST_MESSAGE unsupported $requestedMessageId")
             }
         }
+    }
+
+    private fun sendHomePosition(peer: UdpDestination?) {
+        val destination = peer ?: lastPeer ?: return
+        send(builder.homePosition(simLoop.homePosition()), destination)
+        simLoop.noteAck("HOME_POSITION")
     }
 
     private fun sendAutopilotVersion(peer: UdpDestination?) {
@@ -850,6 +940,13 @@ class MavlinkUdpServer(
         return value.toUInt()
     }
 
+    private fun ByteArray.leInt32(offset: Int): Int {
+        return (this[offset].toInt() and 0xff) or
+            ((this[offset + 1].toInt() and 0xff) shl 8) or
+            ((this[offset + 2].toInt() and 0xff) shl 16) or
+            (this[offset + 3].toInt() shl 24)
+    }
+
     private fun ByteArray.leFloat(offset: Int): Float {
         return ByteBuffer.wrap(this, offset, 4)
             .order(ByteOrder.LITTLE_ENDIAN)
@@ -875,10 +972,15 @@ class MavlinkUdpServer(
         const val MAV_CMD_DO_ACCEPT_MAG_CAL = 425
         const val MAV_CMD_DO_CANCEL_MAG_CAL = 426
         const val MAV_CMD_DO_CHANGE_SPEED = 178
+        const val MAV_CMD_DO_SET_HOME = 179
+        const val MAV_CMD_GET_HOME_POSITION = 410
         const val MAV_CMD_SET_MESSAGE_INTERVAL = 511
         const val MAV_CMD_REQUEST_MESSAGE = 512
         const val MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES = 520
         const val MAVLINK_MSG_ID_AUTOPILOT_VERSION = 148
+        const val MAVLINK_MSG_ID_HOME_POSITION = 242
+        const val HomePositionBurstInterval = 5
+        const val PeerActivityTimeoutMs = 10_000L
         const val TAG = "MavlinkUdpServer"
     }
 }
