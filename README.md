@@ -31,7 +31,7 @@ The technical report documents the drone-education tooling cliff, the phone-firs
 - **Multi-Mode Control Surface:** Interactive dual joysticks or phone accelerometer tilt control.
 - **3D Digital Twin View (SIM):** Live 3D rendering of the drone's position, attitude, and propeller speeds utilizing a bundled GLB model.
 - **Waypoint Mission Execution:** Full autonomous mission upload, track plotting, active waypoint navigation, and Guided waypoint offsets.
-- **MAVLink UDP Protocol Server:** Interoperable with QGroundControl, supporting heartbeats, position/attitude streams, parameter downloads, and mission synchronization.
+- **MAVLink UDP Protocol Server:** Interoperable with QGroundControl, supporting heartbeats, position/attitude streams, parameter downloads, mission synchronization, GCS-commanded home position, COMMAND_INT, and simultaneous multi-GCS telemetry.
 - **Failure Labs Scenarios:** Test Operator recovery under failure scenarios:
   - GPS Loss, GPS Drift, Compass Loss, and Barometer offset failures.
   - Wind speed, direction, and gust simulation.
@@ -49,7 +49,7 @@ The technical report documents the drone-education tooling cliff, the phone-firs
 
 ### Try the prebuilt APK (recommended for first run)
 
-1. Download `MAVLab-v1.5.0.apk` from the [GitHub Releases page](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.5.0).
+1. Download `MAVLab-v1.5.1.apk` from the [GitHub Releases page](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.5.1).
 2. Install it (Android will prompt you to allow installs from your file manager / browser — normal for sideloaded APKs).
 3. Open **MAVLab**, then open **QGroundControl** side-by-side (split-screen) on the same phone.
 4. QGroundControl auto-detects the vehicle on `127.0.0.1:14550` — arm, take off, and fly missions within the first session.
@@ -89,7 +89,8 @@ MAVLab integrates directly with QGroundControl:
 - **[7-Minute Demonstration Script](docs/v1_5_demo_script.md):** Narration script for live bootcamps and presentations.
 - **[QGC Integration Acceptance Tests](docs/v1_5_qgc_acceptance.md):** Environment setup and check-lists for QGC validation.
 - **[QA Test Matrix](docs/test_matrix.md):** Complete checklist for manual app validation.
-- **[v1.5 Release Notes](docs/v1_5_release_notes.md):** Summary of what is new in this release.
+- **[v1.5.1 Release Notes](docs/v1_5_1_release_notes.md):** GCS set-home, COMMAND_INT, multi-GCS telemetry, and link stability fixes.
+- **[v1.5 Release Notes](docs/v1_5_release_notes.md):** Summary of what is new in the v1.5 feature release.
 - **[Setup Guide](docs/setup_guide.md)**
 - **[Teacher Guide](docs/teacher_guide.md)**
 
