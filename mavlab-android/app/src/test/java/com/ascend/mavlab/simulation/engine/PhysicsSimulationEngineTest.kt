@@ -53,6 +53,53 @@ class PhysicsSimulationEngineTest {
     }
 
     @Test
+    fun homePositionDefaultsToInitialLocation() {
+        val engine = PhysicsSimulationEngine()
+
+        val home = engine.homePosition()
+
+        assertEquals(SimLocation.Nairobi.latitudeDeg, home.latitudeDeg, absoluteTolerance = 0.000001)
+        assertEquals(SimLocation.Nairobi.longitudeDeg, home.longitudeDeg, absoluteTolerance = 0.000001)
+        assertEquals(SimLocation.Nairobi.altitudeMslMeters, home.altitudeMslMeters, absoluteTolerance = 0.01f)
+    }
+
+    @Test
+    fun setHomeToCoordinatesIsReflectedInHomePosition() {
+        val engine = PhysicsSimulationEngine()
+        val targetLat = SimLocation.Nairobi.latitudeDeg + 0.001
+        val targetLon = SimLocation.Nairobi.longitudeDeg - 0.001
+
+        val changed = engine.setHomeToCoordinates(targetLat, targetLon)
+
+        val home = engine.homePosition()
+        assertTrue(changed)
+        assertEquals(targetLat, home.latitudeDeg, absoluteTolerance = 0.000001)
+        assertEquals(targetLon, home.longitudeDeg, absoluteTolerance = 0.000001)
+    }
+
+    @Test
+    fun setHomeToCoordinatesRejectsInvalidCoordinates() {
+        val engine = PhysicsSimulationEngine()
+
+        assertFalse(engine.setHomeToCoordinates(91.0, 0.0))
+        assertFalse(engine.setHomeToCoordinates(0.0, 181.0))
+        assertFalse(engine.setHomeToCoordinates(Double.NaN, 0.0))
+    }
+
+    @Test
+    fun setHomeToCurrentPositionCapturesCurrentLocation() {
+        val engine = PhysicsSimulationEngine()
+
+        val changed = engine.setHomeToCurrentPosition()
+
+        val home = engine.homePosition()
+        val state = engine.state.value
+        assertTrue(changed)
+        assertEquals(state.latitudeDeg, home.latitudeDeg, absoluteTolerance = 0.000001)
+        assertEquals(state.longitudeDeg, home.longitudeDeg, absoluteTolerance = 0.000001)
+    }
+
+    @Test
     fun disarmedMotorsReportZeroRpm() {
         val engine = PhysicsSimulationEngine()
 

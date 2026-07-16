@@ -138,6 +138,37 @@ class PhysicsSimulationEngine(
         return true
     }
 
+    fun setHomeToCurrentPosition(): Boolean {
+        val current = mutableState.value
+        homeNorthMeters = current.northMeters
+        homeEastMeters = current.eastMeters
+        homeAltitudeMeters = current.altitudeAglMeters.coerceAtLeast(0f)
+        return true
+    }
+
+    fun setHomeToCoordinates(latitudeDeg: Double, longitudeDeg: Double): Boolean {
+        if (!latitudeDeg.isFinite() || !longitudeDeg.isFinite()) return false
+        if (latitudeDeg !in -90.0..90.0 || longitudeDeg !in -180.0..180.0) return false
+        val current = mutableState.value
+        homeNorthMeters = current.northMeters +
+            ((latitudeDeg - current.latitudeDeg) * METERS_PER_LAT_DEG).toFloat()
+        homeEastMeters = current.eastMeters +
+            ((longitudeDeg - current.longitudeDeg) * lonMetersPerDeg(current)).toFloat()
+        homeAltitudeMeters = 0f
+        return true
+    }
+
+    fun homePosition(): HomePosition {
+        val current = mutableState.value
+        return HomePosition(
+            latitudeDeg = current.latitudeDeg +
+                (homeNorthMeters - current.northMeters) / METERS_PER_LAT_DEG,
+            longitudeDeg = current.longitudeDeg +
+                (homeEastMeters - current.eastMeters) / lonMetersPerDeg(current),
+            altitudeMslMeters = current.altitudeMslMeters - current.altitudeAglMeters + homeAltitudeMeters,
+        )
+    }
+
     fun setArmed(
         armed: Boolean,
         authority: ControlAuthority = ControlAuthority.CONTROLLER,

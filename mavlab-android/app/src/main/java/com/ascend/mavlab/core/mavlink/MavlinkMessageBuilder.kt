@@ -1,6 +1,7 @@
 package com.ascend.mavlab.core.mavlink
 
 import com.ascend.mavlab.simulation.engine.DroneState
+import com.ascend.mavlab.simulation.engine.HomePosition
 import com.ascend.mavlab.simulation.mission.MissionCommand
 import com.ascend.mavlab.simulation.mission.MissionItem
 import java.nio.ByteBuffer
@@ -140,6 +141,25 @@ class MavlinkMessageBuilder(
             .putShort(Short.MAX_VALUE)
             .array()
         return frame(messageId = 147, crcExtra = 154, payload = payload)
+    }
+
+    fun homePosition(home: HomePosition): ByteArray {
+        val payload = littleEndian(52)
+            .putInt((home.latitudeDeg * 1e7).roundToInt())
+            .putInt((home.longitudeDeg * 1e7).roundToInt())
+            .putInt((home.altitudeMslMeters * 1000).roundToInt())
+            .putFloat(0f)
+            .putFloat(0f)
+            .putFloat(0f)
+            .putFloat(1f)
+            .putFloat(0f)
+            .putFloat(0f)
+            .putFloat(0f)
+            .putFloat(0f)
+            .putFloat(0f)
+            .putFloat(0f)
+            .array()
+        return frame(messageId = 242, crcExtra = 104, payload = payload)
     }
 
     fun autopilotVersion(): ByteArray {
