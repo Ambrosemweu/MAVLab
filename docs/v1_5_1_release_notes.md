@@ -20,6 +20,9 @@ MAVLab v1.5.1 is a protocol and connectivity release focused on deeper QGroundCo
 - **Peer Validation:** Only datagrams that parse as MAVLink from a non-vehicle system ID register a telemetry peer — stray network packets can no longer redirect the stream.
 - **Fixed "Communication Lost" with Screen Off:** The simulation service now holds a Wi-Fi lock and partial wake lock, preventing Android Wi-Fi power saving and Doze from stalling UDP heartbeats when the screen is off or MAVLab is backgrounded.
 
+### 4. Arm Reliability Fix
+- **Re-Arming After Landing:** Landing (GCS LAND command, RTL descent, or the phone's Land button) left the autopilot stuck in LAND mode, so the next manual arm was silently un-armed within one physics tick. Arming from disarmed now resets a stale LAND mode to Stabilize, so the phone's Arm button works reliably after any flight.
+
 ---
 
 ## Upgrade Instructions
