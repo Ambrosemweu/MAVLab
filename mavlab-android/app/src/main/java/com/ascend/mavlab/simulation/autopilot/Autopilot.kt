@@ -32,6 +32,11 @@ class Autopilot(
             armed = false
             return
         }
+        if (value && !armed && mode == FlightMode.LAND) {
+            // Arming while still in LAND mode on the ground would instantly
+            // re-trigger the landed auto-disarm; a fresh arm starts a new flight.
+            mode = FlightMode.STABILIZE
+        }
         armed = value
         if (value) {
             targetAltitudeM = state.altitudeAglMeters
