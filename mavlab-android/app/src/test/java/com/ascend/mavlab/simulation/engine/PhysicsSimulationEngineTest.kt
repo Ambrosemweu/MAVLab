@@ -100,6 +100,20 @@ class PhysicsSimulationEngineTest {
     }
 
     @Test
+    fun armingAfterLandingStartsNewFlightInsteadOfInstantlyDisarming() {
+        val engine = PhysicsSimulationEngine()
+        engine.land()
+        engine.tickForTest()
+        assertEquals(FlightMode.LAND, engine.state.value.mode)
+
+        engine.setArmed(true)
+        engine.tickForTest()
+
+        assertTrue(engine.state.value.armed)
+        assertEquals(FlightMode.STABILIZE, engine.state.value.mode)
+    }
+
+    @Test
     fun disarmedMotorsReportZeroRpm() {
         val engine = PhysicsSimulationEngine()
 
