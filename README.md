@@ -24,6 +24,18 @@ The technical report documents the drone-education tooling cliff, the phone-firs
 
 ---
 
+## 🎥 Demo
+
+**MAVLab on-device** — physics, live cockpit telemetry, and the 3D digital twin running entirely on a phone, fully offline.
+
+https://github.com/user-attachments/assets/31fe9b06-06e0-4d55-aa34-e33151d50802
+
+**MAVLab ↔ QGroundControl** — the MAVLink protocol server in action: QGroundControl connects to the on-phone simulator to arm, take off, and fly a mission.
+
+https://github.com/user-attachments/assets/1b7cdebd-bcb9-48b3-9dc3-ca9344e6c6aa
+
+---
+
 ## Features in v1.5
 
 - **High-Fidelity Physics & Autopilot:** Fixed-rate quadcopter physics model and realistic PID attitude/altitude autopilot controls.
