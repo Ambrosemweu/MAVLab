@@ -11,7 +11,7 @@ MAVLab's core learning loop is designed to run from one Android-first app. You d
 
 ## QGroundControl
 
-For same-device use, run MAVLab and QGroundControl in split-screen. MAVLab broadcasts MAVLink telemetry over UDP and QGC should discover it automatically.
+For same-device use, keep MAVLab running and open QGroundControl — it connects over `127.0.0.1:14550`. MAVLab runs as a foreground service (holding wake + Wi-Fi locks) so the MAVLink stream keeps flowing even when MAVLab is in the background; no split-screen is required. MAVLab broadcasts MAVLink telemetry over UDP and QGC should discover it automatically.
 
 For desktop QGC, put the Android phone and desktop on the same Wi-Fi network. MAVLab broadcasts to common LAN destinations and UDP port `14550`.
 

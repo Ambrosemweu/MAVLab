@@ -6,7 +6,7 @@ This document outlines the safety guardrails, state invariants, and network rule
 
 ## 1. System & Component ID Guardrails
 
-MAVLab enforces a strict identity separation to prevent loopbacks, self-hearbeats, or network conflicts, especially when run in split-screen mode on the same device as the GCS:
+MAVLab enforces a strict identity separation to prevent loopbacks, self-hearbeats, or network conflicts, especially when run on the same device as the GCS:
 
 - **MAVLab Vehicle ID:** Defaults to `SYSID = 1`, `COMPID = 1` (Autopilot).
 - **Recommended GCS ID:** Defaults to `SYSID = 255`, `COMPID = 190`.

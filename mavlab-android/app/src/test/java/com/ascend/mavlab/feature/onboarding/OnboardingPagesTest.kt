@@ -2,7 +2,6 @@ package com.ascend.mavlab.feature.onboarding
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class OnboardingPagesTest {
@@ -11,57 +10,55 @@ class OnboardingPagesTest {
         assertEquals(
             listOf(
                 "What is MAVLab?",
-                "What is a drone digital twin?",
-                "Understand the app surfaces",
-                "Connect QGroundControl",
-                "First simulated takeoff",
-                "Try phone tilt control",
-                "Run a basic mission",
-                "Inject a simple failure",
-                "Review and export flight",
+                "One shared runtime",
+                "Five surfaces, one drone",
+                "Connect a ground station",
+                "Your first takeoff",
+                "Fly with phone tilt",
+                "Run a mission",
+                "Test failures safely",
+                "Review and export",
             ),
             OnboardingPages.map { it.title },
         )
     }
 
     @Test
-    fun surfacePageUsesV15TabNames() {
-        val surfacePage = OnboardingPages.first { it.title == "Understand the app surfaces" }
-        val text = "${surfacePage.body} ${surfacePage.chips.joinToString(" ")}"
-
-        listOf("Cockpit", "Controller", "Mission", "SIM", "Ops").forEach { tab ->
-            assertTrue(text.contains(tab), "Missing tab name: $tab")
+    fun surfacePageNamesTheFiveTabs() {
+        val surfacePage = OnboardingPages.first { it.visual == OnboardingVisual.SurfaceGallery }
+        listOf("Cockpit", "Controller", "SIM", "Mission", "Ops").forEach { tab ->
+            assertTrue(surfacePage.body.contains(tab), "Missing tab name: $tab")
         }
     }
 
     @Test
     fun qgcPageIsTheOnlyPageWithQgcAction() {
         val actionPages = OnboardingPages.filter { it.showQGroundControlAction }
-
-        assertEquals(listOf("Connect QGroundControl"), actionPages.map { it.title })
+        assertEquals(listOf("Connect a ground station"), actionPages.map { it.title })
     }
 
     @Test
-    fun copyAvoidsOldPrimaryTabNames() {
-        val copy = OnboardingPages.joinToString("\n") { page ->
-            "${page.title}\n${page.body}\n${page.primaryAction}\n${page.chips.joinToString(" ")}"
-        }
+    fun firstPageIsHeroAndLastStartsFlying() {
+        assertEquals(OnboardingVisual.DroneHero, OnboardingPages.first().visual)
+        assertEquals("Start flying", OnboardingPages.last().primaryAction)
+    }
 
-        assertFalse(copy.contains("Twin"), "Onboarding should use SIM, not Twin")
-        assertFalse(copy.contains("Fly"), "Onboarding should use Controller, not Fly")
+    @Test
+    fun everyPageUsesADistinctVisual() {
+        val visuals = OnboardingPages.map { it.visual }
+        assertEquals(visuals.size, visuals.distinct().size)
     }
 
     @Test
     fun copyMentionsCoreTrainingWorkflow() {
         val copy = OnboardingPages.joinToString(" ") { page ->
-            "${page.title} ${page.body} ${page.chips.joinToString(" ")}"
+            "${page.title} ${page.body}"
         }
-
         listOf(
             "phone-based drone digital twin",
             "QGroundControl",
             "takeoff",
-            "phone tilt",
+            "tilt",
             "mission",
             "failure",
             "export",

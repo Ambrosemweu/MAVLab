@@ -24,7 +24,7 @@ Professional tools are powerful, but they can bury beginners under installation,
 ## Classroom Format
 
 - Students run MAVLab on their phones.
-- QGroundControl can be used in split-screen or on an instructor desktop.
+- QGroundControl can run on the same phone (no split-screen needed) or on an instructor desktop.
 - Start each session with the problem MAVLab solves: drone simulation usually requires a steep toolchain, but the concepts can be learned first in one friendly app.
 - Use Failure Lab only after students understand normal flight.
 

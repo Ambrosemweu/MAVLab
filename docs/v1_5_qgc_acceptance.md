@@ -6,12 +6,11 @@ This document details the environment setups and acceptance criteria for validat
 
 ## 1. Test Environments
 
-### Environment A: Split-Screen Android Testing
+### Environment A: On-Device (Same-Phone) Testing
 Useful for single-device verification:
-1. Enable developer options on your Android device and enable **split-screen/multi-window for all apps**.
-2. Open **MAVLab** and drag it to occupy the top half of the screen.
-3. Open **QGroundControl** on the bottom half of the screen.
-4. QGC will automatically listen on localhost port `14550` and discover the MAVLab vehicle broadcast.
+1. Open **MAVLab** and start the simulation (its foreground service keeps the MAVLink stream alive in the background).
+2. Open **QGroundControl** on the same phone.
+3. QGC automatically listens on localhost port `14550` and discovers the MAVLab vehicle broadcast — no split-screen required. (You can optionally use split-screen/multi-window to watch both apps at once.)
 
 ### Environment B: Cross-Device Local Wi-Fi Testing
 Useful for representative field simulation:
@@ -37,7 +36,7 @@ Useful for representative field simulation:
 
 ## 3. Results
 
-**Status: PASS.** All acceptance items above were verified on real Android hardware, in both Environment A (same-phone split-screen) and Environment B (cross-device desktop QGC over Wi-Fi).
+**Status: PASS.** All acceptance items above were verified on real Android hardware, in both Environment A (same-phone, on-device loopback) and Environment B (cross-device desktop QGC over Wi-Fi).
 
 - Date: 2026-06-30 <!-- TODO: confirm exact test date -->
 - Devices / Android versions: <!-- TODO: record exact device models + Android versions -->

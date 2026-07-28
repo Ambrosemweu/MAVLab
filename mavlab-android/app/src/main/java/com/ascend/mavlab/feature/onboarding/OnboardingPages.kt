@@ -1,67 +1,80 @@
 package com.ascend.mavlab.feature.onboarding
 
+/** Selects which app-accurate visual an onboarding page renders below its copy. */
+enum class OnboardingVisual {
+    DroneHero,
+    PfdTelemetry,
+    SurfaceGallery,
+    QgcLink,
+    ArmTakeoffLand,
+    TiltPad,
+    MissionPlot,
+    FailurePanel,
+    TelemetryChart,
+}
+
 data class OnboardingPage(
     val title: String,
     val body: String,
     val primaryAction: String,
-    val chips: List<String>,
+    val visual: OnboardingVisual,
     val showQGroundControlAction: Boolean = false,
 )
 
 val OnboardingPages = listOf(
     OnboardingPage(
         title = "What is MAVLab?",
-        body = "MAVLab by Ascend Labs is a phone-based drone digital twin and training platform. It simulates a quadcopter, broadcasts MAVLink telemetry, and connects to Ground Control Station software.",
+        body = "A phone-based drone digital twin — physics, telemetry, and a 3D model, fully offline.",
         primaryAction = "Get started",
-        chips = listOf("Ascend Labs", "Digital twin", "Training"),
+        visual = OnboardingVisual.DroneHero,
     ),
     OnboardingPage(
-        title = "What is a drone digital twin?",
-        body = "The app simulates drone state, sensors, telemetry, mission behavior, failures, and flight logs from one shared runtime.",
+        title = "One shared runtime",
+        body = "State, sensors, telemetry, missions and failures — all from one simulated drone.",
         primaryAction = "Next",
-        chips = listOf("Physics", "Sensors", "Telemetry"),
+        visual = OnboardingVisual.PfdTelemetry,
     ),
     OnboardingPage(
-        title = "Understand the app surfaces",
-        body = "Cockpit is live operations, Controller is local/manual control, Mission is autonomous route execution, SIM is physical behavior visualization, and Ops is diagnostics and logs.",
+        title = "Five surfaces, one drone",
+        body = "Cockpit, Controller, SIM, Mission and Ops — swipe to explore.",
         primaryAction = "Next",
-        chips = listOf("Cockpit", "Controller", "Mission", "SIM", "Ops"),
+        visual = OnboardingVisual.SurfaceGallery,
     ),
     OnboardingPage(
-        title = "Connect QGroundControl",
-        body = "Use split-screen on the same phone, or run QGroundControl from a desktop on the same Wi-Fi network. MAVLab broadcasts MAVLink telemetry for QGC discovery.",
+        title = "Connect a ground station",
+        body = "Same device or same Wi-Fi — MAVLab broadcasts MAVLink for QGroundControl or any GCS to discover.",
         primaryAction = "Next",
-        chips = listOf("QGC", "MAVLink", "UDP"),
+        visual = OnboardingVisual.QgcLink,
         showQGroundControlAction = true,
     ),
     OnboardingPage(
-        title = "First simulated takeoff",
-        body = "Use Cockpit or Controller to arm, take off, land, and watch the same DroneState update every surface.",
+        title = "Your first takeoff",
+        body = "Arm, take off, land — and watch every surface update together.",
         primaryAction = "Next",
-        chips = listOf("Arm", "Takeoff", "Land"),
+        visual = OnboardingVisual.ArmTakeoffLand,
     ),
     OnboardingPage(
-        title = "Try phone tilt control",
-        body = "Controller can map calibrated phone tilt into roll, pitch, throttle, and yaw. Custom sliders remain available as a manual fallback.",
+        title = "Fly with phone tilt",
+        body = "Calibrated phone tilt maps to roll, pitch, throttle and yaw — sliders as fallback.",
         primaryAction = "Next",
-        chips = listOf("Tilt", "Calibrate", "Fallback"),
+        visual = OnboardingVisual.TiltPad,
     ),
     OnboardingPage(
-        title = "Run a basic mission",
-        body = "Load a route in Mission or upload one from QGroundControl, start AUTO, then track waypoint progress and control authority.",
+        title = "Run a mission",
+        body = "Upload a route, fly AUTO, and track waypoint progress.",
         primaryAction = "Next",
-        chips = listOf("Route", "AUTO", "Waypoints"),
+        visual = OnboardingVisual.MissionPlot,
     ),
     OnboardingPage(
-        title = "Inject a simple failure",
-        body = "Use advanced test inputs for GPS loss, wind drift, motor failure, or low-battery style scenarios while Cockpit and SIM show the impact.",
+        title = "Test failures safely",
+        body = "Inject GPS loss, wind, or motor faults — practice recovery, nothing to crash.",
         primaryAction = "Next",
-        chips = listOf("GPS loss", "Wind", "Recovery"),
+        visual = OnboardingVisual.FailurePanel,
     ),
     OnboardingPage(
-        title = "Review and export flight",
-        body = "Ops shows local flight sessions, telemetry CSV paths, event logs, mission snapshots, and the export/review area for v1.5.",
-        primaryAction = "Start training",
-        chips = listOf("Logs", "CSV", "Report"),
+        title = "Review and export",
+        body = "Every flight logs to CSV and a shareable report you can export.",
+        primaryAction = "Start flying",
+        visual = OnboardingVisual.TelemetryChart,
     ),
 )

@@ -23,7 +23,7 @@ val LessonCatalog = listOf(
         estimatedMinutes = 8,
         steps = listOf(
             read("MAVLink is the drone communication protocol.", "MAVLab broadcasts heartbeat, attitude, position, GPS, battery, and mission progress messages."),
-            read("Open QGroundControl in split-screen.", "QGC should discover MAVLab through UDP broadcast or same-device routing."),
+            read("Open QGroundControl on the same device or same Wi-Fi.", "QGC should discover MAVLab through UDP broadcast or same-device loopback (127.0.0.1:14550)."),
             LessonStep("Switch to Guided mode.", "Mode changes are sent in HEARTBEAT custom mode.", StepAction.ChangeMode(FlightMode.GUIDED), CompletionCheck.DroneInMode(FlightMode.GUIDED)),
             read("Watch telemetry update.", "QGC is reading the same state shown in MAVLab's Dashboard."),
         ),

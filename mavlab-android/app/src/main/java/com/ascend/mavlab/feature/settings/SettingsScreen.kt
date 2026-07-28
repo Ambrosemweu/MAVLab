@@ -145,7 +145,7 @@ fun SettingsScreen(
             )
             InfoCard(
                 title = "Release QA",
-                body = "Run onboarding, QGC discovery, mission upload, demo mission, GPS loss, and QGC split-screen before tagging a release.",
+                body = "Run onboarding, QGC discovery, mission upload, demo mission, GPS loss, and same-device QGC connection before tagging a release.",
             )
         }
     }

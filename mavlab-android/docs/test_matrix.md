@@ -11,7 +11,7 @@
 
 ## Protocol Tests
 
-- Same-phone QGroundControl split-screen
+- Same-phone QGroundControl (on-device loopback)
 - Desktop QGroundControl on the same Wi-Fi
 - Wi-Fi off/on
 - Explicit QGC IP
@@ -34,7 +34,7 @@
 
 - Phase 1: protocol ACKs, params, rates, reconnects, system IDs
 - Phase 2: deterministic physics invariants before device tests
-- Phase 3: bounded UI update rates, sensor fallback, calibration, throttle altitude control, and split-screen QGC operation
+- Phase 3: bounded UI update rates, sensor fallback, calibration, throttle altitude control, and same-device QGC operation
 - Phase 4: 3D model loads and follows simulator attitude without blocking dashboard telemetry
 - Phase 5: failure toggles affect physics/telemetry, demo mission progresses, Guided offsets move the drone, GPS loss downgrades assisted modes, low battery triggers RTL
 - Phase 6: onboarding completion persists, all seven lessons are navigable, CI passes, APK remains under 50 MB, docs and release metadata exist

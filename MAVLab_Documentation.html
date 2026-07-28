@@ -294,16 +294,16 @@ GRADLE_USER_HOME="$PWD/.gradle" ./gradlew lintDebug testDebugUnitTest assembleDe
     <div class="body">
       <h4>Connecting QGC</h4>
       <ol>
-        <li><strong>Split-screen (on-device):</strong> open MAVLab and QGC side-by-side. QGC discovers the vehicle on <code>127.0.0.1:14550</code>.</li>
+        <li><strong>On-device (same phone):</strong> open MAVLab, then open QGC — it discovers the vehicle on <code>127.0.0.1:14550</code>. MAVLab's foreground service keeps streaming in the background, so no split-screen is required.</li>
         <li><strong>Local Wi-Fi (cross-device):</strong> put the phone and computer on the same Wi-Fi. MAVLab's UDP broadcast auto-links the vehicle to desktop QGC.</li>
         <li>Ensure the GCS System ID is <code>255</code> (default) and MAVLab is <code>1</code> to prevent system conflicts.</li>
       </ol>
 
       <h4>Test environments</h4>
-      <h5>Environment A — split-screen Android</h5>
+      <h5>Environment A — on-device (same phone)</h5>
       <ol>
-        <li>Enable developer options and split-screen/multi-window for all apps.</li>
-        <li>Open MAVLab in the top half, QGroundControl in the bottom half.</li>
+        <li>Open MAVLab and start the simulation (its foreground service keeps the MAVLink stream alive in the background).</li>
+        <li>Open QGroundControl on the same phone — no split-screen required (optionally use split-screen/multi-window to watch both at once).</li>
         <li>QGC listens on localhost port <code>14550</code> and discovers the MAVLab broadcast.</li>
       </ol>
       <h5>Environment B — cross-device local Wi-Fi</h5>
@@ -627,7 +627,7 @@ harmonics: 200, 400, 600, 800 Hz ...</code></pre>
         <li>Use the guided surfaces: Cockpit, Controller, Mission, SIM, and Ops.</li>
       </ol>
       <h4>QGroundControl</h4>
-      <p>For same-device use, run MAVLab and QGC in split-screen — MAVLab broadcasts MAVLink telemetry over
+      <p>For same-device use, keep MAVLab running and open QGC — it connects over <code>127.0.0.1:14550</code> with no split-screen needed. MAVLab broadcasts MAVLink telemetry over
       UDP and QGC should discover it automatically. For desktop QGC, put phone and desktop on the same Wi-Fi;
       MAVLab broadcasts to common LAN destinations and UDP port <code>14550</code>.</p>
       <h4>Build from source</h4>
@@ -662,7 +662,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk</code></pre>
       · 5. PID Control · 6. Sensors · 7. Failsafes.</p>
       <h4>Classroom format</h4>
       <ul>
-        <li>Students run MAVLab on their phones; QGC in split-screen or on an instructor desktop.</li>
+        <li>Students run MAVLab on their phones; QGC on the same phone (no split-screen needed) or on an instructor desktop.</li>
         <li>Open each session with the problem MAVLab solves: the concepts can be learned first in one friendly app.</li>
         <li>Use Failure Lab only after students understand normal flight.</li>
       </ul>
@@ -712,7 +712,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk</code></pre>
 
       <h4>Protocol &amp; lifecycle tests</h4>
       <ul>
-        <li>Same-phone split-screen QGC; desktop QGC on the same Wi-Fi; Wi-Fi off/on; explicit QGC IP; subnet broadcast.</li>
+        <li>Same-phone on-device QGC; desktop QGC on the same Wi-Fi; Wi-Fi off/on; explicit QGC IP; subnet broadcast.</li>
         <li>App background/restore; screen rotation; screen off/on; QGC restart while MAVLab runs; MAVLab restart while QGC runs; two MAVLab devices on one network.</li>
         <li>3D performance: Twin/SIM does not stutter on a low-cost phone; props don't cause excessive recomposition; SceneView samples latest state rather than collecting 100 Hz UI updates.</li>
       </ul>
@@ -737,7 +737,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk</code></pre>
       Control</strong> and tilt the phone; show the SIM mimicking tilt; toggle sensors off to return to
       joysticks.</p>
       <h4>3 · QGC connection &amp; AUTO mission (3 min)</h4>
-      <p>Connect QGC (split-screen or desktop on the same Wi-Fi). Plan a short 3-waypoint mission in QGC and
+      <p>Connect QGC (on the same phone, or desktop on the same Wi-Fi). Plan a short 3-waypoint mission in QGC and
       <strong>Upload</strong>; verify it appears in MAVLab's Mission tab. Trigger AUTO; watch the SIM fly,
       noting active-waypoint rings and the Mission index updating.</p>
       <h4>4 · In-flight failures &amp; recovery (2 min)</h4>

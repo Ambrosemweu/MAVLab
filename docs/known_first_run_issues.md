@@ -4,7 +4,7 @@ Most "it won't connect" reports are one of the items below. If none matches, ope
 
 ## 1. QGroundControl doesn't discover the vehicle
 
-- **Split-screen (same phone):** QGC listens on `127.0.0.1:14550`. Make sure MAVLab is running *before* you open QGC, or tap refresh in QGC.
+- **Same phone (on-device):** QGC listens on `127.0.0.1:14550`. Make sure MAVLab is running *before* you open QGC, or tap refresh in QGC. No split-screen needed.
 - **System IDs:** MAVLab defaults to system ID `1`; QGC's GCS system ID defaults to `255`. If you share a network with other MAVLink devices, set a unique MAVLab system ID per device (the paper §6 covers per-install IDs for classroom networks).
 - **QGC version drift:** very new QGC builds may expect stream-interval acknowledgements earlier than older ones. If discovery is flaky, try the QGC version noted in `docs/v1_5_release_notes.md`.
 
@@ -18,9 +18,9 @@ Most "it won't connect" reports are one of the items below. If none matches, ope
 
 Android blocks sideloaded APKs by default. When prompted, allow installs from the app you opened the APK with (file manager / browser). This is normal.
 
-## 4. Split-screen throttling
+## 4. Backgrounded networking
 
-Some Android versions throttle a backgrounded app's networking. Keep MAVLab and QGC both **visible** in split-screen; don't minimize MAVLab.
+MAVLab runs as a foreground service and holds wake + Wi-Fi locks while the simulation is running, so its MAVLink stream keeps flowing even when MAVLab is backgrounded behind QGC — no split-screen required. (If you're on a much older build without the foreground service, keep MAVLab visible while connecting.)
 
 ## 5. Mission upload fails / no progress
 
