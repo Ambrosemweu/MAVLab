@@ -1,0 +1,54 @@
+{
+  "type": "frame", "name": "Scene 3", "layout": "vertical", "justifyContent": "center",
+  "gap": 12, "width": "fill_container", "height": "fill_container",
+  "children": [
+    { "type": "frame", "name": "GalWrap", "layout": "vertical", "gap": 18, "width": 312, "children": [
+      { "type": "frame", "name": "GalleryClip", "layout": "none", "clip": true, "height": 200, "width": "fill_container", "children": [
+        { "type": "frame", "name": "Gallery", "gap": 12, "x": 0, "y": 2, "children": [
+          { "type": "frame", "name": "Cockpit Card", "layout": "vertical", "cornerRadius": 20, "fill": "#141B2D", "gap": 14, "height": 196, "padding": 16, "stroke": "#1E2740", "strokeWidth": 1, "width": 140, "children": [
+            { "type": "frame", "name": "IconBox", "alignItems": "center", "justifyContent": "center", "cornerRadius": 13, "fill": "#60A5FA1F", "height": 46, "width": 46, "children": [
+              { "type": "icon", "name": "Icon", "library": "lucide", "icon": "chart-column", "fill": "#60A5FA", "width": 24, "height": 24 }
+            ]},
+            { "type": "text", "name": "Title", "content": "Cockpit", "fill": "#E2E8F0", "fontFamily": "Inter", "fontSize": 17, "fontWeight": "600" },
+            { "type": "text", "name": "Desc", "content": "Telemetry, safety state, mission awareness", "fill": "#94A3B8", "fontFamily": "Inter", "fontSize": 13, "fontWeight": "normal", "textGrowth": "fixed-width", "width": "fill_container" }
+          ]},
+          { "type": "frame", "name": "Controller Card", "layout": "vertical", "cornerRadius": 20, "fill": "#141B2D", "gap": 14, "height": 196, "padding": 16, "stroke": "#1E2740", "strokeWidth": 1, "width": 140, "children": [
+            { "type": "frame", "name": "IconBox", "alignItems": "center", "justifyContent": "center", "cornerRadius": 13, "fill": "#60A5FA1F", "height": 46, "width": 46, "children": [
+              { "type": "icon", "name": "Icon", "library": "lucide", "icon": "gamepad-2", "fill": "#60A5FA", "width": 24, "height": 24 }
+            ]},
+            { "type": "text", "name": "Title", "content": "Controller", "fill": "#E2E8F0", "fontFamily": "Inter", "fontSize": 17, "fontWeight": "600" },
+            { "type": "text", "name": "Desc", "content": "Phone sensors, manual input, quick test", "fill": "#94A3B8", "fontFamily": "Inter", "fontSize": 13, "fontWeight": "normal", "textGrowth": "fixed-width", "width": "fill_container" }
+          ]},
+          { "type": "frame", "name": "SIM Card", "layout": "vertical", "cornerRadius": 20, "fill": "#141B2D", "gap": 14, "height": 196, "padding": 16, "stroke": "#1E2740", "strokeWidth": 1, "width": 140, "children": [
+            { "type": "frame", "name": "IconBox", "alignItems": "center", "justifyContent": "center", "cornerRadius": 13, "fill": "#34D3991F", "height": 46, "width": 46, "children": [
+              { "type": "icon", "name": "Icon", "library": "lucide", "icon": "arrow-up-down", "fill": "#34D399", "width": 24, "height": 24 }
+            ]},
+            { "type": "text", "name": "Title", "content": "SIM", "fill": "#E2E8F0", "fontFamily": "Inter", "fontSize": 17, "fontWeight": "600" },
+            { "type": "text", "name": "Desc", "content": "3D attitude, altitude, motors", "fill": "#94A3B8", "fontFamily": "Inter", "fontSize": 13, "fontWeight": "normal", "textGrowth": "fixed-width", "width": "fill_container" }
+          ]},
+          { "type": "frame", "name": "Mission Card", "layout": "vertical", "cornerRadius": 20, "fill": "#141B2D", "gap": 14, "height": 196, "padding": 16, "stroke": "#1E2740", "strokeWidth": 1, "width": 140, "children": [
+            { "type": "frame", "name": "IconBox", "alignItems": "center", "justifyContent": "center", "cornerRadius": 13, "fill": "#FBBF241F", "height": 46, "width": 46, "children": [
+              { "type": "icon", "name": "Icon", "library": "lucide", "icon": "route", "fill": "#FBBF24", "width": 24, "height": 24 }
+            ]},
+            { "type": "text", "name": "Title", "content": "Mission", "fill": "#E2E8F0", "fontFamily": "Inter", "fontSize": 17, "fontWeight": "600" },
+            { "type": "text", "name": "Desc", "content": "QGC upload, waypoints, AUTO", "fill": "#94A3B8", "fontFamily": "Inter", "fontSize": 13, "fontWeight": "normal", "textGrowth": "fixed-width", "width": "fill_container" }
+          ]},
+          { "type": "frame", "name": "Ops Card", "layout": "vertical", "cornerRadius": 20, "fill": "#141B2D", "gap": 14, "height": 196, "padding": 16, "stroke": "#1E2740", "strokeWidth": 1, "width": 140, "children": [
+            { "type": "frame", "name": "IconBox", "alignItems": "center", "justifyContent": "center", "cornerRadius": 13, "fill": "#94A3B81F", "height": 46, "width": 46, "children": [
+              { "type": "icon", "name": "Icon", "library": "lucide", "icon": "settings", "fill": "#94A3B8", "width": 24, "height": 24 }
+            ]},
+            { "type": "text", "name": "Title", "content": "Ops", "fill": "#E2E8F0", "fontFamily": "Inter", "fontSize": 17, "fontWeight": "600" },
+            { "type": "text", "name": "Desc", "content": "MAVLink status, logs, export", "fill": "#94A3B8", "fontFamily": "Inter", "fontSize": 13, "fontWeight": "normal", "textGrowth": "fixed-width", "width": "fill_container" }
+          ]}
+        ]}
+      ]},
+      { "type": "frame", "name": "Dots", "justifyContent": "center", "alignItems": "center", "gap": 7, "width": "fill_container", "children": [
+        { "type": "rectangle", "name": "Dot1", "cornerRadius": 999, "fill": "#60A5FA", "height": 7, "width": 20 },
+        { "type": "rectangle", "name": "Dot2", "cornerRadius": 999, "fill": "#1E2740", "height": 7, "width": 7 },
+        { "type": "rectangle", "name": "Dot3", "cornerRadius": 999, "fill": "#1E2740", "height": 7, "width": 7 },
+        { "type": "rectangle", "name": "Dot4", "cornerRadius": 999, "fill": "#1E2740", "height": 7, "width": 7 },
+        { "type": "rectangle", "name": "Dot5", "cornerRadius": 999, "fill": "#1E2740", "height": 7, "width": 7 }
+      ]}
+    ]}
+  ]
+}

@@ -855,7 +855,7 @@ GRADLE_USER_HOME="$PWD/.gradle" ./gradlew testDebugUnitTest lintDebug assembleDe
 
 Same-phone:
 
-- MAVLab + QGC in split screen.
+- MAVLab + QGC on the same device (QGC on `127.0.0.1:14550`; no split-screen required).
 - QGC detects MAVLab within 3 seconds.
 - Arm/disarm works.
 - Mode change works.
@@ -877,7 +877,7 @@ Desktop:
 - Background MAVLab for 30 seconds and restore.
 - Screen off/on.
 - Notification permission flow on Android 13+.
-- Split-screen for 30 minutes.
+- Backgrounded behind QGC for 30 minutes — link stays alive via the foreground service.
 - Low-end Android device performance.
 
 ### 8.4 3D performance checks

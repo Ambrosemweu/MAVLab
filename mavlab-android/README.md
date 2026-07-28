@@ -41,7 +41,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## QGroundControl
 
-MAVLab broadcasts MAVLink telemetry over UDP and tracks the last peer that sends inbound MAVLink messages. QGC can be used on the same phone in split-screen or from a desktop on the same Wi-Fi network.
+MAVLab broadcasts MAVLink telemetry over UDP and tracks the last peer that sends inbound MAVLink messages. QGC can run on the same phone (connecting over `127.0.0.1:14550` — MAVLab's foreground service keeps streaming in the background, so no split-screen is required) or from a desktop on the same Wi-Fi network.
 
 ## Release
 

@@ -9,7 +9,7 @@ assignees: ''
 Thanks for trying MAVLab! Most first-run snags are one of a few known ones — please check `docs/known_first_run_issues.md` before posting.
 
 **What are you trying to do?**
-- [ ] Connect QGroundControl split-screen on the same phone
+- [ ] Connect QGroundControl on the same phone (127.0.0.1:14550)
 - [ ] Connect desktop QGroundControl over Wi-Fi
 
 **What happens instead?**

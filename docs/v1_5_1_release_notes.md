@@ -16,7 +16,7 @@ MAVLab v1.5.1 is a protocol and connectivity release focused on deeper QGroundCo
 - **Every supported command** (arm/disarm, takeoff, land, set mode, mission start, change speed, set home, and more) now works over both transports, and unsupported commands receive an honest `UNSUPPORTED` acknowledgement.
 
 ### 3. Multi-GCS Telemetry & Link Stability
-- **Simultaneous GCS Connections:** Telemetry now streams to every active GCS peer in parallel (peers expire after 10 s of silence). Split-screen QGC on the phone and desktop QGC over Wi-Fi can run at the same time without stealing the stream from each other.
+- **Simultaneous GCS Connections:** Telemetry now streams to every active GCS peer in parallel (peers expire after 10 s of silence). On-device QGC on the phone and desktop QGC over Wi-Fi can run at the same time without stealing the stream from each other.
 - **Peer Validation:** Only datagrams that parse as MAVLink from a non-vehicle system ID register a telemetry peer — stray network packets can no longer redirect the stream.
 - **Fixed "Communication Lost" with Screen Off:** The simulation service now holds a Wi-Fi lock and partial wake lock, preventing Android Wi-Fi power saving and Doze from stalling UDP heartbeats when the screen is off or MAVLab is backgrounded.
 
@@ -33,4 +33,4 @@ MAVLab v1.5.1 is a protocol and connectivity release focused on deeper QGroundCo
    adb install -r app/build/outputs/apk/debug/MAVlab.apk
    ```
 2. Connect QGroundControl, arm, and try "Set Home Here" on the map after takeoff — the launch marker moves, and RTL returns to it.
-3. Optionally connect desktop QGC and split-screen QGC at the same time; both now receive full telemetry.
+3. Optionally connect desktop QGC and on-device QGC at the same time; both now receive full telemetry.

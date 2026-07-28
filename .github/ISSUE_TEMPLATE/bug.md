@@ -20,7 +20,7 @@ What you expected to happen.
 **Environment**
 - MAVLab version (e.g. v1.5.0):
 - Android version / device model:
-- Connection mode: [same-phone split-screen / desktop over Wi-Fi]
+- Connection mode: [same-phone on-device / desktop over Wi-Fi]
 
 **Logs**
 Attach the flight log (CSV/JSONL) or a crash report if available.
