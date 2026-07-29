@@ -101,44 +101,49 @@ class MavlinkMessageBuilder(
     }
 
     fun sysStatus(state: DroneState): ByteArray {
+        // MAVLink SYS_STATUS (#1) wire order: the int8 battery_remaining sorts last,
+        // so it must be the final byte (offset 30) — after the six comm-error uint16s.
         val payload = littleEndian(31)
-            .putInt(1)
-            .putInt(1)
-            .putInt(1)
-            .putU16(250)
-            .putU16(state.batteryVoltageMv.toInt())
-            .putShort(state.batteryCurrentCa)
-            .put(state.batteryRemainingPercent)
-            .putU16(0)
-            .putU16(0)
-            .putU16(0)
-            .putU16(0)
-            .putU16(0)
-            .putU16(0)
+            .putInt(1)                              // onboard_control_sensors_present
+            .putInt(1)                              // onboard_control_sensors_enabled
+            .putInt(1)                              // onboard_control_sensors_health
+            .putU16(250)                            // load
+            .putU16(state.batteryVoltageMv.toInt()) // voltage_battery
+            .putShort(state.batteryCurrentCa)       // current_battery
+            .putU16(0)                              // drop_rate_comm
+            .putU16(0)                              // errors_comm
+            .putU16(0)                              // errors_count1
+            .putU16(0)                              // errors_count2
+            .putU16(0)                              // errors_count3
+            .putU16(0)                              // errors_count4
+            .put(state.batteryRemainingPercent)     // battery_remaining (int8, last)
             .array()
         return frame(messageId = 1, crcExtra = 124, payload = payload)
     }
 
     fun batteryStatus(state: DroneState): ByteArray {
+        // MAVLink BATTERY_STATUS (#147) wire order (size-sorted): the two int32s first,
+        // then temperature + the ten cell voltages + current_battery, then the four int8s
+        // (id, battery_function, type, battery_remaining) last. battery_remaining is byte 35.
         val payload = littleEndian(36)
-            .putU16(state.batteryVoltageMv.toInt())
-            .putU16(UShort.MAX_VALUE.toInt())
-            .putU16(UShort.MAX_VALUE.toInt())
-            .putU16(UShort.MAX_VALUE.toInt())
-            .putU16(UShort.MAX_VALUE.toInt())
-            .putU16(UShort.MAX_VALUE.toInt())
-            .putU16(UShort.MAX_VALUE.toInt())
-            .putU16(UShort.MAX_VALUE.toInt())
-            .putU16(UShort.MAX_VALUE.toInt())
-            .putU16(UShort.MAX_VALUE.toInt())
-            .putShort(state.batteryCurrentCa)
-            .putInt(-1)
-            .putInt(-1)
-            .put(state.batteryRemainingPercent)
-            .putU8(0)
-            .putU8(0)
-            .putU8(3)
-            .putShort(Short.MAX_VALUE)
+            .putInt(-1)                             // current_consumed (-1 = not provided)
+            .putInt(-1)                             // energy_consumed (-1 = not provided)
+            .putShort(Short.MAX_VALUE)              // temperature (INT16_MAX = unknown)
+            .putU16(state.batteryVoltageMv.toInt()) // voltages[0]
+            .putU16(UShort.MAX_VALUE.toInt())       // voltages[1]
+            .putU16(UShort.MAX_VALUE.toInt())       // voltages[2]
+            .putU16(UShort.MAX_VALUE.toInt())       // voltages[3]
+            .putU16(UShort.MAX_VALUE.toInt())       // voltages[4]
+            .putU16(UShort.MAX_VALUE.toInt())       // voltages[5]
+            .putU16(UShort.MAX_VALUE.toInt())       // voltages[6]
+            .putU16(UShort.MAX_VALUE.toInt())       // voltages[7]
+            .putU16(UShort.MAX_VALUE.toInt())       // voltages[8]
+            .putU16(UShort.MAX_VALUE.toInt())       // voltages[9]
+            .putShort(state.batteryCurrentCa)       // current_battery
+            .putU8(0)                               // id
+            .putU8(0)                               // battery_function (0 = UNKNOWN)
+            .putU8(3)                               // type (3 = MAV_BATTERY_TYPE_LION)
+            .put(state.batteryRemainingPercent)     // battery_remaining (int8, last)
             .array()
         return frame(messageId = 147, crcExtra = 154, payload = payload)
     }

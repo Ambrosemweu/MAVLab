@@ -154,14 +154,37 @@ class MavlinkMessageBuilderTest {
 
         assertNotNull(packet)
         assertEquals(147, packet.messageId)
-        assertEquals(12_100, packet.payload.leUInt16(0))
-        assertEquals(345, packet.payload.leInt16(20))
-        assertEquals(-1, packet.payload.leInt32(22))
-        assertEquals(-1, packet.payload.leInt32(26))
-        assertEquals(76, packet.payload[30].toInt())
-        assertEquals(0, packet.payload[31].toInt())
+        // MAVLink BATTERY_STATUS wire offsets: current_consumed@0, energy_consumed@4,
+        // voltages[0]@10, current_battery@30, id@32, function@33, type@34, remaining@35.
+        assertEquals(-1, packet.payload.leInt32(0))
+        assertEquals(-1, packet.payload.leInt32(4))
+        assertEquals(12_100, packet.payload.leUInt16(10))
+        assertEquals(345, packet.payload.leInt16(30))
         assertEquals(0, packet.payload[32].toInt())
-        assertEquals(3, packet.payload[33].toInt())
+        assertEquals(0, packet.payload[33].toInt())
+        assertEquals(3, packet.payload[34].toInt())
+        assertEquals(76, packet.payload[35].toInt())
+    }
+
+    @Test
+    fun sysStatusPlacesBatteryRemainingLast() {
+        val builder = MavlinkMessageBuilder(systemId = 174, componentId = 1)
+        val state = DroneState(
+            batteryVoltageMv = 11_400u.toUShort(),
+            batteryCurrentCa = 210,
+            batteryRemainingPercent = 63,
+        )
+
+        val data = builder.sysStatus(state)
+        val packet = MavlinkParser.parse(data, length = data.size)
+
+        assertNotNull(packet)
+        assertEquals(1, packet.messageId)
+        // MAVLink SYS_STATUS wire offsets: voltage_battery@14, current_battery@16,
+        // battery_remaining is the trailing int8 at offset 30.
+        assertEquals(11_400, packet.payload.leUInt16(14))
+        assertEquals(210, packet.payload.leInt16(16))
+        assertEquals(63, packet.payload[30].toInt())
     }
 
     @Test
