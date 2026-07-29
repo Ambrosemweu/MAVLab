@@ -32,13 +32,17 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -57,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ascend.mavlab.core.ui.components.TelemetryCard
 import com.ascend.mavlab.feature.controller.TiltVisualizer
+import kotlin.math.roundToInt
 import com.ascend.mavlab.feature.drone3d.AltitudeInstrument
 
 // Shared palette, kept in sync with core.ui.theme.MavLabColorScheme so the hand-drawn
@@ -182,6 +187,18 @@ private fun SurfaceGalleryVisual() {
         Surface("Mission", "QGC upload, waypoints, AUTO", Icons.Default.Route, Amber),
         Surface("Ops", "MAVLink status, logs, export", Icons.Default.Settings, Slate),
     )
+    val scrollState = rememberScrollState()
+    val density = LocalDensity.current
+    // Each card is 150dp wide with 12dp spacing → 162dp per step. The active dot
+    // tracks whichever card is most in view, snapping at the half-step.
+    val stepPx = with(density) { 162.dp.toPx() }
+    val activeIndex by remember {
+        derivedStateOf {
+            (scrollState.value / stepPx)
+                .roundToInt()
+                .coerceIn(0, surfaces.lastIndex)
+        }
+    }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -189,7 +206,7 @@ private fun SurfaceGalleryVisual() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
+                .horizontalScroll(scrollState),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             surfaces.forEach { surface ->
@@ -215,14 +232,17 @@ private fun SurfaceGalleryVisual() {
                 }
             }
         }
-        // Position dots (first active).
+        // Position dots — the active one tracks the scroll position.
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             repeat(surfaces.size) { index ->
+                val active = index == activeIndex
+                val width by animateDpAsState(if (active) 20.dp else 7.dp, label = "dotWidth")
+                val color by animateColorAsState(if (active) Blue else CardBorder, label = "dotColor")
                 Box(
                     modifier = Modifier
                         .height(7.dp)
-                        .width(if (index == 0) 20.dp else 7.dp)
-                        .background(if (index == 0) Blue else CardBorder, CircleShape),
+                        .width(width)
+                        .background(color, CircleShape),
                 )
             }
         }
