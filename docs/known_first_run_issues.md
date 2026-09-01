@@ -4,7 +4,7 @@ Most "it won't connect" reports are one of the items below. If none matches, ope
 
 ## 1. QGroundControl doesn't discover the vehicle
 
-- **Same phone (on-device):** QGC listens on `127.0.0.1:14550`. Make sure MAVLab is running *before* you open QGC, or tap refresh in QGC. No split-screen needed.
+- **Same phone (on-device):** QGC listens on `127.0.0.1:14550`. Open MAVLab first, then switch to QGC within the 45-second handoff window. No split-screen is needed.
 - **System IDs:** MAVLab defaults to system ID `1`; QGC's GCS system ID defaults to `255`. If you share a network with other MAVLink devices, set a unique MAVLab system ID per device (the paper §6 covers per-install IDs for classroom networks).
 - **QGC version drift:** very new QGC builds may expect stream-interval acknowledgements earlier than older ones. If discovery is flaky, try the QGC version noted in `docs/v1_5_release_notes.md`.
 
@@ -20,7 +20,7 @@ Android blocks sideloaded APKs by default. When prompted, allow installs from th
 
 ## 4. Backgrounded networking
 
-MAVLab runs as a foreground service and holds wake + Wi-Fi locks while the simulation is running, so its MAVLink stream keeps flowing even when MAVLab is backgrounded behind QGC — no split-screen required. (If you're on a much older build without the foreground service, keep MAVLab visible while connecting.)
+When MAVLab is backgrounded, phone sensors and audio stop immediately. Telemetry remains active for a 45-second GCS handoff and continues while a validated GCS heartbeat is present or the vehicle is armed/running an AUTO mission. If MAVLab is idle and disconnected, the runtime, wake/Wi-Fi locks, and service notification stop automatically. Returning to MAVLab restarts them. Explicitly closing MAVLab or tapping **Stop simulation** in its notification stops immediately.
 
 ## 5. Mission upload fails / no progress
 

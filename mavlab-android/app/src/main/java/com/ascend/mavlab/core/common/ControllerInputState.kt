@@ -1,5 +1,7 @@
 package com.ascend.mavlab.core.common
 
+import com.ascend.mavlab.simulation.engine.ControlAuthority
+
 data class ControllerInputState(
     val inputMode: ControllerInputMode = ControllerInputMode.PHONE_SENSORS,
     val throttle: Float = DefaultThrottle,
@@ -22,4 +24,13 @@ data class ControllerInputState(
         const val DefaultThrottle = 0.5f
         const val MaxDirectRpm = 10000f
     }
+}
+
+internal fun ControllerInputState.acceptsPhoneSensorInput(
+    sensorAvailable: Boolean,
+    controlAuthority: ControlAuthority,
+): Boolean {
+    return inputMode == ControllerInputMode.PHONE_SENSORS &&
+        sensorAvailable &&
+        controlAuthority != ControlAuthority.GCS_MISSION
 }

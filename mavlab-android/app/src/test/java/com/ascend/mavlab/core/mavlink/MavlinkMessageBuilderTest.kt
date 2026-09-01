@@ -18,7 +18,7 @@ class MavlinkMessageBuilderTest {
     }
 
     @Test
-    fun autopilotVersionAdvertisesMissionIntAndMavlink2() {
+    fun autopilotVersionUsesPinnedMavLabCompatibilityProfile() {
         val builder = MavlinkMessageBuilder(systemId = 174, componentId = 1)
 
         val data = builder.autopilotVersion()
@@ -31,6 +31,22 @@ class MavlinkMessageBuilderTest {
         val capabilities = packet.payload.leUInt64(0)
         assertTrue(capabilities and MAV_PROTOCOL_CAPABILITY_MISSION_INT != 0L)
         assertTrue(capabilities and MAV_PROTOCOL_CAPABILITY_MAVLINK2 != 0L)
+        assertEquals(0L, capabilities and MAV_PROTOCOL_CAPABILITY_SET_POSITION_TARGET_LOCAL_NED)
+        assertEquals(0L, capabilities and MAV_PROTOCOL_CAPABILITY_SET_POSITION_TARGET_GLOBAL_INT)
+
+        // Official generated MAVLink layout for AUTOPILOT_VERSION (message 148).
+        assertEquals(174L, packet.payload.leUInt64(8))
+        val flightVersion = packet.payload.leInt32(16)
+        assertEquals(4, flightVersion ushr 24 and 0xff)
+        assertEquals(6, flightVersion ushr 16 and 0xff)
+        assertEquals(3, flightVersion ushr 8 and 0xff)
+        assertEquals(FirmwareVersionType.Development.wireValue, flightVersion and 0xff)
+        assertEquals(0, packet.payload.leInt32(20))
+        assertEquals(0, packet.payload.leInt32(24))
+        assertEquals(0, packet.payload.leInt32(28))
+        assertEquals(0, packet.payload.leUInt16(32))
+        assertEquals(0, packet.payload.leUInt16(34))
+        assertEquals("MAVLAB", packet.payload.copyOfRange(36, 44).decodeAsciiField())
     }
 
     @Test
@@ -267,8 +283,14 @@ class MavlinkMessageBuilderTest {
             (this[offset + 3].toInt() shl 24)
     }
 
+    private fun ByteArray.decodeAsciiField(): String {
+        return String(this, Charsets.US_ASCII).trimEnd('\u0000')
+    }
+
     private companion object {
         const val MAV_PROTOCOL_CAPABILITY_MISSION_INT = 4L
+        const val MAV_PROTOCOL_CAPABILITY_SET_POSITION_TARGET_LOCAL_NED = 128L
+        const val MAV_PROTOCOL_CAPABILITY_SET_POSITION_TARGET_GLOBAL_INT = 256L
         const val MAV_PROTOCOL_CAPABILITY_MAVLINK2 = 8192L
     }
 }

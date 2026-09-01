@@ -65,9 +65,9 @@ object AppRuntime {
     private var recordingJob: Job? = null
     private var phoneSensorJob: Job? = null
     private var applicationContext: Context? = null
+    private var foregroundInteractionEnabled = true
     private var restoredPersistedMission = false
     private val phoneSensorCalibration = SensorCalibration()
-    private var phoneSensorControlEnabled = false
     private var phoneSensorThrottle = 0.5f
     private var phoneSensorYawTrim = 0f
 
@@ -98,14 +98,6 @@ object AppRuntime {
         if (flightRecorder == null) {
             flightRecorder = FlightRecorder(appContext.filesDir)
         }
-        if (droneSoundController == null) {
-            droneSoundController = DroneSoundController(
-                context = appContext,
-                state = state,
-                failures = failures,
-                scope = scope,
-            )
-        }
         refreshSessionHistory()
         restoreSimLocation(appContext)
         restorePersistedMission(appContext)
@@ -127,23 +119,56 @@ object AppRuntime {
         }
         simLoop.start()
         mavlinkServer?.start(appContext)
-        droneSoundController?.start()
-        startPhoneSensorMonitor(appContext)
+        if (foregroundInteractionEnabled) {
+            startForegroundInteraction(appContext)
+        }
         startRecordingMonitor()
+    }
+
+    fun setForegroundInteractionEnabled(enabled: Boolean) {
+        if (foregroundInteractionEnabled == enabled) return
+        foregroundInteractionEnabled = enabled
+        val context = applicationContext ?: return
+        if (enabled) {
+            startForegroundInteraction(context)
+        } else {
+            stopForegroundInteraction()
+        }
     }
 
     fun stop() {
         mavlinkServer?.stopNow()
         recordingJob?.cancel()
         recordingJob = null
-        phoneSensorJob?.cancel()
-        phoneSensorJob = null
-        droneSoundController?.release()
-        droneSoundController = null
+        stopForegroundInteraction()
         flightRecorder?.closeSession("runtime stopped")
         refreshSessionHistory()
         syncRecordingStatus()
         simLoop.stop()
+    }
+
+    private fun startForegroundInteraction(context: Context) {
+        if (droneSoundController == null) {
+            droneSoundController = DroneSoundController(
+                context = context,
+                state = state,
+                failures = failures,
+                scope = scope,
+            )
+        }
+        droneSoundController?.start()
+        startPhoneSensorMonitor(context)
+    }
+
+    private fun stopForegroundInteraction() {
+        phoneSensorJob?.cancel()
+        phoneSensorJob = null
+        mutablePhoneSensorSource.value = OrientationSource.Unavailable
+        droneSoundController?.release()
+        droneSoundController = null
+        val neutralInput = PilotInput(throttle = ControllerInputState.DefaultThrottle)
+        mutablePhoneSensorPilotInput.value = neutralInput
+        simLoop.setPilotInput(neutralInput)
     }
 
     fun refreshSessionHistory() {
@@ -206,15 +231,9 @@ object AppRuntime {
         simLoop.setPilotInput(input)
     }
 
-    fun setPhoneSensorControlEnabled(enabled: Boolean) {
-        phoneSensorControlEnabled = enabled
-        if (enabled) {
-            refreshPhoneSensorPilotInput()
-        }
-    }
-
     fun setControllerInputMode(mode: ControllerInputMode) {
         updateControllerInputState { it.copy(inputMode = mode) }
+        refreshPhoneSensorPilotInput()
     }
 
     fun setControllerThrottle(value: Float) {
@@ -690,9 +709,13 @@ object AppRuntime {
     ) {
         val input = mapPhoneSensorInput(orientation)
         mutablePhoneSensorPilotInput.value = input
-        val currentState = state.value
-        val gcsMissionOwnsControl = currentState.armed && currentState.controlAuthority == ControlAuthority.GCS_MISSION
-        if (phoneSensorControlEnabled && !gcsMissionOwnsControl) {
+        val controllerState = mutableControllerInputState.value
+        if (
+            controllerState.acceptsPhoneSensorInput(
+                sensorAvailable = mutablePhoneSensorSource.value != OrientationSource.Unavailable,
+                controlAuthority = state.value.controlAuthority,
+            )
+        ) {
             simLoop.setPilotInput(input)
         }
     }
@@ -736,7 +759,6 @@ object AppRuntime {
         mutableControllerInputState.value = ControllerInputState()
         phoneSensorThrottle = ControllerInputState.DefaultThrottle
         phoneSensorYawTrim = 0f
-        phoneSensorControlEnabled = false
         mutableMotorSpeedOverrideRpm.value = null
         simLoop.setMotorSpeedOverrideRpm(null)
         simLoop.setPilotInput(PilotInput(throttle = ControllerInputState.DefaultThrottle))

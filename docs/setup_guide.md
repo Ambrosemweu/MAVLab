@@ -11,7 +11,7 @@ MAVLab's core learning loop is designed to run from one Android-first app. You d
 
 ## QGroundControl
 
-For same-device use, keep MAVLab running and open QGroundControl — it connects over `127.0.0.1:14550`. MAVLab runs as a foreground service (holding wake + Wi-Fi locks) so the MAVLink stream keeps flowing even when MAVLab is in the background; no split-screen is required. MAVLab broadcasts MAVLink telemetry over UDP and QGC should discover it automatically.
+For same-device use, open MAVLab and then switch to QGroundControl within 45 seconds. QGC connects over `127.0.0.1:14550`. MAVLab continues telemetry while a validated GCS heartbeat is present or a flight is active. When backgrounded, it suspends phone sensors and audio; if it is idle and disconnected after the handoff window, it stops the runtime and power locks automatically. Split-screen is optional.
 
 For desktop QGC, put the Android phone and desktop on the same Wi-Fi network. MAVLab broadcasts to common LAN destinations and UDP port `14550`.
 
@@ -25,7 +25,7 @@ GRADLE_USER_HOME="$PWD/.gradle" ./gradlew lintDebug testDebugUnitTest assembleDe
 Install the debug APK:
 
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/debug/MAVlab.apk
 ```
 
 ## Troubleshooting

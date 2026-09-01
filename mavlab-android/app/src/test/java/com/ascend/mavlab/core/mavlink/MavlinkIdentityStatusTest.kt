@@ -39,4 +39,23 @@ class MavlinkIdentityStatusTest {
         assertFalse(reset.gcsConnected)
         assertTrue(reset.gcsHeartbeatSeriesStartedAtMs == GcsHeartbeatContinuityGapMs + 1L)
     }
+
+    @Test
+    fun onlyGroundControlHeartbeatQualifiesForConnectionRetention() {
+        val gcsHeartbeat = MavlinkPacket(
+            messageId = 0,
+            systemId = 255,
+            componentId = 190,
+            payload = byteArrayOf(0, 0, 0, 0, 6),
+        )
+        val vehicleHeartbeat = gcsHeartbeat.copy(
+            systemId = 2,
+            componentId = 1,
+            payload = byteArrayOf(0, 0, 0, 0, 2),
+        )
+
+        assertTrue(gcsHeartbeat.isGroundControlHeartbeat())
+        assertFalse(vehicleHeartbeat.isGroundControlHeartbeat())
+        assertFalse(gcsHeartbeat.copy(messageId = 30).isGroundControlHeartbeat())
+    }
 }

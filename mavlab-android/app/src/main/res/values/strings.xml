@@ -4,4 +4,8 @@
     <string name="simulation_service_channel">MAVLab simulation</string>
     <string name="simulation_service_title">MAVLab simulation active</string>
     <string name="simulation_service_text">Broadcasting MAVLink telemetry from the MAVLab simulator.</string>
+    <string name="simulation_service_waiting_for_gcs">Waiting briefly for QGroundControl to connect.</string>
+    <string name="simulation_service_gcs_connected">QGroundControl connected — background telemetry active.</string>
+    <string name="simulation_service_active_flight">Flight active — simulation continues safely in the background.</string>
+    <string name="simulation_service_stop">Stop simulation</string>
 </resources>

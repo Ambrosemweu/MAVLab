@@ -262,6 +262,10 @@ class MavlinkUdpServer(
     }
 
     private fun handleHeartbeat(packet: MavlinkPacket, peer: UdpDestination?, length: Int, timestampMs: Long) {
+        if (!packet.isGroundControlHeartbeat()) {
+            logInbound(packet, peer, length, "non-gcs-heartbeat")
+            return
+        }
         val collision = packet.systemId == vehicleSystemId
         val result = if (collision) {
             "gcs-heartbeat SYSID_COLLISION"

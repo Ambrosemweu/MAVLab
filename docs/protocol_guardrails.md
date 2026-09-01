@@ -19,11 +19,11 @@ MAVLab enforces a strict identity separation to prevent loopbacks, self-hearbeat
 ## 2. Heartbeat Rate & Connectivity State Invariants
 
 - **Heartbeat Rate:**
-  - `MavlinkUdpServer` broadcasts a `HEARTBEAT` message (ID `#0`) exactly once per second (1Hz).
+  - `MavlinkUdpServer` currently sends a telemetry burst every 200 ms (nominally 5 Hz), including `HEARTBEAT` while a peer is active. Treat this as implementation timing, not a guaranteed external rate contract.
 - **GCS Connection State:**
   - **Connection Warmup:** A GCS connection is marked active (`gcsConnected = true`) only after receiving continuous heartbeat signals from the GCS for at least 3 seconds.
   - **Connection Timeout:** If no heartbeats are received from the GCS for more than 15 seconds, the connection is marked disconnected.
-  - **Failsafe Reversion:** When GCS connection drops during an autonomous AUTO mission, the autopilot reverts control authority from `GCS_MISSION` to safety defaults (e.g. holds position or RTL) to prevent flyaways.
+  - **Retention Boundary:** GCS connection state controls background-runtime retention. It does not currently implement a documented automatic RTL/hold transition when the heartbeat expires.
 
 ---
 
@@ -47,6 +47,25 @@ MAVLab uses a priority-based single-writer authority model to arbitrate between 
 ## 4. UDP Network & Port Mapping Invariants
 
 To establish standard UDP socket communication:
-- **Local Bind Port:** MAVLab binds to UDP port `14556` to receive packets from the GCS.
+- **Local Bind Port:** MAVLab attempts to bind UDP port `14551` and falls back to an ephemeral port if it is unavailable.
 - **Remote Target Port:** MAVLab sends telemetry packets to UDP port `14550` (the standard QGroundControl listen port).
-- **Unicast Transition:** When a GCS heartbeat is received, MAVLab records the sender's IP address and port and switches from UDP broadcast to targeted unicast to reduce network congestion.
+- **Peer Transition:** Before peer detection, discovery heartbeats go to configured loopback/LAN destinations. After inbound traffic identifies active peers, full telemetry is sent to those peers until their activity expires.
+
+---
+
+## 5. ArduPilot Compatibility Identity
+
+- MAVLab uses `MAV_AUTOPILOT_ARDUPILOTMEGA` so stock QGroundControl selects its
+  ArduPilot vehicle plugin.
+- MAVLab is not an official ArduPilot build. `AUTOPILOT_VERSION` must use
+  `FIRMWARE_VERSION_TYPE_DEV` (`0`), never `FIRMWARE_VERSION_TYPE_OFFICIAL`
+  (`255`).
+- The compatibility baseline is pinned in `ArduPilotCompatibilityProfile.kt`.
+  Do not change it merely because ArduPilot publishes a newer stable release.
+- Middleware, Android OS, and board versions must be reported as `0` unless
+  MAVLab has a truthful, separately versioned value for them.
+- Capability bits must have matching handlers and contract tests before they
+  are advertised.
+
+See [ArduPilot Compatibility Contract](ardupilot_compatibility.md) for the
+upgrade and release procedure.

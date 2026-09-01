@@ -1,6 +1,5 @@
 package com.ascend.mavlab
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,10 +11,6 @@ import com.ascend.mavlab.service.SimulationService
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        ContextCompat.startForegroundService(
-            this,
-            Intent(this, SimulationService::class.java),
-        )
         setContent {
             MAVLabTheme {
                 MavLabAppShell()
@@ -23,10 +18,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onDestroy() {
-        if (isFinishing) {
-            stopService(Intent(this, SimulationService::class.java))
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.startForegroundService(
+            this,
+            SimulationService.appVisibleIntent(this),
+        )
+    }
+
+    override fun onStop() {
+        if (!isChangingConfigurations) {
+            if (isFinishing) {
+                stopService(SimulationService.stopIntent(this))
+            } else {
+                startService(SimulationService.appBackgroundedIntent(this))
+            }
         }
-        super.onDestroy()
+        super.onStop()
     }
 }

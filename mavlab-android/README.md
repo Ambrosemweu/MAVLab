@@ -36,12 +36,12 @@ GRADLE_USER_HOME="$PWD/.gradle" ./gradlew lintDebug testDebugUnitTest assembleDe
 Install on a connected phone:
 
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/debug/MAVlab.apk
 ```
 
 ## QGroundControl
 
-MAVLab broadcasts MAVLink telemetry over UDP and tracks the last peer that sends inbound MAVLink messages. QGC can run on the same phone (connecting over `127.0.0.1:14550` — MAVLab's foreground service keeps streaming in the background, so no split-screen is required) or from a desktop on the same Wi-Fi network.
+MAVLab broadcasts MAVLink telemetry over UDP and tracks validated ground-control heartbeats. When MAVLab is backgrounded, it provides a 45-second handoff window for opening QGroundControl and then keeps the runtime alive while a GCS is connected or a flight is active. If it remains idle and disconnected, it stops automatically. Phone gyro input and audio are suspended in the background; split-screen is optional.
 
 ## Release
 

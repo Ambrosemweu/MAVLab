@@ -1,6 +1,6 @@
 # MAVLab Product Purpose
 
-Source-of-truth vault note: `/home/ambrose/Documents/Obsidian Vault/Ascend Operating System/Ascend Labs/MAVLab Product Documentation.md`
+Technical source of truth: `docs/README.md` and `docs/internals/` in this repository. Private Ascend operating context is indexed in the Obsidian note `MAVLab Documentation System/_MOC MAVLab Documentation System.md`.
 
 Updated: 2026-06-20
 

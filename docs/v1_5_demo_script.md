@@ -34,7 +34,7 @@ This script provides a 7–10 minute step-by-step guide for presenters, instruct
 ## 3. QGroundControl Connection & AUTO Mission (3 Minutes)
 
 1. **Connect QGC:**
-   - On the same device, open QGC (it connects over `127.0.0.1:14550` — no split-screen needed), or open QGC on a desktop PC on the same Wi-Fi.
+   - On the same device, open MAVLab and switch to QGC within 45 seconds (QGC connects over `127.0.0.1:14550`; split-screen is optional), or open QGC on a desktop PC on the same Wi-Fi.
    - Confirm connection: QGC speaks "Armed" or shows telemetry heartbeat.
 2. **Upload Waypoints:**
    - In QGC, plan a short mission with 3 waypoints and click **Upload**.
