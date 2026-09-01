@@ -8,9 +8,10 @@ This document details the environment setups and acceptance criteria for validat
 
 ### Environment A: On-Device (Same-Phone) Testing
 Useful for single-device verification:
-1. Open **MAVLab** and start the simulation (its foreground service keeps the MAVLink stream alive in the background).
-2. Open **QGroundControl** on the same phone.
-3. QGC automatically listens on localhost port `14550` and discovers the MAVLab vehicle broadcast — no split-screen required. (You can optionally use split-screen/multi-window to watch both apps at once.)
+1. Open **MAVLab** and start the simulation.
+2. Switch to **QGroundControl** within 45 seconds; split-screen is optional.
+3. QGC automatically listens on localhost port `14550` and discovers the MAVLab vehicle broadcast. Once a validated QGC heartbeat arrives, MAVLab must keep telemetry active while backgrounded.
+4. Close QGC while the vehicle is idle and verify that MAVLab stops once its GCS heartbeat timeout and any remaining handoff grace have expired. Reopening MAVLab must restart the runtime.
 
 ### Environment B: Cross-Device Local Wi-Fi Testing
 Useful for representative field simulation:
@@ -25,6 +26,7 @@ Useful for representative field simulation:
 | Item | Action | Verification |
 |---|---|---|
 | **Discovery** | Open both apps | QGC discovers MAVLab within 5 seconds. Audio announcement: *"Armed"* or *"Disarmed"*. Heartbeat indicators turn green. |
+| **Firmware identity** | Reconnect QGC and inspect vehicle summary/messages | QGC identifies an ArduPilot-compatible development build and does not show an official-firmware update warning. `AUTOPILOT_VERSION` reports the pinned MAVLab compatibility profile and `MAVLAB` custom identifier. |
 | **Arm/Disarm** | Click Arm/Disarm in QGC | MAVLab state updates immediately. Propellers in SIM start spinning on arm and stop on disarm. |
 | **Command ACK** | Click Takeoff / Land in QGC | QGC receives ACK packet and acknowledges command execution. Drone moves vertically. |
 | **Mission Upload**| Create waypoints in QGC and tap Upload | MAVLab accepts all mission items, prints `MISSION RESTORED`, and shows waypoints in its **Mission** tab. |
@@ -41,6 +43,7 @@ Useful for representative field simulation:
 - Date: 2026-06-30 <!-- TODO: confirm exact test date -->
 - Devices / Android versions: <!-- TODO: record exact device models + Android versions -->
 - QGC build: <!-- TODO: record QGroundControl version (desktop and mobile) -->
+- ArduPilot compatibility profile: `ArduCopter 4.6 protocol profile` (`4.6.3 DEVELOPMENT`)
 - Stability run: confirm window used (10 min per this spec, or the 30-min Phase-1 connection-stability target). <!-- TODO -->
 
 Also exercised hands-on by a small group of external testers (2–5, mixed background) on their own phones with no blocking issues; this is informal feedback, not a controlled study.

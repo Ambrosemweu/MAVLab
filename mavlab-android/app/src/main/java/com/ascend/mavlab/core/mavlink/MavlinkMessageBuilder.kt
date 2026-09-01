@@ -11,6 +11,7 @@ import kotlin.math.roundToInt
 class MavlinkMessageBuilder(
     private val systemId: Int,
     private val componentId: Int,
+    private val compatibilityProfile: ArduPilotCompatibilityProfile = MavLabArduPilotCompatibility.Current,
 ) {
     private var sequence = 0
 
@@ -168,25 +169,21 @@ class MavlinkMessageBuilder(
     }
 
     fun autopilotVersion(): ByteArray {
-        val capabilities = MAV_PROTOCOL_CAPABILITY_MISSION_FLOAT or
-            MAV_PROTOCOL_CAPABILITY_PARAM_FLOAT or
-            MAV_PROTOCOL_CAPABILITY_MISSION_INT or
-            MAV_PROTOCOL_CAPABILITY_COMMAND_INT or
-            MAV_PROTOCOL_CAPABILITY_SET_POSITION_TARGET_LOCAL_NED or
-            MAV_PROTOCOL_CAPABILITY_SET_POSITION_TARGET_GLOBAL_INT or
-            MAV_PROTOCOL_CAPABILITY_MAVLINK2
+        // MAVLink wire order is type-sorted by the generator, not XML declaration order.
+        // AUTOPILOT_VERSION v1 offsets: capabilities@0, uid@8, flight_sw_version@16,
+        // middleware@20, os@24, board@28, vendor@32, product@34, custom versions@36.
         val payload = littleEndian(60)
-            .putLong(capabilities)
-            .putInt(encodeVersion(4, 6, 3, FirmwareVersionTypeDev))
-            .putInt(encodeVersion(4, 6, 3, FirmwareVersionTypeDev))
-            .putInt(encodeVersion(4, 6, 3, FirmwareVersionTypeDev))
-            .putInt(1)
-            .put(ByteArray(8))
-            .put(ByteArray(8))
-            .put(ByteArray(8))
-            .putU16(0)
-            .putU16(0)
+            .putLong(compatibilityProfile.capabilityMask)
             .putLong(systemId.toLong())
+            .putInt(compatibilityProfile.flightVersion.encoded)
+            .putInt(0) // middleware_sw_version is not represented by MAVLab.
+            .putInt(0) // os_sw_version is not an ArduPilot compatibility claim.
+            .putInt(0) // board_version is unavailable for the phone simulator.
+            .putU16(0)
+            .putU16(0)
+            .put(compatibilityProfile.flightCustomVersionBytes())
+            .put(ByteArray(8))
+            .put(ByteArray(8))
             .array()
         return frame(messageId = 148, crcExtra = 178, payload = payload)
     }
@@ -365,13 +362,6 @@ class MavlinkMessageBuilder(
         return ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN)
     }
 
-    private fun encodeVersion(major: Int, minor: Int, patch: Int, type: Int): Int {
-        return (major.coerceIn(0, 255) shl 24) or
-            (minor.coerceIn(0, 255) shl 16) or
-            (patch.coerceIn(0, 255) shl 8) or
-            type.coerceIn(0, 255)
-    }
-
     private fun ByteBuffer.putU8(value: Int): ByteBuffer = put((value and 0xff).toByte())
     private fun ByteBuffer.putU16(value: Int): ByteBuffer = putShort((value and 0xffff).toShort())
 
@@ -403,14 +393,6 @@ class MavlinkMessageBuilder(
         const val MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6
         const val MavlinkGroundStationSystemId = 255
         const val MavlinkGroundStationComponentId = 190
-        const val FirmwareVersionTypeDev = 255
-        const val MAV_PROTOCOL_CAPABILITY_MISSION_FLOAT = 1L
-        const val MAV_PROTOCOL_CAPABILITY_PARAM_FLOAT = 2L
-        const val MAV_PROTOCOL_CAPABILITY_MISSION_INT = 4L
-        const val MAV_PROTOCOL_CAPABILITY_COMMAND_INT = 8L
-        const val MAV_PROTOCOL_CAPABILITY_SET_POSITION_TARGET_LOCAL_NED = 128L
-        const val MAV_PROTOCOL_CAPABILITY_SET_POSITION_TARGET_GLOBAL_INT = 256L
-        const val MAV_PROTOCOL_CAPABILITY_MAVLINK2 = 8192L
         const val MaxTelemetrySpeedMS = 80f
     }
 }

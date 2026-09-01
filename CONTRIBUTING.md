@@ -6,12 +6,14 @@ Thanks for your interest in MAVLab — a phone-first drone digital-twin simulato
 
 MAVLab is deliberately a *first learning layer* for drone systems — **not** a SITL replacement. The architecture and the engineering bets behind it are documented in the technical paper:
 
+- **Contributor and agent guide:** `AGENTS.md`
+- **Documentation home:** `docs/README.md`
+- **Architecture overview:** `docs/internals/overview.md`
+- **MAVLink contract:** `docs/internals/mavlink-contract.md`
 - **Paper (DOI):** https://doi.org/10.5281/zenodo.21319694
-- **In-repo source:** `docs/paper/paper.md`
-- **Architecture deep-dive:** `docs/architecture.md`
-- **Protocol invariants & guardrails:** `docs/protocol_guardrails.md`
+- **In-repo paper source:** `docs/paper/paper.md`
 
-New contributors should read §4 (phone-first architecture) and §6 (protocol-first methodology) of the paper first — they explain *why* the stack is the way it is.
+Read `AGENTS.md` first for MAVLab’s non-negotiables, project vocabulary, hazards, impact matrix, and verification defaults. Read the paper’s §4 and §6 for the historical phone-first and protocol-first rationale.
 
 ## Building
 

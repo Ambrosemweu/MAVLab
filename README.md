@@ -61,9 +61,9 @@ https://github.com/user-attachments/assets/1b7cdebd-bcb9-48b3-9dc3-ca9344e6c6aa
 
 ### Try the prebuilt APK (recommended for first run)
 
-1. Download `MAVLab-v1.5.2.apk` from the [GitHub Releases page](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.5.2).
+1. Download `MAVLab-v1.5.3.apk` from the [GitHub Releases page](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.5.3).
 2. Install it (Android will prompt you to allow installs from your file manager / browser — normal for sideloaded APKs).
-3. Open **MAVLab**, then open **QGroundControl** on the same phone (no split-screen needed — MAVLab keeps streaming in the background).
+3. For same-phone QGroundControl, open MAVLab first and then switch to QGC within 45 seconds. Once QGC is connected, MAVLab keeps telemetry running in the background.
 4. QGroundControl auto-detects the vehicle on `127.0.0.1:14550` — arm, take off, and fly missions within the first session.
 5. Prefer desktop QGroundControl? Connect phone and computer to the **same Wi-Fi** and open QGC on the computer; the phone's UDP broadcast links automatically.
 
@@ -78,7 +78,7 @@ GRADLE_USER_HOME="$PWD/.gradle" ./gradlew lintDebug testDebugUnitTest assembleDe
 ```
 To install the build to your connected device:
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/debug/MAVlab.apk
 ```
 
 ---
@@ -86,7 +86,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 ## Connecting QGroundControl (QGC)
 
 MAVLab integrates directly with QGroundControl:
-1. **On-Device (same phone):** Open MAVLab, then open QGC — it automatically detects the vehicle on `127.0.0.1:14550`. MAVLab runs as a foreground service and keeps streaming even in the background, so no split-screen is required (you can still use split-screen to watch both at once).
+1. **On-Device (same phone):** Open MAVLab, then switch to QGC within the 45-second handoff window. QGC automatically detects the vehicle on `127.0.0.1:14550`. MAVLab keeps the runtime alive while a validated GCS heartbeat is present or a flight is active; when it is backgrounded, idle, and disconnected, it stops automatically. Split-screen is optional.
 2. **Local Wi-Fi (Cross-Device):** Connect your computer and phone to the same local Wi-Fi router. Open MAVLab on the phone and QGC on your computer; the phone's UDP broadcast will automatically link the vehicle.
 3. *Note: Ensure your GCS System ID is set to `255` (default) and MAVLab is set to `1` to prevent system conflicts.*
 
@@ -94,13 +94,16 @@ MAVLab integrates directly with QGroundControl:
 
 ## Project Documentation
 
-- **[Product Purpose](docs/product_purpose.md):** Why MAVLab exists: lowering the drone-simulation learning curve before ROS/Gazebo/SITL.
-- **[Vault Documentation Sync Map](docs/vault_documentation_sync_map.md):** Which Obsidian vault docs should drive GitHub documentation updates.
-- **[Architecture & Design Model](docs/architecture.md):** In-depth look at state flows, control authorities, and logging lifecycle.
-- **[Protocol Invariants & Guardrails](docs/protocol_guardrails.md):** Guidelines for GCS connections and packet rules.
-- **[7-Minute Demonstration Script](docs/v1_5_demo_script.md):** Narration script for live bootcamps and presentations.
-- **[QGC Integration Acceptance Tests](docs/v1_5_qgc_acceptance.md):** Environment setup and check-lists for QGC validation.
+Documentation is organized by audience and purpose:
+
+- **[Documentation Home](docs/README.md):** Start here for user guides, internals, operations, validation, research, and history.
+- **[Contributor and Agent Guide](AGENTS.md):** MAVLab’s non-negotiables, vocabulary, hazards, impact matrix, and verification defaults.
+- **[Architecture Overview](docs/internals/overview.md):** Current ownership, state flow, product surfaces, and implementation boundaries.
+- **[MAVLink Contract](docs/internals/mavlink-contract.md):** Truthful identity, ports, timing, support classes, and validation rules.
+- **[Release Runbook](docs/operations/release.md):** Version, build, evidence, publication, and post-release verification.
+- **[Technical Paper](docs/paper/paper.md):** Versioned research source tied to the evaluated release.
 - **[QA Test Matrix](docs/test_matrix.md):** Complete checklist for manual app validation.
+- **[v1.5.3 Release Notes](docs/v1_5_3_release_notes.md):** Gyro control, stable ArduPilot-compatible identity, connection-aware background telemetry, and reorganized project documentation.
 - **[v1.5.2 Release Notes](docs/v1_5_2_release_notes.md):** Onboarding rebuilt natively in Compose, plus the "no split-screen needed" connection correction.
 - **[v1.5.1 Release Notes](docs/v1_5_1_release_notes.md):** GCS set-home, COMMAND_INT, multi-GCS telemetry, and link stability fixes.
 - **[v1.5 Release Notes](docs/v1_5_release_notes.md):** Summary of what is new in the v1.5 feature release.

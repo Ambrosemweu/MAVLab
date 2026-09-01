@@ -73,12 +73,6 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
     var isDetectingArmedRpm by remember { mutableStateOf(false) }
     var wasArmed by remember { mutableStateOf(state.armed) }
 
-    LaunchedEffect(sensorAvailable, inputMode) {
-        if (!sensorAvailable && inputMode == ControllerInputMode.PHONE_SENSORS) {
-            AppRuntime.setControllerInputMode(ControllerInputMode.CUSTOM_INPUT)
-        }
-    }
-
     // Detect arming transitions or disarming when in DIRECT_RPM mode
     LaunchedEffect(state.armed, inputMode) {
         if (inputMode == ControllerInputMode.DIRECT_RPM) {
@@ -143,16 +137,8 @@ fun ControllerScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    LaunchedEffect(inputMode, inputPaused, throttle, manualYaw, sensorAvailable) {
-        val enabled = inputMode == ControllerInputMode.PHONE_SENSORS && sensorAvailable && !inputPaused
-        AppRuntime.setPhoneSensorThrottle(throttle)
-        AppRuntime.setPhoneSensorYawTrim(manualYaw)
-        AppRuntime.setPhoneSensorControlEnabled(enabled)
-    }
-
     LaunchedEffect(inputMode, inputPaused, throttle, manualRoll, manualPitch, manualYaw) {
         if (inputMode != ControllerInputMode.CUSTOM_INPUT || inputPaused) return@LaunchedEffect
-        AppRuntime.setPhoneSensorControlEnabled(false)
         AppRuntime.setPilotInput(
             PilotInput(
                 roll = manualRoll,

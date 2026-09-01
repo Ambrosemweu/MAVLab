@@ -855,7 +855,7 @@ GRADLE_USER_HOME="$PWD/.gradle" ./gradlew testDebugUnitTest lintDebug assembleDe
 
 Same-phone:
 
-- MAVLab + QGC on the same device (QGC on `127.0.0.1:14550`; no split-screen required).
+- Open MAVLab, then switch to same-device QGC within 45 seconds (QGC on `127.0.0.1:14550`; split-screen is optional).
 - QGC detects MAVLab within 3 seconds.
 - Arm/disarm works.
 - Mode change works.
@@ -874,10 +874,12 @@ Desktop:
 ### 8.3 Android lifecycle checks
 
 - Rotate screen while connected.
-- Background MAVLab for 30 seconds and restore.
+- Background MAVLab without a GCS and confirm sensors/audio stop immediately and the idle runtime stops after 45 seconds; restore it and confirm they restart.
+- Background MAVLab while QGC is connected and confirm telemetry and the service notification remain active while sensors/audio stay suspended.
+- Close QGC while idle and confirm MAVLab stops once the GCS heartbeat timeout and any remaining handoff grace have expired; armed or active AUTO flight must retain the runtime.
 - Screen off/on.
 - Notification permission flow on Android 13+.
-- Backgrounded behind QGC for 30 minutes — link stays alive via the foreground service.
+- Same-phone QGC remains connected while MAVLab is backgrounded; split-screen remains an optional monitoring layout.
 - Low-end Android device performance.
 
 ### 8.4 3D performance checks

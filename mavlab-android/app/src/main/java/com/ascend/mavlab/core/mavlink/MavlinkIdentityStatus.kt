@@ -51,3 +51,13 @@ data class MavlinkIdentityStatus(
 const val GcsConnectionWarmupMs: Long = 3_000L
 const val GcsHeartbeatContinuityGapMs: Long = 2_500L
 const val GcsConnectionTimeoutMs: Long = 15_000L
+
+internal fun MavlinkPacket.isGroundControlHeartbeat(): Boolean {
+    return messageId == MavlinkHeartbeatMessageId &&
+        payload.size > MavlinkHeartbeatTypeOffset &&
+        payload[MavlinkHeartbeatTypeOffset].toInt() and 0xff == MavTypeGroundControlStation
+}
+
+private const val MavlinkHeartbeatMessageId = 0
+private const val MavlinkHeartbeatTypeOffset = 4
+private const val MavTypeGroundControlStation = 6
