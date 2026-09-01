@@ -1,0 +1,42 @@
+name: Sync Release Notes
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/v*_release_notes.md"
+      - ".github/workflows/android-release.yml"
+      - ".github/workflows/sync-release-notes.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.repository == 'Labs-Ascend/MAVLab'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish versioned release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' mavlab-android/app/build.gradle.kts)"
+          tag="v${version}"
+          release_notes="docs/v${version//./_}_release_notes.md"
+
+          if [ ! -f "${release_notes}" ]; then
+            echo "Missing release notes: ${release_notes}" >&2
+            exit 1
+          fi
+          if ! gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release ${tag} does not exist yet; the tag release workflow will publish these notes."
+            exit 0
+          fi
+
+          gh release edit "${tag}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "MAVLab ${tag}" \
+            --notes-file "${release_notes}"
