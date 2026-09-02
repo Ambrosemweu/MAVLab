@@ -41,7 +41,7 @@ adb install -r app/build/outputs/apk/debug/MAVlab.apk
 
 ## QGroundControl
 
-MAVLab broadcasts MAVLink telemetry over UDP and tracks validated ground-control heartbeats. When MAVLab is backgrounded, it provides a 45-second handoff window for opening QGroundControl and then keeps the runtime alive while a GCS is connected or a flight is active. If it remains idle and disconnected, it stops automatically. Phone gyro input and audio are suspended in the background; split-screen is optional.
+MAVLab broadcasts MAVLink telemetry over UDP and tracks validated ground-control heartbeats. When MAVLab is backgrounded, it provides a one-minute handoff window for opening QGroundControl and then keeps the runtime alive while a GCS is connected or a flight is active. If it remains idle and disconnected, it stops automatically. Phone gyro input is suspended in the background, while motor audio remains synchronized with the retained simulation; split-screen is optional.
 
 ## Release
 

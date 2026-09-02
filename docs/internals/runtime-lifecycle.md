@@ -1,8 +1,8 @@
 # Runtime Lifecycle Contract
 
 Audience: Maintainers and Android contributors
-Status: Current v1.5.3 contract
-Last verified: 2026-09-01
+Status: Current updated v1.5.3 contract
+Last verified: 2026-09-02
 
 This document explains when MAVLab keeps the on-phone runtime alive and when it stops.
 
@@ -20,7 +20,7 @@ App visible
   -> retain runtime
 
 App enters background
-  -> 45-second QGC handoff window
+  -> one-minute QGC handoff window
   -> retain if a validated GCS is connected
   -> retain if the vehicle is armed
   -> retain if an AUTO mission is active
@@ -39,7 +39,8 @@ While retained in the background:
 - simulation and MAVLink may continue;
 - the foreground-service notification remains visible;
 - wake and Wi-Fi locks support active work;
-- phone-sensor control and drone sound are disabled to avoid misleading input and unnecessary work.
+- phone-sensor control is disabled to prevent hidden gyro input;
+- drone sound remains active so arming and motor changes commanded from QGroundControl stay audible.
 
 A backgrounded, idle, disconnected runtime outside the grace period should stop rather than consume battery indefinitely.
 
@@ -53,8 +54,9 @@ Deliberate shutdown wins over retention conditions. Notification Stop and explic
 2. Acquire and release wake/Wi-Fi locks with service ownership.
 3. Never retain forever only because the app was opened once.
 4. Do not use phone tilt as live input after backgrounding.
-5. Timing or retention changes require policy tests and user-doc review.
-6. Manifest foreground-service declarations must match actual use.
+5. Keep motor audio synchronized with authoritative simulation state for the full retained runtime.
+6. Timing or retention changes require policy tests and user-doc review.
+7. Manifest foreground-service declarations must match actual use.
 
 ## Evidence
 
@@ -68,5 +70,6 @@ Primary source:
 Focused test:
 
 - `mavlab-android/app/src/test/java/com/ascend/mavlab/service/BackgroundRuntimePolicyTest.kt`
+- `mavlab-android/app/src/test/java/com/ascend/mavlab/core/common/RuntimeComponentPolicyTest.kt`
 
 Real-device validation records the device, Android version, battery restrictions, QGC build, exact MAVLab build, and observed notification/background behavior.

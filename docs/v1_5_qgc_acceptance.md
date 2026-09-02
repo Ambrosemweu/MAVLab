@@ -9,7 +9,7 @@ This document details the environment setups and acceptance criteria for validat
 ### Environment A: On-Device (Same-Phone) Testing
 Useful for single-device verification:
 1. Open **MAVLab** and start the simulation.
-2. Switch to **QGroundControl** within 45 seconds; split-screen is optional.
+2. Switch to **QGroundControl** within one minute; split-screen is optional.
 3. QGC automatically listens on localhost port `14550` and discovers the MAVLab vehicle broadcast. Once a validated QGC heartbeat arrives, MAVLab must keep telemetry active while backgrounded.
 4. Close QGC while the vehicle is idle and verify that MAVLab stops once its GCS heartbeat timeout and any remaining handoff grace have expired. Reopening MAVLab must restart the runtime.
 

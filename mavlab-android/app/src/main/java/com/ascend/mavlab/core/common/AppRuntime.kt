@@ -65,7 +65,8 @@ object AppRuntime {
     private var recordingJob: Job? = null
     private var phoneSensorJob: Job? = null
     private var applicationContext: Context? = null
-    private var foregroundInteractionEnabled = true
+    private var runtimeActive = false
+    private var appVisible = true
     private var restoredPersistedMission = false
     private val phoneSensorCalibration = SensorCalibration()
     private var phoneSensorThrottle = 0.5f
@@ -119,35 +120,47 @@ object AppRuntime {
         }
         simLoop.start()
         mavlinkServer?.start(appContext)
-        if (foregroundInteractionEnabled) {
-            startForegroundInteraction(appContext)
-        }
+        runtimeActive = true
+        applyRuntimeComponentPolicy(appContext)
         startRecordingMonitor()
     }
 
-    fun setForegroundInteractionEnabled(enabled: Boolean) {
-        if (foregroundInteractionEnabled == enabled) return
-        foregroundInteractionEnabled = enabled
-        val context = applicationContext ?: return
-        if (enabled) {
-            startForegroundInteraction(context)
-        } else {
-            stopForegroundInteraction()
-        }
+    fun setAppVisible(visible: Boolean) {
+        if (appVisible == visible) return
+        appVisible = visible
+        applyRuntimeComponentPolicy(applicationContext)
     }
 
     fun stop() {
         mavlinkServer?.stopNow()
         recordingJob?.cancel()
         recordingJob = null
-        stopForegroundInteraction()
+        runtimeActive = false
+        applyRuntimeComponentPolicy(applicationContext)
         flightRecorder?.closeSession("runtime stopped")
         refreshSessionHistory()
         syncRecordingStatus()
         simLoop.stop()
     }
 
-    private fun startForegroundInteraction(context: Context) {
+    private fun applyRuntimeComponentPolicy(context: Context?) {
+        val components = RuntimeComponentPolicy.decide(
+            runtimeActive = runtimeActive,
+            appVisible = appVisible,
+        )
+        if (components.droneAudioEnabled && context != null) {
+            startDroneAudio(context)
+        } else {
+            stopDroneAudio()
+        }
+        if (components.phoneSensorInputEnabled && context != null) {
+            startPhoneSensorInteraction(context)
+        } else {
+            stopPhoneSensorInteraction()
+        }
+    }
+
+    private fun startDroneAudio(context: Context) {
         if (droneSoundController == null) {
             droneSoundController = DroneSoundController(
                 context = context,
@@ -157,15 +170,21 @@ object AppRuntime {
             )
         }
         droneSoundController?.start()
+    }
+
+    private fun stopDroneAudio() {
+        droneSoundController?.release()
+        droneSoundController = null
+    }
+
+    private fun startPhoneSensorInteraction(context: Context) {
         startPhoneSensorMonitor(context)
     }
 
-    private fun stopForegroundInteraction() {
+    private fun stopPhoneSensorInteraction() {
         phoneSensorJob?.cancel()
         phoneSensorJob = null
         mutablePhoneSensorSource.value = OrientationSource.Unavailable
-        droneSoundController?.release()
-        droneSoundController = null
         val neutralInput = PilotInput(throttle = ControllerInputState.DefaultThrottle)
         mutablePhoneSensorPilotInput.value = neutralInput
         simLoop.setPilotInput(neutralInput)

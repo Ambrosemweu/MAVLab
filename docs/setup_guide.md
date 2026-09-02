@@ -11,7 +11,7 @@ MAVLab's core learning loop is designed to run from one Android-first app. You d
 
 ## QGroundControl
 
-For same-device use, open MAVLab and then switch to QGroundControl within 45 seconds. QGC connects over `127.0.0.1:14550`. MAVLab continues telemetry while a validated GCS heartbeat is present or a flight is active. When backgrounded, it suspends phone sensors and audio; if it is idle and disconnected after the handoff window, it stops the runtime and power locks automatically. Split-screen is optional.
+For same-device use, open MAVLab and then switch to QGroundControl within one minute. QGC connects over `127.0.0.1:14550`. MAVLab continues telemetry while a validated GCS heartbeat is present or a flight is active. When backgrounded, it suspends phone-sensor input while retaining motor audio for QGC-controlled arming and flight; if it is idle and disconnected after the handoff window, it stops the runtime, audio, and power locks automatically. Split-screen is optional.
 
 For desktop QGC, put the Android phone and desktop on the same Wi-Fi network. MAVLab broadcasts to common LAN destinations and UDP port `14550`.
 

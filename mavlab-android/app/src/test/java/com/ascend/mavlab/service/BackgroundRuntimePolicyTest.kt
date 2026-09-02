@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class BackgroundRuntimePolicyTest {
-    private val policy = BackgroundRuntimePolicy(handoffGraceMs = 45_000L)
+    private val policy = BackgroundRuntimePolicy()
 
     @Test
     fun visibleAppAlwaysKeepsRuntime() {
@@ -19,11 +19,11 @@ class BackgroundRuntimePolicyTest {
 
         assertEquals(
             BackgroundRuntimeDecision.KEEP_GCS_HANDOFF,
-            policy.decide(backgrounded, nowMs = 55_000L),
+            policy.decide(backgrounded, nowMs = 70_000L),
         )
         assertEquals(
             BackgroundRuntimeDecision.STOP_IDLE,
-            policy.decide(backgrounded, nowMs = 55_001L),
+            policy.decide(backgrounded, nowMs = 70_001L),
         )
     }
 
