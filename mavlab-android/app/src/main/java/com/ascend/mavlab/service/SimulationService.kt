@@ -86,7 +86,7 @@ class SimulationService : Service() {
         backgroundedAtMs = null
         retentionJob?.cancel()
         retentionJob = null
-        AppRuntime.setForegroundInteractionEnabled(true)
+        AppRuntime.setAppVisible(true)
         updateNotification(BackgroundRuntimeDecision.KEEP_APP_VISIBLE)
     }
 
@@ -94,7 +94,7 @@ class SimulationService : Service() {
         if (!runtimeActive) return
         appVisible = false
         backgroundedAtMs = System.currentTimeMillis()
-        AppRuntime.setForegroundInteractionEnabled(false)
+        AppRuntime.setAppVisible(false)
         startRetentionMonitor()
     }
 

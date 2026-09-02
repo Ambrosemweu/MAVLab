@@ -38,6 +38,6 @@ class BackgroundRuntimePolicy(
     }
 
     companion object {
-        const val DefaultGcsHandoffGraceMs = 45_000L
+        const val DefaultGcsHandoffGraceMs = 60_000L
     }
 }

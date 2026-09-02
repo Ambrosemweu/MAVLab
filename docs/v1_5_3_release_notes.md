@@ -1,6 +1,14 @@
 # MAVLab v1.5.3 Release Notes
 
-MAVLab v1.5.3 improves phone control, QGroundControl interoperability, Android background behavior, and contributor documentation.
+MAVLab v1.5.3 improves phone control, QGroundControl interoperability, Android background behavior, and contributor documentation. The updated v1.5.3 build also restores motor audio during QGroundControl handoff and extends the handoff window to one minute.
+
+## Updated v1.5.3 build
+
+- Motor sound now remains synchronized with the simulated vehicle while MAVLab is backgrounded for QGroundControl use.
+- Arming, disarming, and motor changes commanded from QGroundControl remain audible.
+- Phone-sensor input still stops immediately in the background, preventing hidden gyro control.
+- The same-phone QGroundControl handoff window is now one minute.
+- Stopping MAVLab, removing it from recents, or reaching the idle-disconnected timeout still releases audio, networking, simulation, and power locks.
 
 ## Phone gyro control follows the simulator
 
@@ -18,9 +26,9 @@ MAVLab v1.5.3 improves phone control, QGroundControl interoperability, Android b
 
 ## Connection-aware background telemetry
 
-- Switching from MAVLab to QGroundControl starts a 45-second handoff window, so same-phone use no longer requires split-screen.
+- Switching from MAVLab to QGroundControl starts a one-minute handoff window, so same-phone use no longer requires split-screen.
 - A validated GCS connection, an armed vehicle, or an active AUTO mission keeps simulation and MAVLink running in the background.
-- Phone sensors and drone audio stop while MAVLab is backgrounded, reducing work and preventing hidden gyro control.
+- Phone sensors stop while MAVLab is backgrounded, preventing hidden gyro control; drone audio remains active while the simulation runtime is intentionally retained.
 - An idle, disconnected runtime stops automatically after the handoff and heartbeat timeouts.
 - Explicit close/removal and the notification's **Stop simulation** action stop immediately.
 - The Android foreground service is classified as `connectedDevice`, matching its active Wi-Fi/GCS role.

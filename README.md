@@ -63,7 +63,7 @@ https://github.com/user-attachments/assets/1b7cdebd-bcb9-48b3-9dc3-ca9344e6c6aa
 
 1. Download `MAVLab-v1.5.3.apk` from the [GitHub Releases page](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.5.3).
 2. Install it (Android will prompt you to allow installs from your file manager / browser — normal for sideloaded APKs).
-3. For same-phone QGroundControl, open MAVLab first and then switch to QGC within 45 seconds. Once QGC is connected, MAVLab keeps telemetry running in the background.
+3. For same-phone QGroundControl, open MAVLab first and then switch to QGC within one minute. Once QGC is connected, MAVLab keeps telemetry running in the background.
 4. QGroundControl auto-detects the vehicle on `127.0.0.1:14550` — arm, take off, and fly missions within the first session.
 5. Prefer desktop QGroundControl? Connect phone and computer to the **same Wi-Fi** and open QGC on the computer; the phone's UDP broadcast links automatically.
 
@@ -86,7 +86,7 @@ adb install -r app/build/outputs/apk/debug/MAVlab.apk
 ## Connecting QGroundControl (QGC)
 
 MAVLab integrates directly with QGroundControl:
-1. **On-Device (same phone):** Open MAVLab, then switch to QGC within the 45-second handoff window. QGC automatically detects the vehicle on `127.0.0.1:14550`. MAVLab keeps the runtime alive while a validated GCS heartbeat is present or a flight is active; when it is backgrounded, idle, and disconnected, it stops automatically. Split-screen is optional.
+1. **On-Device (same phone):** Open MAVLab, then switch to QGC within the one-minute handoff window. QGC automatically detects the vehicle on `127.0.0.1:14550`. MAVLab keeps the runtime alive while a validated GCS heartbeat is present or a flight is active; when it is backgrounded, idle, and disconnected, it stops automatically. Split-screen is optional.
 2. **Local Wi-Fi (Cross-Device):** Connect your computer and phone to the same local Wi-Fi router. Open MAVLab on the phone and QGC on your computer; the phone's UDP broadcast will automatically link the vehicle.
 3. *Note: Ensure your GCS System ID is set to `255` (default) and MAVLab is set to `1` to prevent system conflicts.*
 
