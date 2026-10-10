@@ -33,6 +33,8 @@ It is not the same as flight mode, connection status, or armed state.
 
 Generic joystick/manual input must not be documented as automatically preempting active `GCS_MISSION` unless implementation and tests prove that transition. Explicit commands may follow different rules.
 
+Controller disables local manipulation while observed GCS mission/direct authority is active and explains the blocking state. Confirmed **Take control & land** calls the existing local Land command. The sensor acceptance rules are unchanged: Phone Sensors can follow a GCS_DIRECT command and reclaim Controller authority; the UI does not promise an external-direct lock. Custom Input and Direct RPM are now applied by AppRuntime rather than screen effects. GCS mission/direct authority suspends the Direct RPM override.
+
 A GCS connection indicator is not itself an autopilot failsafe. Do not claim automatic RTL or safety-mode reversion on heartbeat loss unless implemented and tested.
 
 ## Transition review

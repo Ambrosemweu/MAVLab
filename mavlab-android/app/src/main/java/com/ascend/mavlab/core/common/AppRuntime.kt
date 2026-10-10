@@ -176,6 +176,7 @@ object AppRuntime {
         stateFreshnessJob = scope.launch {
             state.drop(1).collect {
                 mutableStateUpdatedAtElapsedRealtimeMs.value = SystemClock.elapsedRealtime()
+                syncControllerMotorOverride()
             }
         }
     }
@@ -265,14 +266,19 @@ object AppRuntime {
     }
 
     fun setArmed(armed: Boolean) {
-        if (armed && !state.value.armed &&
-            mutableControllerInputState.value.inputMode == ControllerInputMode.PHONE_SENSORS
-        ) {
+        val inputs = mutableControllerInputState.value
+        if (armed && !state.value.armed && inputs.inputMode != ControllerInputMode.DIRECT_RPM) {
             mutableMotorSpeedOverrideRpm.value = null
-            simLoop.armForLocalInput(mapPhoneSensorInput(mutablePhoneSensorOrientation.value))
-            refreshPhoneSensorPilotInput()
+            val pilotInput = if (inputs.inputMode == ControllerInputMode.PHONE_SENSORS) {
+                mapPhoneSensorInput(mutablePhoneSensorOrientation.value)
+            } else {
+                inputs.toPilotInput()
+            }
+            simLoop.armForLocalInput(pilotInput)
+            applySelectedControllerInput()
         } else {
             simLoop.setArmed(armed, ControlAuthority.CONTROLLER)
+            syncControllerMotorOverride()
         }
         if (!armed) {
             resetControllerInputsAfterDisarm()
@@ -284,46 +290,89 @@ object AppRuntime {
     }
 
     fun land() {
+        if (mutableControllerInputState.value.inputMode == ControllerInputMode.DIRECT_RPM) {
+            setControllerInputMode(
+                if (mutablePhoneSensorSource.value != OrientationSource.Unavailable) {
+                    ControllerInputMode.PHONE_SENSORS
+                } else {
+                    ControllerInputMode.CUSTOM_INPUT
+                },
+            )
+        }
         simLoop.land(ControlAuthority.CONTROLLER)
     }
 
     fun setMode(mode: FlightMode) {
         simLoop.setMode(mode, ControlAuthority.CONTROLLER)
+        syncControllerMotorOverride()
     }
 
     fun setPilotInput(input: PilotInput) {
         simLoop.setPilotInput(input)
     }
 
+    internal fun tickSimulationForTest(dtSeconds: Float) = simLoop.tickForTest(dtSeconds)
+
     fun setControllerInputMode(mode: ControllerInputMode) {
-        updateControllerInputState { it.copy(inputMode = mode) }
-        refreshPhoneSensorPilotInput()
+        val previous = mutableControllerInputState.value.inputMode
+        if (previous != mode) {
+            setMotorSpeedOverrideRpm(null)
+        }
+        updateControllerInputState {
+            it.copy(
+                inputMode = mode,
+                directRpm = if (mode == ControllerInputMode.DIRECT_RPM && previous != mode) {
+                    if (state.value.armed) state.value.motors.map { motor -> motor.rpm }.average().toFloat() else 0f
+                } else it.directRpm,
+            )
+        }
+        applySelectedControllerInput()
     }
 
     fun setControllerThrottle(value: Float) {
         val throttle = value.coerceIn(0f, 1f)
         updateControllerInputState { it.copy(throttle = throttle) }
         phoneSensorThrottle = throttle
-        refreshPhoneSensorPilotInput()
+        applySelectedControllerInput()
     }
 
     fun setControllerManualRoll(value: Float) {
         updateControllerInputState { it.copy(manualRoll = value.coerceIn(-1f, 1f)) }
+        applySelectedControllerInput()
     }
 
     fun setControllerManualPitch(value: Float) {
         updateControllerInputState { it.copy(manualPitch = value.coerceIn(-1f, 1f)) }
+        applySelectedControllerInput()
     }
 
     fun setControllerManualYaw(value: Float) {
         val yaw = value.coerceIn(-1f, 1f)
         updateControllerInputState { it.copy(manualYaw = yaw) }
         phoneSensorYawTrim = yaw
-        refreshPhoneSensorPilotInput()
+        applySelectedControllerInput()
     }
 
     fun setControllerDirectRpm(value: Float) {
         updateControllerInputState { it.copy(directRpm = value.coerceIn(0f, ControllerInputState.MaxDirectRpm)) }
+        syncControllerMotorOverride()
+    }
+
+    private fun applySelectedControllerInput() {
+        when (mutableControllerInputState.value.inputMode) {
+            ControllerInputMode.PHONE_SENSORS -> refreshPhoneSensorPilotInput()
+            ControllerInputMode.CUSTOM_INPUT -> if (state.value.controlAuthority != ControlAuthority.GCS_MISSION) {
+                simLoop.setPilotInput(mutableControllerInputState.value.toPilotInput())
+            }
+            ControllerInputMode.DIRECT_RPM -> syncControllerMotorOverride()
+        }
+    }
+
+    private fun syncControllerMotorOverride() {
+        val inputs = mutableControllerInputState.value
+        if (inputs.inputMode != ControllerInputMode.DIRECT_RPM) return
+        val rpm = inputs.activeDirectRpm(state.value.armed, state.value.controlAuthority)
+        if (mutableMotorSpeedOverrideRpm.value != rpm) setMotorSpeedOverrideRpm(rpm)
     }
 
     fun setPhoneSensorThrottle(value: Float) {

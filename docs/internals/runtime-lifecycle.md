@@ -15,6 +15,8 @@ This document explains when MAVLab keeps the on-phone runtime alive and when it 
 
 `AppRuntime.runtimeLifecycle` publishes `STARTING`, `RUNNING`, `STOPPING`, `STOPPED`, or `ERROR` for UI state. `stateUpdatedAtElapsedRealtimeMs` records the latest engine-state emission using Android elapsed realtime. These are runtime/freshness signals; neither replaces MAVLink connection status or control authority.
 
+All Controller input application belongs to AppRuntime. Phone samples retain the canonical foreground lifecycle; Custom Input setters send PilotInput directly, and Direct RPM follows armed/mission state through runtime observation. Composing or leaving Controller does not apply, cancel or recreate these control paths. This ownership change does not change background retention or phone-sensor suspension. See [ADR-0006](decisions/0006-controller-operational-layout.md).
+
 ## Intended model
 
 ```text

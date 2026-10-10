@@ -5,8 +5,20 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.assertNull
 
 class ControllerInputStateTest {
+    @Test
+    fun directRpmRequiresArmedLocalAuthorityAndNeverOverridesExternalControl() {
+        val inputs = ControllerInputState(inputMode = ControllerInputMode.DIRECT_RPM, directRpm = 3_500f)
+        assertEquals(3_500f, inputs.activeDirectRpm(true, ControlAuthority.CONTROLLER))
+        assertNull(inputs.activeDirectRpm(false, ControlAuthority.CONTROLLER))
+        assertNull(inputs.activeDirectRpm(true, ControlAuthority.GCS_DIRECT))
+        assertNull(inputs.activeDirectRpm(true, ControlAuthority.GCS_MISSION))
+        assertNull(inputs.activeDirectRpm(true, ControlAuthority.IDLE))
+        assertNull(inputs.copy(inputMode = ControllerInputMode.PHONE_SENSORS).activeDirectRpm(true, ControlAuthority.CONTROLLER))
+    }
+
     @Test
     fun defaultStateMatchesDisarmResetValues() {
         val state = ControllerInputState()

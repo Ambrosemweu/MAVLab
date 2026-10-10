@@ -106,7 +106,11 @@ fun MavLabAppShell() {
                 onOpenMission = { selectedTab = MavLabTab.Mission },
                 onOpenOps = { selectedTab = MavLabTab.Ops },
             )
-            MavLabTab.Controller -> ControllerScreen(modifier)
+            MavLabTab.Controller -> ControllerScreen(
+                modifier = modifier,
+                onOpenMission = { selectedTab = MavLabTab.Mission },
+                onOpenOps = { selectedTab = MavLabTab.Ops },
+            )
             MavLabTab.Mission -> MissionScreen(modifier)
             MavLabTab.Sim -> Drone3DScreen(modifier)
             MavLabTab.Ops -> SettingsScreen(

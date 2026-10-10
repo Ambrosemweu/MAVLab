@@ -1,6 +1,7 @@
 package com.ascend.mavlab.core.common
 
 import com.ascend.mavlab.simulation.engine.ControlAuthority
+import com.ascend.mavlab.simulation.autopilot.PilotInput
 
 data class ControllerInputState(
     val inputMode: ControllerInputMode = ControllerInputMode.PHONE_SENSORS,
@@ -19,6 +20,18 @@ data class ControllerInputState(
             directRpm = directRpm.coerceIn(0f, MaxDirectRpm),
         )
     }
+
+    internal fun toPilotInput() = PilotInput(
+        roll = manualRoll,
+        pitch = manualPitch,
+        yaw = manualYaw,
+        throttle = throttle,
+    )
+
+    internal fun activeDirectRpm(armed: Boolean, authority: ControlAuthority): Float? =
+        directRpm.takeIf {
+            inputMode == ControllerInputMode.DIRECT_RPM && armed && authority == ControlAuthority.CONTROLLER
+        }
 
     companion object {
         const val DefaultThrottle = 0.5f

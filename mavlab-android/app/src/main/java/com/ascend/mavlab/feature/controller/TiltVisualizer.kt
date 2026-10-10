@@ -4,10 +4,13 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import kotlin.math.sqrt
 
 @Composable
@@ -17,6 +20,8 @@ fun TiltVisualizer(
     deadzoneRadius: Float,
     modifier: Modifier = Modifier,
 ) {
+    val guideColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val activeColor = MaterialTheme.colorScheme.secondary
     Canvas(
         modifier = modifier
             .fillMaxWidth()
@@ -30,31 +35,46 @@ fun TiltVisualizer(
         val active = distance > deadzoneRadius
 
         drawCircle(
-            color = Color.White.copy(alpha = 0.28f),
+            color = guideColor.copy(alpha = 0.45f),
             center = center,
             radius = radius,
             style = Stroke(width = 2f),
         )
         drawCircle(
-            color = Color.White.copy(alpha = 0.16f),
+            color = guideColor.copy(alpha = 0.25f),
             center = center,
             radius = radius * deadzoneRadius,
             style = Stroke(width = 2f),
         )
         drawLine(
-            color = Color.White.copy(alpha = 0.18f),
+            color = guideColor.copy(alpha = 0.3f),
             start = Offset(center.x - radius, center.y),
             end = Offset(center.x + radius, center.y),
             strokeWidth = 2f,
         )
         drawLine(
-            color = Color.White.copy(alpha = 0.18f),
+            color = guideColor.copy(alpha = 0.3f),
             start = Offset(center.x, center.y - radius),
             end = Offset(center.x, center.y + radius),
             strokeWidth = 2f,
         )
+        rotate(rollNormalized * 30f, pivot = center) {
+            drawRoundRect(
+                color = activeColor.copy(alpha = 0.09f),
+                topLeft = Offset(center.x - radius * 0.28f, center.y - radius * 0.52f),
+                size = Size(radius * 0.56f, radius * 1.04f),
+                cornerRadius = CornerRadius(12f),
+            )
+            drawRoundRect(
+                color = if (active) activeColor else guideColor,
+                topLeft = Offset(center.x - radius * 0.28f, center.y - radius * 0.52f),
+                size = Size(radius * 0.56f, radius * 1.04f),
+                cornerRadius = CornerRadius(12f),
+                style = Stroke(width = 3f),
+            )
+        }
         drawCircle(
-            color = if (active) Color(0xFF66D9C7) else Color(0xFF8A9299),
+            color = if (active) activeColor else guideColor,
             center = Offset(dotX, dotY),
             radius = 14f,
         )
