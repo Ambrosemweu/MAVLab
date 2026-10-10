@@ -9,3 +9,4 @@ Store immutable, build-specific MAVLab validation records here. Do not overwrite
 - [Cockpit telemetry readability, working tree — 2026-10-10](cockpit-telemetry-working-tree-2026-10-10.md)
 - [Combined Cockpit telemetry, working tree — 2026-10-10](cockpit-combined-telemetry-working-tree-2026-10-10.md)
 - [Combined Cockpit telemetry, installed device check — 2026-10-10](cockpit-combined-telemetry-device-2026-10-10.md)
+- [Controller upgrade checkpoint, build and deferred device checks — 2026-10-10](controller-upgrade-working-tree-2026-10-10.md)
