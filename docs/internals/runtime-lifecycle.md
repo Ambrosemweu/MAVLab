@@ -82,3 +82,7 @@ Real-device validation records the device, Android version, battery restrictions
 ## Mission consolidation review
 
 Four-tab navigation and contextual mission views create no additional runtime owner. Received source survives process recreation; the stored mission restores as loaded, with fresh execution history and no fabricated upload ACK. Unknown legacy source remains retained but blocked for local AUTO/route display until re-upload. Mission action freshness uses the existing RUNNING and elapsed-realtime state-age contract. Retention, background handoff, locks and phone-sensor suspension are unchanged. See [ADR-0007](decisions/0007-contextual-missions.md).
+
+## Ops observation and recording review
+
+Ops history is derived by AppRuntime on the existing 200 ms recording monitor, independent of selected tab. It is bounded and process-local; it creates no runtime owner or background retention condition. Recording defaults to off. Ops can persist an opt-in to automatic arm capture while disarmed. Begin and Stop/save serialize on IO with sampling; an explicit armed Stop/save suppresses opted-in capture until the next arm or explicit Begin. Runtime restart preserves the saved opt-in value and never enables recording implicitly. The existing service Stop/Start intents are exposed with confirmation and accurate frozen-state language. Foreground sensor eligibility, retention timing and lock ownership are unchanged. See [ADR-0008](decisions/0008-ops-health-and-recording.md).

@@ -18,33 +18,23 @@ MAVLab enforces a single source of truth architecture:
 
 ## Control Authority Model
 
-MAVLab uses a priority-based single-writer authority model to manage who can control the drone (manual pilot vs. autonomous GCS):
-- **Authority Levels:**
-  1. `IDLE` — Default pre-armed state.
-  2. `CONTROLLER` — Manual control from on-screen sliders or phone tilt sensors.
-  3. `GCS_MISSION` — Autonomous command sequences from QGroundControl.
-- **Safety Preemption:** Manual inputs (disarming, manual landing, guided offsets, or joysticks) instantly override the active `GCS_MISSION` authority and shift the state back to `CONTROLLER` mode.
+Control authority is observed from the engine: `IDLE`, `CONTROLLER`, `GCS_DIRECT` or `GCS_MISSION`. A connected peer is not automatically the controlling source. Phone sensor and generic manual input do not bypass active mission authority; explicit local landing/disarm and other implemented commands have their own engine paths. See the canonical [control-authority contract](internals/control-authority.md).
 
 ## Logging & Export Model
 
-MAVLab automatically records flight telemetry and events to private storage:
-- **Session Life Cycle:** Arming the vehicle creates a new session. Disarming automatically closes the session, computes flight envelope stats, and writes `report.md`.
+On the UI/UX feature branch, recording is off by default. Ops offers explicit Begin/Stop-save and an optional, persisted automatic-on-arm setting; existing released builds used automatic arm capture. See [ADR-0008](internals/decisions/0008-ops-health-and-recording.md).
+- **Session Life Cycle:** Explicit Begin, or arming after Ops opt-in, creates a session. Stop/save, disarm or runtime stop closes an active session and writes `report.md`. Deliberate Stop/save prevents opted-in automatic capture from restarting during the same armed flight.
 - **Session Output Files:**
   - `manifest.json` — Identifies session start, end, and path.
   - `telemetry.csv` — High-resolution telemetry data including coordinates, velocities, waypoint, and active failures.
   - `events.jsonl` — Timeline logs (modes, battery alerts, connection, and failures).
   - `mission.json` — Backup snapshot of uploaded waypoints.
-  - `report.md` — Human-readable markdown flight summary and safety review.
+  - `report.md` — Human-readable Markdown session summary and recorded scenario notes; not a safety assessment.
 - **Sharing Mechanism:** Uses Android `FileProvider` to package these session files securely and expose them through standard Android Sharesheet intents.
 
 ## Surface Model & Features
 
-MAVLab is organized into 5 primary functional tabs:
-1. **Cockpit (Dashboard):** Live telemetry indicators and rolling graphs.
-2. **Controller:** Manual joystick and phone sensor tilt control interfaces.
-3. **SIM (3D View):** Real-time 3D drone attitude and waypoint visualization using a bundled GLB model.
-4. **Mission:** Autonomous waypoint map tracking and demo mission triggers.
-5. **Ops (Settings & Labs):** Failure scenario injection catalog and flight log history viewing/sharing.
+The UI/UX feature branch uses four destinations: Cockpit, Control, SIM and Ops. Missions appear contextually in these surfaces. See the [surface definition](mavlab_product_surface_definition.md) and [Ops guide](user/ops.md) for current branch behavior. Published release descriptions remain separate from this development checkpoint.
 
 ## MAVLink Integration
 

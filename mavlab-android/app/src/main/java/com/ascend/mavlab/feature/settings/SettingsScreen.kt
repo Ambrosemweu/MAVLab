@@ -1,809 +1,350 @@
 package com.ascend.mavlab.feature.settings
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ascend.mavlab.core.common.AppRuntime
-import com.ascend.mavlab.core.mavlink.MavlinkIdentityStatus
-import com.ascend.mavlab.simulation.engine.DroneState
-import com.ascend.mavlab.simulation.engine.SimLocation
+import com.ascend.mavlab.core.common.RuntimeLifecycleState
+import com.ascend.mavlab.core.operations.*
+import com.ascend.mavlab.feature.mission.missionLimitations
+import com.ascend.mavlab.service.SimulationService
 import com.ascend.mavlab.simulation.failures.FailureScenario
 import com.ascend.mavlab.simulation.failures.FailureScenarios
-import com.ascend.mavlab.simulation.failures.FailureSeverity
-import com.ascend.mavlab.simulation.failures.FailureState
-import com.ascend.mavlab.simulation.mission.MissionProgress
 import com.ascend.mavlab.simulation.mission.MissionUploadPhase
-import com.ascend.mavlab.feature.mission.missionLimitations
-import com.ascend.mavlab.simulation.recording.FlightRecordingStatus
-import com.ascend.mavlab.simulation.recording.FlightSession
 import java.time.Instant
-import java.time.ZoneOffset
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
     onReplayOnboarding: () -> Unit = {},
+    onOpenController: () -> Unit = {},
 ) {
-    val state by AppRuntime.state.collectAsState()
-    val mission by AppRuntime.missionProgress.collectAsState()
-    val uploadStatus by AppRuntime.missionUploadStatus.collectAsState()
-    val recording by AppRuntime.recordingStatus.collectAsState()
-    val failures by AppRuntime.failures.collectAsState()
-    val simLocation by AppRuntime.simLocation.collectAsState()
-    val status by AppRuntime.status.collectAsState()
-    val systemId by AppRuntime.systemId.collectAsState()
-    val identityStatus by AppRuntime.mavlinkIdentityStatus.collectAsState()
-    val gcsConnected = identityStatus.gcsConnected
+    val operations by AppRuntime.operations.collectAsStateWithLifecycle()
+    var missionExpanded by rememberSaveable { mutableStateOf(false) }
+    var setupExpanded by rememberSaveable { mutableStateOf(false) }
+    var recordingExpanded by rememberSaveable { mutableStateOf(true) }
+    var confirmation by remember { mutableStateOf<OpsConfirmation?>(null) }
+    val context = LocalContext.current
+    val missionAnchor = remember { BringIntoViewRequester() }
+    val setupAnchor = remember { BringIntoViewRequester() }
+    val recordingAnchor = remember { BringIntoViewRequester() }
+    var reveal by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(reveal) {
+        val target = reveal ?: return@LaunchedEffect
+        withFrameNanos { }
+        when (target) {
+            "mission" -> missionAnchor.bringIntoView()
+            "setup" -> setupAnchor.bringIntoView()
+            "recording" -> recordingAnchor.bringIntoView()
+        }
+        reveal = null
+    }
+
+    fun recover(incident: OpsIncident) {
+        when (incident.recovery) {
+            OpsRecovery.CONTROL -> if (incident.id == "recording") { recordingExpanded = true; reveal = "recording" } else onOpenController()
+            OpsRecovery.RESET_FAILURES -> confirmation = OpsConfirmation("Reset simulated failures?",
+                "Clears all injected faults and restores normal environment settings. It does not recharge the battery, stop flight, or restore GCS connectivity.", AppRuntime::resetFailures)
+            OpsRecovery.RESET_BATTERY -> confirmation = OpsConfirmation("Recharge simulated battery?",
+                "Restores the battery to 100% while disarmed. Elevated drain remains active until its scenario is reset.") {
+                if (!AppRuntime.state.value.armed) AppRuntime.resetBattery()
+            }
+            OpsRecovery.QGC_SETUP -> { setupExpanded = true; reveal = "setup" }
+            OpsRecovery.REUPLOAD -> { missionExpanded = true; reveal = "mission" }
+            OpsRecovery.RESTART -> ContextCompat.startForegroundService(context, SimulationService.appVisibleIntent(context))
+        }
+    }
 
     Surface(modifier = modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Ops", style = MaterialTheme.typography.headlineMedium)
-            Text(
-                text = "Diagnostics, logs, QGC readiness, and export staging for MAVLab operations.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
-            )
-            InfoCard(
-                title = "About MAVLab",
-                body = "MAVLab by Ascend Labs is a phone-based drone digital twin and training platform. Cockpit shows live operations, Control owns local inputs and mission actions, SIM shows the simulated vehicle and received route, and Ops holds diagnostics, logs, export, and setup.",
-            )
-            Button(
-                onClick = onReplayOnboarding,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Replay onboarding")
+            HealthSummary(operations)
+            if (operations.incidents.isNotEmpty()) {
+                Text("Needs attention · ${operations.incidents.size}", style = MaterialTheme.typography.titleMedium)
+                operations.incidents.forEach { incident -> IncidentCard(incident) { recover(incident) } }
             }
-            GcsConnectionIndicator(
-                connected = gcsConnected,
-                identityStatus = identityStatus,
-            )
-            if (mission.loaded || uploadStatus.phase != MissionUploadPhase.IDLE) {
-                InfoCard(
-                    title = "Mission upload diagnostics",
-                    body = buildString {
-                        append(uploadStatus.displayText)
-                        append("\nStored source: ${mission.origin}")
-                        append("\nLoaded items: ${mission.items.size}")
-                        append("\nExpected / received: ${uploadStatus.expectedCount} / ${uploadStatus.receivedCount}")
-                        append("\nLast requested sequence (zero-based): ${uploadStatus.lastRequestedSequence ?: "none"}")
-                        append("\nLast received sequence (zero-based): ${uploadStatus.lastReceivedSequence ?: "none"}")
-                        uploadStatus.lastError?.let { append("\nRejection: $it") }
-                        if (mission.loaded && !mission.received) append("\nSaved source is unknown. Re-upload from QGC before displaying or starting this route. Saved items are retained until cleared.")
-                        if (mission.received) append("\nReceived mission retained. An accepted upload is not proof of AUTO execution.")
-                        if (mission.received && uploadStatus.phase == MissionUploadPhase.IDLE) append("\nRestored from storage; no upload ACK occurred in this process.")
-                        missionLimitations(mission).forEach { append("\nPartial behavior: $it") }
-                    },
-                )
+            PeerSection()
+            MissionDiagnostics(expanded = missionExpanded, onExpanded = { missionExpanded = it }, headerModifier = Modifier.bringIntoViewRequester(missionAnchor))
+            RuntimeSection(operations, onConfirm = { confirmation = it })
+            FailureSection(onConfirm = { confirmation = it })
+            RecordingSection(expanded = recordingExpanded, onExpanded = { recordingExpanded = it }, headerModifier = Modifier.bringIntoViewRequester(recordingAnchor))
+            EventHistory(operations.events)
+            ExpandableSection("Advanced configuration", "QGC setup and simulation origin", setupExpanded, { setupExpanded = it }, headerModifier = Modifier.bringIntoViewRequester(setupAnchor)) {
+                Text("QGC connection setup", style = MaterialTheme.typography.titleSmall)
+                Text("Use different system IDs: MAVLab defaults to 1, QGC to 255. QGC listens on UDP 14550; MAVLab receives commands on 14551. Reconnect the QGC UDP link after changing its system ID.")
+                Text("A validated heartbeat indicates a GCS peer. It does not prove delivery of outbound telemetry or give the peer control authority.", style = MaterialTheme.typography.bodySmall)
+                LocationSection()
             }
-            SimLocationCard(
-                state = state,
-                mission = mission,
-                selectedLocation = simLocation,
-            )
-            InfoCard(
-                title = "MAVLink",
-                body = buildString {
-                    append("Status: $status")
-                    append("\nVehicle SYSID: $systemId")
-                    append("\nVehicle COMPID: ${identityStatus.vehicleComponentId}")
-                    append("\nExpected QGC SYSID: ${identityStatus.recommendedGcsSystemId}")
-                    append("\nLast GCS SYSID: ${identityStatus.lastGcsSystemId ?: "none"}")
-                    append("\nLast GCS COMPID: ${identityStatus.lastGcsComponentId ?: "none"}")
-                    append("\nGCS link: ${if (gcsConnected) "connected" else "disconnected"}")
-                    append("\nIdentity: ${identityStatus.healthLabel}")
-                    if (identityStatus.message.isNotBlank()) {
-                        append("\n${identityStatus.message}")
-                    }
-                },
-            )
-            InfoCard(
-                title = "GCS diagnostics",
-                body = "Last inbound: ${state.lastInboundMessage}\nLast ACK: ${state.lastAck}",
-            )
-            FailureOpsCatalog(failures = failures)
-            FlightLogSection(recording = recording)
-            InfoCard(
-                title = "Troubleshooting",
-                body = "Recommended QGC setup: set QGC MAVLink System ID to 255, keep MAVLab Vehicle SYSID at 1, keep QGC UDP on 14550, and restart QGC or reconnect the UDP link after changing System ID. Do not set QGC to the same system ID as MAVLab.",
-            )
-            InfoCard(
-                title = "Release QA",
-                body = "Run onboarding, QGC discovery, received mission execution, GPS loss, and same-device QGC connection before tagging a release.",
-            )
+            var aboutExpanded by rememberSaveable { mutableStateOf(false) }
+            ExpandableSection("About MAVLab", "MAVLab by Ascend Labs", aboutExpanded, { aboutExpanded = it }) {
+                Text("Phone-first, offline-capable drone simulation and digital-twin learning. Cockpit shows readiness, Control owns local inputs and mission actions, SIM shows engine state, and Ops explains health and recovery.")
+                val version = remember(context) { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "Unknown" }
+                Text("Version $version", style = MaterialTheme.typography.labelLarge)
+                OutlinedButton(onClick = onReplayOnboarding) { Text("Replay onboarding") }
+            }
+        }
+    }
+    confirmation?.let { pending ->
+        AlertDialog(onDismissRequest = { confirmation = null }, title = { Text(pending.title) }, text = { Text(pending.message) },
+            confirmButton = { TextButton(onClick = { confirmation = null; pending.action() }) { Text("Confirm") } },
+            dismissButton = { TextButton(onClick = { confirmation = null }) { Text("Cancel") } })
+    }
+}
+
+internal data class OpsConfirmation(val title: String, val message: String, val action: () -> Unit)
+
+@Composable
+private fun HealthSummary(operations: OperationsState) {
+    val vehicleFlow = remember { AppRuntime.state.map { Triple(it.armed, it.mode.displayName, it.controlAuthority.displayName) }.distinctUntilChanged() }
+    val vehicle by vehicleFlow.collectAsStateWithLifecycle(Triple(false, "Stabilize", "Idle"))
+    val title = when {
+        operations.runtime != RuntimeLifecycleState.RUNNING -> "Simulation ${operations.runtime.name.lowercase()}"
+        !operations.stateFresh -> "Waiting for live state"
+        operations.incidents.any { it.severity == OpsSeverity.CRITICAL } -> "Critical issue needs attention"
+        operations.incidents.isNotEmpty() -> "${operations.incidents.size} active ${if (operations.incidents.size == 1) "issue" else "issues"}"
+        else -> "No active issues detected"
+    }
+    ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, style = MaterialTheme.typography.headlineSmall)
+            Text("Authority: ${vehicle.third}", style = MaterialTheme.typography.titleMedium)
+            Text("${if (vehicle.first) "Armed" else "Disarmed"} · ${vehicle.second} · ${if (operations.stateFresh) "Live state" else "State unavailable or stale"}", style = MaterialTheme.typography.bodyMedium)
+            Text("Recording ${if (operations.recording) "active" else "stopped"}", style = MaterialTheme.typography.labelLarge)
         }
     }
 }
 
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
-private fun FailureOpsCatalog(failures: FailureState) {
-    var catalogExpanded by remember { mutableStateOf(false) }
-    val activeScenarioCount = FailureScenarios.count { isScenarioActive(it, failures) }
-
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            // Header row with title, active count, and toggle button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text("Failure scenario catalog", style = MaterialTheme.typography.titleMedium)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "${failures.activeCount} active failures",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
-                        )
-                        if (activeScenarioCount > 0) {
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = "$activeScenarioCount scenarios",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                    }
-                }
-                OutlinedButton(onClick = { catalogExpanded = !catalogExpanded }) {
-                    Icon(
-                        imageVector = if (catalogExpanded) Icons.Filled.KeyboardArrowUp
-                        else Icons.Filled.KeyboardArrowDown,
-                        contentDescription = if (catalogExpanded) "Collapse" else "Expand",
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(if (catalogExpanded) "Hide" else "Show")
-                }
-            }
-
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Button(onClick = AppRuntime::resetFailures) {
-                    Text("Reset failures")
-                }
-                Button(onClick = AppRuntime::resetBattery) {
-                    Text("Reset battery")
-                }
-            }
-
-            AnimatedVisibility(
-                visible = catalogExpanded,
-                enter = expandVertically(),
-                exit = shrinkVertically(),
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    FailureScenarios.forEach { scenario ->
-                        FailureScenarioOpsCard(
-                            scenario = scenario,
-                            isActive = isScenarioActive(scenario, failures),
-                        )
-                    }
-                }
-            }
+private fun IncidentCard(incident: OpsIncident, onRecover: () -> Unit) {
+    val color = when (incident.severity) {
+        OpsSeverity.CRITICAL -> MaterialTheme.colorScheme.errorContainer
+        OpsSeverity.WARNING -> MaterialTheme.colorScheme.tertiaryContainer
+        else -> MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = color)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("${incident.severity.label} · ${incident.component.label}", style = MaterialTheme.typography.labelLarge)
+            Text(incident.title, style = MaterialTheme.typography.titleMedium)
+            Text(incident.consequence, style = MaterialTheme.typography.bodyMedium)
+            Text("First observed ${opsTimestamp(incident.observedAtMs)}", style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = onRecover) { Text(incident.actionLabel) }
         }
     }
 }
 
 @Composable
-private fun FailureScenarioOpsCard(scenario: FailureScenario, isActive: Boolean) {
-    val containerColor = if (isActive) {
-        when (scenario.severity) {
-            FailureSeverity.Critical -> MaterialTheme.colorScheme.errorContainer
-            FailureSeverity.Warning -> MaterialTheme.colorScheme.tertiaryContainer
-            FailureSeverity.Caution -> MaterialTheme.colorScheme.secondaryContainer
-        }
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
+private fun PeerSection() {
+    val identity by AppRuntime.mavlinkIdentityStatus.collectAsStateWithLifecycle()
+    val transport by AppRuntime.status.collectAsStateWithLifecycle()
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val now = rememberOpsClock()
+    val label = when {
+        identity.identityConflict -> "Identity conflict"
+        identity.gcsConnected -> "GCS heartbeat validated"
+        identity.lastGcsHeartbeatAtMs != null -> "GCS heartbeat unvalidated or expired"
+        identity.lastGcsMessageAtMs != null -> "Packets received · no validated GCS heartbeat"
+        else -> "No peer detected"
     }
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = containerColor,
-        shape = MaterialTheme.shapes.small,
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(scenario.title, style = MaterialTheme.typography.titleSmall)
-                        if (isActive) {
-                            Text(
-                                text = "● ACTIVE",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                    }
-                    Text(
-                        scenario.severity.label,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (isActive) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
-                    )
-                }
-                if (isActive) {
-                    OutlinedButton(onClick = { AppRuntime.clearFailureScenario(scenario) }) {
-                        Text("Clear")
-                    }
-                } else {
-                    Button(onClick = { AppRuntime.applyFailureScenario(scenario) }) {
-                        Text("Inject")
-                    }
-                }
-            }
-            Text(scenario.description, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                text = buildString {
-                    append("Why: ${scenario.whyItHappened}")
-                    append("\nTelemetry: ${scenario.telemetrySignature.joinToString("; ")}")
-                    append("\nOperator: ${scenario.operatorResponse.joinToString("; ")}")
-                    append("\nRecovery: ${scenario.recoveryCondition}")
-                    append("\nLesson: ${scenario.safetyLesson}")
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+    ExpandableSection("Peers & identity", label, expanded, { expanded = it }) {
+        OpsValue("Vehicle identity", "SYSID ${identity.vehicleSystemId} · COMPID ${identity.vehicleComponentId}")
+        OpsValue("Last inbound identity", "SYSID ${identity.lastGcsSystemId ?: "none"} · COMPID ${identity.lastGcsComponentId ?: "none"}")
+        OpsValue("Last inbound packet", identity.lastGcsMessageAtMs?.let { "${((now - it).coerceAtLeast(0) / 1000)} s ago" } ?: "None observed")
+        OpsValue("Last GCS heartbeat", identity.lastGcsHeartbeatAtMs?.let { "${((now - it).coerceAtLeast(0) / 1000)} s ago" } ?: "None observed")
+        OpsValue("Identity", if (identity.identityConflict) "Conflict" else "No conflict detected")
+        if (identity.message.isNotBlank()) Text(identity.message, style = MaterialTheme.typography.bodySmall)
+        OpsValue("Transport", transport)
+        Text("Heartbeat validation, inbound packet receipt and control authority are separate. Outbound telemetry delivery is not measured here.", style = MaterialTheme.typography.bodySmall)
+        val diagnosticsFlow = remember { AppRuntime.state.map { it.lastInboundMessage to it.lastAck }.distinctUntilChanged() }
+        val diagnostics by diagnosticsFlow.collectAsStateWithLifecycle("None" to "None")
+        OpsValue("Last inbound message", diagnostics.first)
+        OpsValue("Last command ACK", diagnostics.second)
     }
 }
 
 @Composable
-private fun GcsConnectionIndicator(
-    connected: Boolean,
-    identityStatus: MavlinkIdentityStatus,
-) {
-    val indicatorColor = if (connected) ConnectedGreen else DisconnectedRed
-    val indicatorLabel = if (connected) "GCS connected" else "GCS disconnected"
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(14.dp)
-                    .clip(CircleShape)
-                    .background(indicatorColor)
-                    .semantics { contentDescription = indicatorLabel },
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = "GCS link",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = gcsDetail(identityStatus, connected),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
-                )
-            }
-        }
+private fun MissionDiagnostics(expanded: Boolean, onExpanded: (Boolean) -> Unit, headerModifier: Modifier) {
+    val mission by AppRuntime.missionProgress.collectAsStateWithLifecycle()
+    val upload by AppRuntime.missionUploadStatus.collectAsStateWithLifecycle()
+    if (!mission.loaded && upload.phase == MissionUploadPhase.IDLE) return
+    val subtitle = when (upload.phase) {
+        MissionUploadPhase.REJECTED -> "Rejected · ${upload.lastError ?: "inspect reason"}"
+        MissionUploadPhase.UPLOADING -> "Receiving ${upload.receivedCount}/${upload.expectedCount}"
+        MissionUploadPhase.ACCEPTED -> "Accepted · ${upload.receivedCount} items"
+        MissionUploadPhase.IDLE -> "Restored from storage · no new upload ACK"
+    }
+    ExpandableSection("Mission upload", subtitle, expanded, onExpanded, headerModifier) {
+        OpsValue("Stored source", mission.origin.name)
+        OpsValue("Loaded items", mission.items.size.toString())
+        OpsValue("Expected / received", "${upload.expectedCount} / ${upload.receivedCount}")
+        OpsValue("Last requested sequence (zero-based)", upload.lastRequestedSequence?.toString() ?: "none")
+        OpsValue("Last validated sequence (zero-based)", upload.lastReceivedSequence?.toString() ?: "none")
+        upload.lastError?.let { Text("Rejection: $it", color = MaterialTheme.colorScheme.error) }
+        if (mission.loaded && !mission.received) Text("Saved source is unverified. Re-upload from QGC before displaying or starting this route. Stored items are retained.")
+        if (mission.received) Text("Received items retained. An accepted upload does not prove AUTO execution.", style = MaterialTheme.typography.bodySmall)
+        if (upload.phase == MissionUploadPhase.IDLE && mission.received) Text("Restoration generated no upload ACK in this process.", style = MaterialTheme.typography.bodySmall)
+        missionLimitations(mission).forEach { Text("Partial behavior: $it", style = MaterialTheme.typography.bodySmall) }
     }
 }
 
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
-private fun SimLocationCard(
-    state: DroneState,
-    mission: MissionProgress,
-    selectedLocation: SimLocation,
-) {
-    var locationExpanded by remember { mutableStateOf(false) }
-    var customLatitude by remember(selectedLocation) {
-        mutableStateOf("%.6f".format(selectedLocation.latitudeDeg))
-    }
-    var customLongitude by remember(selectedLocation) {
-        mutableStateOf("%.6f".format(selectedLocation.longitudeDeg))
-    }
-    var customAltitude by remember(selectedLocation) {
-        mutableStateOf("%.0f".format(selectedLocation.altitudeMslMeters))
-    }
-    val canChange = !state.armed
-    val parsedCustom = remember(customLatitude, customLongitude, customAltitude) {
-        val latitude = customLatitude.toDoubleOrNull()
-        val longitude = customLongitude.toDoubleOrNull()
-        val altitude = customAltitude.toFloatOrNull()
-        if (latitude != null && longitude != null && altitude != null) {
-            SimLocation.custom(latitude, longitude, altitude)
-        } else {
-            null
-        }
-    }
-
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("GCS start location", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        text = "%.6f, %.6f @ %.0f m MSL".format(
-                            state.latitudeDeg,
-                            state.longitudeDeg,
-                            state.altitudeMslMeters,
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
-                    )
-                }
-                OutlinedButton(onClick = { locationExpanded = !locationExpanded }) {
-                    Icon(
-                        imageVector = if (locationExpanded) Icons.Filled.KeyboardArrowUp
-                        else Icons.Filled.KeyboardArrowDown,
-                        contentDescription = if (locationExpanded) "Collapse GCS start location" else "Expand GCS start location",
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(if (locationExpanded) "Hide" else "Show")
-                }
-            }
-            Text(
-                text = buildString {
-                    append("Active: ${selectedLocation.label}")
-                    if (mission.loaded) {
-                        append(" | Mission loaded")
-                    }
-                    if (state.armed) {
-                        append(" | Disarm to change")
-                    }
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.76f),
-            )
-            AnimatedVisibility(
-                visible = locationExpanded,
-                enter = expandVertically(),
-                exit = shrinkVertically(),
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "QGC sees this as the vehicle GPS position. Change it while disarmed before uploading a mission.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.76f),
-                    )
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        SimLocation.presets.forEach { location ->
-                            FilterChip(
-                                selected = selectedLocation.id == location.id,
-                                enabled = canChange,
-                                onClick = { AppRuntime.setSimLocation(location) },
-                                label = { Text(location.label) },
-                            )
-                        }
-                    }
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        LocationTextField(
-                            label = "Latitude",
-                            value = customLatitude,
-                            onValueChange = { customLatitude = it },
-                            enabled = canChange,
-                            modifier = Modifier.weight(1f),
-                        )
-                        LocationTextField(
-                            label = "Longitude",
-                            value = customLongitude,
-                            onValueChange = { customLongitude = it },
-                            enabled = canChange,
-                            modifier = Modifier.weight(1f),
-                        )
-                        LocationTextField(
-                            label = "MSL m",
-                            value = customAltitude,
-                            onValueChange = { customAltitude = it },
-                            enabled = canChange,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    Button(
-                        onClick = { parsedCustom?.let(AppRuntime::setSimLocation) },
-                        enabled = canChange && parsedCustom != null,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Apply custom location")
-                    }
-                    val note = buildString {
-                        if (mission.loaded) {
-                            append("Changing location clears the current mission so QGC can upload a route for the new area.")
-                        }
-                        if (state.armed) {
-                            if (isNotEmpty()) append("\n")
-                            append("Disarm before changing the simulated GPS origin.")
-                        }
-                    }
-                    if (note.isNotBlank()) {
-                        Text(
-                            text = note,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LocationTextField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    enabled: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        enabled = enabled,
-        singleLine = true,
-        label = { Text(label) },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        modifier = modifier,
-    )
-}
-
-@Composable
-private fun FlightLogSection(recording: FlightRecordingStatus) {
+private fun RuntimeSection(operations: OperationsState, onConfirm: (OpsConfirmation) -> Unit) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
-    var historyExpanded by remember { mutableStateOf(false) }
-    var selectedReportSession by remember { mutableStateOf<FlightSession?>(null) }
-
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            // Header row with title and expand/collapse
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text("Flight logs", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        text = if (recording.active) "Recording: Active" else "Recording: Idle",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
-                    )
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    IconButton(onClick = { AppRuntime.refreshSessionHistory() }) {
-                        Icon(
-                            imageVector = Icons.Filled.Refresh,
-                            contentDescription = "Refresh session history",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    OutlinedButton(onClick = { historyExpanded = !historyExpanded }) {
-                        Icon(
-                            imageVector = if (historyExpanded) Icons.Filled.KeyboardArrowUp
-                            else Icons.Filled.KeyboardArrowDown,
-                            contentDescription = if (historyExpanded) "Collapse" else "Expand",
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(if (historyExpanded) "Hide" else "History")
-                    }
-                }
-            }
-
-            // Current session display (primary)
-            val currentSession = recording.currentSession ?: recording.lastSession
-            if (currentSession != null) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            if (recording.active) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
-                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                            shape = MaterialTheme.shapes.small
-                        )
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = if (recording.active) "ACTIVE RECORDING" else "MOST RECENT SESSION",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (recording.active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.semantics { contentDescription = "Session status header" }
-                    )
-                    Text("ID: ${currentSession.id}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Started: ${formatTimestamp(currentSession.startedAtMs)}", style = MaterialTheme.typography.bodySmall)
-                    if (currentSession.endedAtMs != null) {
-                        Text("Duration: ${formatDuration(currentSession.endedAtMs - currentSession.startedAtMs)}", style = MaterialTheme.typography.bodySmall)
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (currentSession.hasReport) {
-                            TextButton(onClick = { selectedReportSession = currentSession }) {
-                                Text("View Report")
-                            }
-                            Spacer(Modifier.width(4.dp))
-                        }
-                        IconButton(onClick = { AppRuntime.shareSession(context, currentSession.id) }) {
-                            Icon(
-                                imageVector = Icons.Filled.Share,
-                                contentDescription = "Share session data",
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.secondary
-                            )
-                        }
-                    }
-                }
-            } else {
-                Text(
-                    text = "No flight logs yet. Arm the vehicle or run an autonomous mission to start recording.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-            }
-
-            // Collapsible Session History
-            AnimatedVisibility(
-                visible = historyExpanded,
-                enter = expandVertically(),
-                exit = shrinkVertically(),
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 4.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-                    Text(
-                        text = "Session History (${recording.sessionHistory.size} total)",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-
-                    val history = recording.sessionHistory
-                    if (history.isEmpty()) {
-                        Text(
-                            text = "No saved session folders found.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
-                    } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            history.forEach { session ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(
-                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-                                            shape = MaterialTheme.shapes.extraSmall
-                                        )
-                                        .padding(8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(session.id, style = MaterialTheme.typography.bodyMedium)
-                                        val durationText = if (session.endedAtMs != null) {
-                                            "Duration: ${formatDuration(session.endedAtMs - session.startedAtMs)}"
-                                        } else {
-                                            "Active / Unfinished"
-                                        }
-                                        Text(durationText, style = MaterialTheme.typography.bodySmall)
-                                    }
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        if (session.hasReport) {
-                                            TextButton(onClick = { selectedReportSession = session }) {
-                                                Text("Report")
-                                            }
-                                        }
-                                        IconButton(onClick = { AppRuntime.shareSession(context, session.id) }) {
-                                            Icon(
-                                                imageVector = Icons.Filled.Share,
-                                                contentDescription = "Share flight session",
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    ExpandableSection("Runtime components", "${operations.runtime.name.lowercase().replaceFirstChar { it.uppercase() }} · ${if (operations.appVisible) "foreground" else "background"}", expanded, { expanded = it }) {
+        OpsValue("Simulation engine", if (operations.stateFresh) "Publishing live state" else "No current state verified")
+        val sensor by AppRuntime.phoneSensorSource.collectAsStateWithLifecycle()
+        OpsValue("Phone sensor monitoring", if (operations.runtime == RuntimeLifecycleState.RUNNING && operations.appVisible) sensor.label else "Suspended")
+        Text("Monitoring is separate from control eligibility. AUTO mission authority pauses local phone control.", style = MaterialTheme.typography.bodySmall)
+        OpsValue("Motor audio runtime", if (operations.runtime == RuntimeLifecycleState.RUNNING) "Retained with runtime" else "Stopped")
+        OpsValue("Telemetry recording", if (operations.recording) "Active · sampled at 5 Hz" else "Stopped")
+        Text("Background handoff retains simulation and MAVLink for one minute, then while a validated GCS, armed flight or AUTO mission requires it. Phone input is suspended in the background.", style = MaterialTheme.typography.bodySmall)
+        if (operations.runtime == RuntimeLifecycleState.RUNNING) {
+            OutlinedButton(onClick = { onConfirm(OpsConfirmation("Stop simulation?", "Stops physics, MAVLink, sensors and audio, and saves the active recording. Vehicle state freezes; this does not land or disarm it. Starting again resumes the same process state.") { context.startService(SimulationService.stopIntent(context)) }) }) { Text("Stop simulation") }
+        } else if (operations.runtime == RuntimeLifecycleState.STOPPED || operations.runtime == RuntimeLifecycleState.ERROR) {
+            Button(onClick = { ContextCompat.startForegroundService(context, SimulationService.appVisibleIntent(context)) }) { Text("Start simulation") }
         }
     }
+}
 
-    // Report Dialog
-    selectedReportSession?.let { session ->
-        val reportFile = java.io.File(session.reportPath)
-        val reportText = if (reportFile.isFile) {
-            try {
-                reportFile.readText()
-            } catch (e: Exception) {
-                "Error reading report: ${e.localizedMessage}"
-            }
-        } else {
-            "No report found for this session."
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FailureSection(onConfirm: (OpsConfirmation) -> Unit) {
+    val failures by AppRuntime.failures.collectAsStateWithLifecycle()
+    val armedFlow = remember { AppRuntime.state.map { it.armed }.distinctUntilChanged() }
+    val armed by armedFlow.collectAsStateWithLifecycle(false)
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    ExpandableSection("Failure scenarios", "${failures.activeCount} active injected conditions", expanded, { expanded = it }) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(enabled = failures.activeCount > 0, onClick = { onConfirm(OpsConfirmation("Reset simulated failures?", "Clears all injected faults and restores normal environment settings. Battery charge and actual peer connection do not change.", AppRuntime::resetFailures)) }) { Text("Reset all failures") }
+            OutlinedButton(enabled = !armed, onClick = { onConfirm(OpsConfirmation("Recharge simulated battery?", "Restores battery charge to 100% while disarmed. Active drain scenarios remain.") { if (!AppRuntime.state.value.armed) AppRuntime.resetBattery() }) }) { Text("Recharge battery") }
         }
-
-        AlertDialog(
-            onDismissRequest = { selectedReportSession = null },
-            title = {
-                Text(text = "Flight Report: ${session.id}", style = MaterialTheme.typography.titleMedium)
-            },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(vertical = 8.dp)
-                ) {
-                    Text(
-                        text = reportText,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { selectedReportSession = null }) {
-                    Text("Close")
-                }
-            }
-        )
+        if (armed) Text("Land and disarm before recharging.", style = MaterialTheme.typography.bodySmall)
+        FailureScenarios.forEach { scenario ->
+            FailureScenarioCard(scenario) { onConfirm(OpsConfirmation("Inject ${scenario.title}?", "${scenario.description}\n\nExpected observation: ${scenario.telemetrySignature.joinToString("; ")}\n\nReset this scenario to remove its injected effects.") { AppRuntime.applyFailureScenario(scenario) }) }
+        }
     }
 }
 
-private fun formatDuration(ms: Long): String {
-    val totalSec = ms / 1000
-    val minutes = totalSec / 60
-    val seconds = totalSec % 60
-    return if (minutes > 0) "${minutes}m ${seconds}s" else "${seconds}s"
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FailureScenarioCard(scenario: FailureScenario, onInject: () -> Unit) {
+    var learnExpanded by rememberSaveable { mutableStateOf(false) }
+    Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainer) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(scenario.title, style = MaterialTheme.typography.titleSmall)
+            Text("${scenario.severity.label} · ${scenario.learningGoal}", style = MaterialTheme.typography.bodySmall)
+            Text(scenario.description, style = MaterialTheme.typography.bodyMedium)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onInject) { Text("Inject ${scenario.title}") }
+                TextButton(onClick = { AppRuntime.clearFailureScenario(scenario) }) { Text("Reset scenario") }
+                TextButton(onClick = { learnExpanded = !learnExpanded }) { Text(if (learnExpanded) "Hide lesson" else "Learn why") }
+            }
+            if (learnExpanded) Text("Cause: ${scenario.whyItHappened}\nObserve: ${scenario.telemetrySignature.joinToString("; ")}\nResponse: ${scenario.operatorResponse.joinToString("; ")}\nRecovery: ${scenario.recoveryCondition}\nLesson: ${scenario.safetyLesson}", style = MaterialTheme.typography.bodySmall)
+        }
+    }
 }
 
-private fun gcsDetail(identityStatus: MavlinkIdentityStatus, connected: Boolean): String {
-    val systemId = identityStatus.lastGcsSystemId
-        ?: return "Disconnected - waiting for MAVLink from QGC or another GCS"
-    val componentId = identityStatus.lastGcsComponentId ?: "unknown"
-    val status = if (connected) "Connected" else "Disconnected - no recent GCS packets"
-    return "$status - last GCS SYSID $systemId, COMPID $componentId"
-}
-
-private fun formatTimestamp(timestampMs: Long): String {
-    return OpsTimeFormatter.format(Instant.ofEpochMilli(timestampMs))
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun EventHistory(events: List<OpsEvent>) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    var severity by rememberSaveable { mutableStateOf<OpsSeverity?>(null) }
+    var component by rememberSaveable { mutableStateOf<OpsComponent?>(null) }
+    var eventState by rememberSaveable { mutableStateOf<OpsEventState?>(null) }
+    var recentOnly by rememberSaveable { mutableStateOf(false) }
+    val now = rememberOpsClock()
+    ExpandableSection("State transitions", "${events.size} recent events · this process", expanded, { expanded = it }) {
+        Text("Observed changes are sampled at 5 Hz, retained across tabs, and bounded to 200 events. This history restarts with the app process; saved recording files hold their own timeline.", style = MaterialTheme.typography.bodySmall)
+        Text("Severity", style = MaterialTheme.typography.labelLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FilterChip(selected = severity == null, onClick = { severity = null }, label = { Text("All") })
+            OpsSeverity.entries.forEach { option -> FilterChip(selected = severity == option, onClick = { severity = option }, label = { Text(option.label) }) }
+        }
+        Text("Component", style = MaterialTheme.typography.labelLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FilterChip(selected = component == null, onClick = { component = null }, label = { Text("All") })
+            OpsComponent.entries.forEach { option -> FilterChip(selected = component == option, onClick = { component = option }, label = { Text(option.label) }) }
+        }
+        Text("State and time", style = MaterialTheme.typography.labelLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FilterChip(selected = eventState == null, onClick = { eventState = null }, label = { Text("All states") })
+            OpsEventState.entries.forEach { option -> FilterChip(selected = eventState == option, onClick = { eventState = option }, label = { Text(option.label) }) }
+            FilterChip(selected = recentOnly, onClick = { recentOnly = !recentOnly }, label = { Text("Last 5 minutes") })
+        }
+        val filtered = filterOpsEvents(events, severity, component, eventState, if (recentOnly) now - 300_000 else null)
+        if (filtered.isEmpty()) Text("No transitions match these filters.")
+        filtered.take(30).forEach { event ->
+            HorizontalDivider()
+            Text("${opsTimestamp(event.timestampMs)} · ${event.component.label} · ${event.severity.label} · ${event.state.label}", style = MaterialTheme.typography.labelMedium)
+            Text(event.message, style = MaterialTheme.typography.bodyMedium)
+        }
+        var showAll by rememberSaveable { mutableStateOf(false) }
+        if (filtered.size > 30) {
+            TextButton(onClick = { showAll = !showAll }) { Text(if (showAll) "Show fewer events" else "Show ${filtered.size - 30} earlier events") }
+            if (showAll) filtered.drop(30).forEach { Text("${opsTimestamp(it.timestampMs)} · ${it.component.label} · ${it.state.label}\n${it.message}", style = MaterialTheme.typography.bodySmall) }
+        }
+    }
 }
 
 @Composable
-private fun InfoCard(title: String, body: String) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+private fun LocationSection() {
+    val state by AppRuntime.state.collectAsStateWithLifecycle()
+    val mission by AppRuntime.missionProgress.collectAsStateWithLifecycle()
+    val location by AppRuntime.simLocation.collectAsStateWithLifecycle()
+    SimLocationCard(state, mission, location)
+}
+
+@Composable
+internal fun ExpandableSection(title: String, summary: String, expanded: Boolean, onExpanded: (Boolean) -> Unit, headerModifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    ElevatedCard(Modifier.fillMaxWidth().then(headerModifier)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
-            Text(
-                body,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.76f),
-            )
+            Text(summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = { onExpanded(!expanded) }) {
+                Icon(if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown, contentDescription = null)
+                Text(if (expanded) "Hide $title" else "Show $title")
+            }
+            if (expanded) content()
         }
     }
 }
 
-private val OpsTimeFormatter: DateTimeFormatter = DateTimeFormatter
-    .ofPattern("yyyy-MM-dd HH:mm:ss 'UTC'")
-    .withZone(ZoneOffset.UTC)
-
-private val ConnectedGreen = Color(0xFF1B8F3A)
-private val DisconnectedRed = Color(0xFFD12F2F)
-
-private fun isScenarioActive(scenario: FailureScenario, state: FailureState): Boolean {
-    return when (scenario.id) {
-        "gps_loss" -> !state.gpsEnabled
-        "gps_drift" -> state.gpsNoiseMultiplier > 1.05f
-        "windy_day" -> state.windSpeedMs > 0.05f
-        "motor_failure" -> state.hasMotorFailure
-        "battery_low" -> state.batteryDrainMultiplier in 6f..10f
-        "battery_critical" -> state.batteryDrainMultiplier > 10f
-        "compass_interference" -> kotlin.math.abs(state.compassOffsetDeg) > 0.5f
-        "heavy_payload" -> state.payloadMassKg > 0.05f
-        "lost_link" -> state.lostLinkActive
-        "barometer_issue" -> kotlin.math.abs(state.barometerOffsetMeters) > 0.05f
-        "unsafe_mission_reserve" -> state.unsafeMissionReserveActive
-        else -> false
+@Composable
+internal fun OpsValue(label: String, value: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyMedium)
     }
+}
+
+@Composable
+internal fun rememberOpsClock(): Long {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { delay(1000); now = System.currentTimeMillis() } }
+    return now
+}
+
+internal fun opsTimestamp(ms: Long): String = DateTimeFormatter.ofPattern("HH:mm:ss z").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(ms))
+internal fun opsDuration(ms: Long): String {
+    val seconds = ms.coerceAtLeast(0) / 1000
+    return "${seconds / 60}m ${seconds % 60}s"
 }

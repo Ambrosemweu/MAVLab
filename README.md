@@ -10,6 +10,8 @@ Built for classroom training, hands-on bootcamps, and flight operators, MAVLab o
 
 Active implementation codebase: [mavlab-android/](mavlab-android/).
 
+On `feature/mavlab-uiux-refinements`, Ops prioritizes health/recovery, diagnostics and session review. Recording is off by default; begin a session or opt into automatic flight/mission recording in Ops. These are development-branch changes, not a published release. See the [Ops guide](docs/user/ops.md).
+
 ---
 
 ## 📄 Technical paper

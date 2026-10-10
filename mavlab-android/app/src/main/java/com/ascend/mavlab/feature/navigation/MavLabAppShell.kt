@@ -112,6 +112,7 @@ fun MavLabAppShell() {
             MavLabTab.Sim -> Drone3DScreen(modifier, routeInitiallyOpen = openMissionRoute)
             MavLabTab.Ops -> SettingsScreen(
                 modifier = modifier,
+                onOpenController = { selectedTab = MavLabTab.Control },
                 onReplayOnboarding = {
                     preferences.edit().putBoolean("onboarding_complete", false).apply()
                     onboardingComplete = false

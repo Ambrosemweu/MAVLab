@@ -9,6 +9,7 @@ import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.math.hypot
 
 class FlightRecorder(
     baseFilesDir: File,
@@ -141,16 +142,19 @@ class FlightRecorder(
             val missionText = missionFile.readText()
             val itemCount = "\"sequence\"".toRegex().findAll(missionText).count()
             val complete = extractJsonValue(missionText, "complete") == "true"
-            append("- **Mission status:** ${if (complete) "Completed" else "Not completed"} ($itemCount items)\n")
+            append("- **Mission status:** ${if (itemCount == 0) "No mission loaded" else "${if (complete) "Completed" else "Not completed"} ($itemCount items)"}\n")
         } else {
             append("- **Mission status:** No mission loaded\n")
         }
 
         append("- **Max altitude:** ${telemetryStats.maxAltitude} m AGL\n")
+        append("- **Observed horizontal path:** ${telemetryStats.pathMeters} m (sampled vehicle motion)\n")
+        append("- **Flight modes:** ${telemetryStats.modes.joinToString(", ").ifEmpty { "No telemetry samples" }}\n")
+        append("- **Observed authorities:** ${telemetryStats.authorities.joinToString(", ").ifEmpty { "No telemetry samples" }}\n")
         append("- **Battery start:** ${telemetryStats.batteryStart}%\n")
         append("- **Battery end:** ${telemetryStats.batteryEnd}%\n")
 
-        val failureEvents = events.filter { it.contains("\"failure_") && !it.contains("\"failure_reset\"") }
+        val failureEvents = events.filter { it.contains("\"failure_") && !it.contains("\"failure_reset\"") && !it.contains("_cleared\"") }
         if (failureEvents.isNotEmpty()) {
             val failureTypes = failureEvents.mapNotNull { extractJsonValue(it, "type") }.distinct()
             append("- **Failures injected:** ${failureTypes.joinToString(", ") { it.removePrefix("failure_") }}\n")
@@ -203,7 +207,7 @@ class FlightRecorder(
 
         append("## Safety Notes\n\n")
         if (safetyNotes.isEmpty()) {
-            append("_No safety concerns observed during this session._\n\n")
+            append("_No listed failure scenario was recorded. This report is not a safety assessment._\n\n")
         } else {
             safetyNotes.forEach { append("- $it\n") }
             append("\n")
@@ -216,44 +220,59 @@ class FlightRecorder(
         val maxAltitude: String = "0.0",
         val batteryStart: String = "?",
         val batteryEnd: String = "?",
+        val pathMeters: String = "0.0",
+        val modes: List<String> = emptyList(),
+        val authorities: List<String> = emptyList(),
     )
 
     private fun readTelemetryStats(directory: File): TelemetryStats {
         val file = telemetryFile(directory)
         if (!file.isFile) return TelemetryStats()
-        val lines = file.readLines()
-        if (lines.size < 2) return TelemetryStats()
+        return file.bufferedReader().use { reader ->
+            val header = reader.readLine()?.split(",") ?: return TelemetryStats()
+            val altIndex = header.indexOf("altitudeAglMeters")
+            val batteryIndex = header.indexOf("batteryRemainingPercent")
+            val northIndex = header.indexOf("northMeters")
+            val eastIndex = header.indexOf("eastMeters")
+            val modeIndex = header.indexOf("mode")
+            val authorityIndex = header.indexOf("controlAuthority")
 
-        // Header: find column indices
-        val header = lines[0].split(",")
-        val altIndex = header.indexOf("altitudeAglMeters")
-        val batteryIndex = header.indexOf("batteryRemainingPercent")
-        if (altIndex < 0 && batteryIndex < 0) return TelemetryStats()
+            var maxAlt = 0f
+            var batteryStart: String? = null
+            var batteryEnd: String? = null
+            var previousPoint: Pair<Float, Float>? = null
+            var pathMeters = 0f
+            val modes = linkedSetOf<String>()
+            val authorities = linkedSetOf<String>()
 
-        val dataLines = lines.drop(1).filter { it.isNotBlank() }
-        if (dataLines.isEmpty()) return TelemetryStats()
-
-        var maxAlt = 0f
-        var batteryStart: String? = null
-        var batteryEnd: String? = null
-
-        dataLines.forEach { line ->
-            val cols = line.split(",")
-            if (altIndex in cols.indices) {
-                cols[altIndex].toFloatOrNull()?.let { if (it > maxAlt) maxAlt = it }
+            reader.lineSequence().filter { it.isNotBlank() }.forEach { line ->
+                val cols = line.split(",")
+                if (altIndex in cols.indices) {
+                    cols[altIndex].toFloatOrNull()?.let { if (it > maxAlt) maxAlt = it }
+                }
+                if (batteryIndex in cols.indices) {
+                    val battery = cols[batteryIndex]
+                    if (batteryStart == null) batteryStart = battery
+                    batteryEnd = battery
+                }
+                cols.getOrNull(modeIndex)?.let { modes += it }
+                cols.getOrNull(authorityIndex)?.let { authorities += it }
+                val north = cols.getOrNull(northIndex)?.toFloatOrNull()?.takeIf { it.isFinite() }
+                val east = cols.getOrNull(eastIndex)?.toFloatOrNull()?.takeIf { it.isFinite() }
+                if (north != null && east != null) {
+                    previousPoint?.let { pathMeters += hypot(north - it.first, east - it.second) }
+                    previousPoint = north to east
+                } else previousPoint = null
             }
-            if (batteryIndex in cols.indices) {
-                val battery = cols[batteryIndex]
-                if (batteryStart == null) batteryStart = battery
-                batteryEnd = battery
-            }
+
+            TelemetryStats(
+                maxAltitude = "%.1f".format(maxAlt),
+                batteryStart = batteryStart ?: "?",
+                batteryEnd = batteryEnd ?: "?",
+                pathMeters = "%.1f".format(pathMeters),
+                modes = modes.toList(), authorities = authorities.toList(),
+            )
         }
-
-        return TelemetryStats(
-            maxAltitude = "%.1f".format(maxAlt),
-            batteryStart = batteryStart ?: "?",
-            batteryEnd = batteryEnd ?: "?",
-        )
     }
 
     // --- Event reading helper ---
@@ -391,7 +410,7 @@ class FlightRecorder(
         // Handles both quoted and unquoted values
         return Regex("\"${Regex.escape(name)}\"\\s*:\\s*\"([^\"]*)\"")
             .find(json)?.groupValues?.get(1)
-            ?: Regex("\"${Regex.escape(name)}\"\\s*:\\s*(\\S+)")
+            ?: Regex("\"${Regex.escape(name)}\"\\s*:\\s*(true|false|null|-?\\d+(?:\\.\\d+)?)(?=\\s*[,}\\]])")
                 .find(json)?.groupValues?.get(1)?.trim(',', '}')
     }
 

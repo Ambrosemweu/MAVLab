@@ -14,6 +14,9 @@ import com.ascend.mavlab.core.sensors.OrientationData
 import com.ascend.mavlab.core.sensors.OrientationSource
 import com.ascend.mavlab.core.sensors.PhoneSensorRepository
 import com.ascend.mavlab.core.sensors.SensorCalibration
+import com.ascend.mavlab.core.operations.OperationsObserver
+import com.ascend.mavlab.core.operations.OperationsState
+import com.ascend.mavlab.core.operations.OpsObservation
 import com.ascend.mavlab.simulation.autopilot.PilotInput
 import com.ascend.mavlab.simulation.audio.DroneSoundController
 import com.ascend.mavlab.simulation.audio.DroneSoundDebugState
@@ -30,10 +33,12 @@ import com.ascend.mavlab.simulation.mission.MissionUploadStatus
 import com.ascend.mavlab.simulation.recording.FlightEvent
 import com.ascend.mavlab.simulation.recording.FlightRecorder
 import com.ascend.mavlab.simulation.recording.FlightRecordingStatus
+import com.ascend.mavlab.simulation.recording.RecordingPolicy
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sign
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -46,6 +51,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.flow.update
 
 object AppRuntime {
     private val simLoop = PhysicsSimulationEngine()
@@ -55,6 +63,10 @@ object AppRuntime {
     private val mutableSystemId = MutableStateFlow(1)
     private val fallbackIdentityStatus = MutableStateFlow(MavlinkIdentityStatus())
     private val mutableRecordingStatus = MutableStateFlow(FlightRecordingStatus())
+    private val mutableOperations = MutableStateFlow(OperationsState())
+    private val operationsObserver = OperationsObserver()
+    private val recordingPolicy = RecordingPolicy()
+    private val recordingMutex = Mutex()
     private val mutableSimLocation = MutableStateFlow(SimLocation.Nairobi)
     private val mutablePhoneSensorSource = MutableStateFlow(OrientationSource.Unavailable)
     private val mutablePhoneSensorRawOrientation = MutableStateFlow(OrientationData())
@@ -87,6 +99,7 @@ object AppRuntime {
     val missionProgress: StateFlow<MissionProgress> = simLoop.missionProgress
     val missionUploadStatus: StateFlow<MissionUploadStatus> = simLoop.missionUploadStatus
     val recordingStatus: StateFlow<FlightRecordingStatus> = mutableRecordingStatus.asStateFlow()
+    val operations: StateFlow<OperationsState> = mutableOperations.asStateFlow()
     val simLocation: StateFlow<SimLocation> = mutableSimLocation.asStateFlow()
     val phoneSensorSource: StateFlow<OrientationSource> = mutablePhoneSensorSource.asStateFlow()
     val phoneSensorOrientation: StateFlow<OrientationData> = mutablePhoneSensorOrientation.asStateFlow()
@@ -109,12 +122,16 @@ object AppRuntime {
             return
         }
         mutableRuntimeLifecycle.value = RuntimeLifecycleState.STARTING
+        publishOperations()
         val appContext = context.applicationContext
         try {
             applicationContext = appContext
+            recordingPolicy.setAutomaticEnabled(appContext.getSharedPreferences(RecordingPrefsName, Context.MODE_PRIVATE)
+                .getBoolean(AutomaticRecordingKey, false))
             if (flightRecorder == null) {
                 flightRecorder = FlightRecorder(appContext.filesDir)
             }
+            syncRecordingStatus()
             refreshSessionHistory()
             restoreSimLocation(appContext)
             restorePersistedMission(appContext)
@@ -146,6 +163,7 @@ object AppRuntime {
             stateFreshnessJob = null
             runtimeActive = false
             mutableRuntimeLifecycle.value = RuntimeLifecycleState.ERROR
+            publishOperations()
             throw error
         }
     }
@@ -154,6 +172,7 @@ object AppRuntime {
         if (appVisible == visible) return
         appVisible = visible
         applyRuntimeComponentPolicy(applicationContext)
+        publishOperations()
     }
 
     fun stop() {
@@ -166,11 +185,13 @@ object AppRuntime {
         runtimeActive = false
         applyRuntimeComponentPolicy(applicationContext)
         flightRecorder?.closeSession("runtime stopped")
+        recordingPolicy.runtimeStopped()
         refreshSessionHistory()
         syncRecordingStatus()
         simLoop.stop()
         mutableStateUpdatedAtElapsedRealtimeMs.value = null
         mutableRuntimeLifecycle.value = RuntimeLifecycleState.STOPPED
+        publishOperations()
     }
 
     private fun startStateFreshnessMonitor() {
@@ -233,9 +254,55 @@ object AppRuntime {
 
     fun refreshSessionHistory() {
         val recorder = flightRecorder ?: return
-        val history = recorder.listSessions()
-        val currentStatus = mutableRecordingStatus.value
-        mutableRecordingStatus.value = currentStatus.copy(sessionHistory = history)
+        scope.launch(Dispatchers.IO) {
+            val history = recorder.listSessions()
+            mutableRecordingStatus.update { it.copy(sessionHistory = history) }
+        }
+    }
+
+    fun beginRecording() = changeRecording(start = true)
+
+    fun stopAndSaveRecording() = changeRecording(start = false)
+
+    fun setAutomaticRecordingEnabled(enabled: Boolean): Boolean {
+        if (state.value.armed) return false
+        val context = applicationContext ?: return false
+        recordingPolicy.setAutomaticEnabled(enabled)
+        context.getSharedPreferences(RecordingPrefsName, Context.MODE_PRIVATE)
+            .edit().putBoolean(AutomaticRecordingKey, enabled).apply()
+        syncRecordingStatus()
+        publishOperations()
+        return true
+    }
+
+    private fun changeRecording(start: Boolean) {
+        if (mutableRecordingStatus.value.actionInProgress) return
+        mutableRecordingStatus.update { it.copy(actionInProgress = true, actionError = null) }
+        scope.launch(Dispatchers.IO) {
+            try {
+                recordingMutex.withLock {
+                    check(runtimeActive) { "Start the simulation before recording." }
+                    val recorder = checkNotNull(flightRecorder) { "Recording is unavailable." }
+                    if (start) {
+                        recordingPolicy.startedByUser()
+                        recorder.startSession("started explicitly in Ops")
+                        recorder.saveMissionSnapshot(missionProgress.value)
+                    } else {
+                        recorder.saveMissionSnapshot(missionProgress.value)
+                        recorder.closeSession("stopped explicitly in Ops")
+                        recordingPolicy.stoppedByUser(state.value.armed)
+                    }
+                    syncRecordingStatus()
+                    refreshSessionHistory()
+                }
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                mutableRecordingStatus.update { it.copy(actionError = error.message ?: "Recording action failed") }
+            } finally {
+                mutableRecordingStatus.update { it.copy(actionInProgress = false) }
+                publishOperations()
+            }
+        }
     }
 
     fun shareSession(context: Context, sessionId: String) {
@@ -664,7 +731,7 @@ object AppRuntime {
 
     private fun startRecordingMonitor() {
         if (recordingJob != null) return
-        recordingJob = scope.launch {
+        recordingJob = scope.launch(Dispatchers.IO) {
             var previousArmed = state.value.armed
             var previousMode = state.value.mode
             var previousAuthority = state.value.controlAuthority
@@ -682,89 +749,102 @@ object AppRuntime {
                     continue
                 }
 
-                val current = state.value
-                val mission = missionProgress.value
-                val currentMissionSignature = missionSignature(mission)
-                val gcsConnected = mavlinkIdentityStatus.value.gcsConnected
-                val sessionActive = recorder.activeSession() != null
+                try {
+                    recordingMutex.withLock {
+                        if (!runtimeActive) return@withLock
+                        val current = state.value
+                        val mission = missionProgress.value
+                        val currentMissionSignature = missionSignature(mission)
+                        val gcsConnected = mavlinkIdentityStatus.value.gcsConnected
+                        val sessionActive = recorder.activeSession() != null
 
-                if (current.armed && !sessionActive) {
-                    recorder.startSession(recordingStartReason(current))
-                    recorder.saveMissionSnapshot(mission)
-                    batteryWarned = false
-                    batteryCriticalWarned = false
-                    previousLastReachedSequence = mission.lastReachedSequence
-                    previousMissionComplete = mission.complete
-                    refreshSessionHistory()
-                }
-
-                val activeSession = recorder.activeSession()
-                if (activeSession != null) {
-                    if (!previousArmed && current.armed) {
-                        recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "vehicle_armed", current.controlAuthority.displayName))
-                    }
-                    if (current.mode != previousMode) {
-                        recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "mode_changed", current.mode.displayName))
-                    }
-                    if (current.controlAuthority != previousAuthority) {
-                        recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "authority_changed", current.controlAuthority.displayName))
-                    }
-                    if (mission.loaded && currentMissionSignature != previousMissionSignature) {
-                        recorder.saveMissionSnapshot(mission)
-                        recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "mission_snapshot", "${mission.items.size} items"))
-                    }
-
-                    // GCS Connection State Changes
-                    if (gcsConnected != previousGcsConnected) {
-                        val eventType = if (gcsConnected) "qgc_connected" else "qgc_disconnected"
-                        val eventMsg = if (gcsConnected) "GCS connected" else "GCS disconnected"
-                        recorder.appendEvent(FlightEvent(System.currentTimeMillis(), eventType, eventMsg))
-                    }
-
-                    // Waypoint Reached / Mission Complete
-                    if (mission.loaded) {
-                        val lastReached = mission.lastReachedSequence
-                        if (lastReached != null && lastReached != previousLastReachedSequence) {
-                            recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "waypoint_reached", "wp=$lastReached"))
-                            previousLastReachedSequence = lastReached
+                        if (recordingPolicy.shouldStartAutomatically(current.armed, sessionActive)) {
+                            recorder.startSession(recordingStartReason(current))
+                            recorder.saveMissionSnapshot(mission)
+                            batteryWarned = false
+                            batteryCriticalWarned = false
+                            previousLastReachedSequence = mission.lastReachedSequence
+                            previousMissionComplete = mission.complete
+                            refreshSessionHistory()
                         }
-                        if (mission.complete && !previousMissionComplete) {
-                            recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "mission_complete", "all waypoints completed"))
+
+                        val activeSession = recorder.activeSession()
+                        if (activeSession != null) {
+                            if (!previousArmed && current.armed) {
+                                recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "vehicle_armed", current.controlAuthority.displayName))
+                            }
+                            if (current.mode != previousMode) {
+                                recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "mode_changed", current.mode.displayName))
+                            }
+                            if (current.controlAuthority != previousAuthority) {
+                                recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "authority_changed", current.controlAuthority.displayName))
+                            }
+                            if (mission.loaded && currentMissionSignature != previousMissionSignature) {
+                                recorder.saveMissionSnapshot(mission)
+                                recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "mission_snapshot", "${mission.items.size} items"))
+                            }
+
+                            // GCS Connection State Changes
+                            if (gcsConnected != previousGcsConnected) {
+                                val eventType = if (gcsConnected) "qgc_connected" else "qgc_disconnected"
+                                val eventMsg = if (gcsConnected) "GCS connected" else "GCS disconnected"
+                                recorder.appendEvent(FlightEvent(System.currentTimeMillis(), eventType, eventMsg))
+                            }
+
+                            // Waypoint Reached / Mission Complete
+                            if (mission.loaded) {
+                                val lastReached = mission.lastReachedSequence
+                                if (lastReached != null && lastReached != previousLastReachedSequence) {
+                                    recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "waypoint_reached", "wp=$lastReached"))
+                                    previousLastReachedSequence = lastReached
+                                }
+                                if (mission.complete && !previousMissionComplete) {
+                                    recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "mission_complete", "all waypoints completed"))
+                                }
+                            }
+
+                            // Battery Warnings
+                            val batPercent = current.batteryRemainingPercent.toInt()
+                            if (batPercent <= 15 && !batteryCriticalWarned) {
+                                recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "battery_warning", "battery critical ($batPercent%)"))
+                                batteryCriticalWarned = true
+                                batteryWarned = true
+                            } else if (batPercent <= 30 && !batteryWarned) {
+                                recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "battery_warning", "battery low ($batPercent%)"))
+                                batteryWarned = true
+                            }
+
+                            val activeWp = if (mission.loaded) mission.currentIndex else -1
+                            val failFlags = formatFailureFlags(failures.value)
+                            recorder.appendTelemetry(current, activeWaypoint = activeWp, failureFlags = failFlags)
                         }
+
+                        if (previousArmed && !current.armed) {
+                            resetControllerInputsAfterDisarm()
+                            recorder.saveMissionSnapshot(mission)
+                            recorder.closeSession("vehicle disarmed")
+                            recordingPolicy.disarmed()
+                            refreshSessionHistory()
+                        }
+
+                        previousArmed = current.armed
+                        previousMode = current.mode
+                        previousAuthority = current.controlAuthority
+                        previousMissionSignature = currentMissionSignature
+                        previousGcsConnected = gcsConnected
+                        if (activeSession != null) {
+                            previousLastReachedSequence = mission.lastReachedSequence
+                            previousMissionComplete = mission.complete
+                        }
+                        syncRecordingStatus()
                     }
-
-                    // Battery Warnings
-                    val batPercent = current.batteryRemainingPercent.toInt()
-                    if (batPercent <= 15 && !batteryCriticalWarned) {
-                        recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "battery_warning", "battery critical ($batPercent%)"))
-                        batteryCriticalWarned = true
-                        batteryWarned = true
-                    } else if (batPercent <= 30 && !batteryWarned) {
-                        recorder.appendEvent(FlightEvent(System.currentTimeMillis(), "battery_warning", "battery low ($batPercent%)"))
-                        batteryWarned = true
-                    }
-
-                    val activeWp = if (mission.loaded) mission.currentIndex else -1
-                    val failFlags = formatFailureFlags(failures.value)
-                    recorder.appendTelemetry(current, activeWaypoint = activeWp, failureFlags = failFlags)
+                } catch (error: Exception) {
+                    if (error is CancellationException) throw error
+                    recordingPolicy.stoppedByUser(state.value.armed)
+                    mutableRecordingStatus.update { it.copy(actionError = "Recording write failed: ${error.message ?: "storage unavailable"}") }
+                    delay(1000L)
                 }
-
-                if (previousArmed && !current.armed) {
-                    resetControllerInputsAfterDisarm()
-                    recorder.closeSession("vehicle disarmed")
-                    refreshSessionHistory()
-                }
-
-                previousArmed = current.armed
-                previousMode = current.mode
-                previousAuthority = current.controlAuthority
-                previousMissionSignature = currentMissionSignature
-                previousGcsConnected = gcsConnected
-                if (activeSession != null) {
-                    previousLastReachedSequence = mission.lastReachedSequence
-                    previousMissionComplete = mission.complete
-                }
-                syncRecordingStatus()
+                publishOperations()
                 delay(RecordingSampleMs)
             }
         }
@@ -867,7 +947,26 @@ object AppRuntime {
     }
 
     private fun syncRecordingStatus() {
-        flightRecorder?.let { mutableRecordingStatus.value = it.status.value }
+        flightRecorder?.let { recorder ->
+            mutableRecordingStatus.update { current ->
+                recorder.status.value.copy(sessionHistory = current.sessionHistory,
+                    actionInProgress = current.actionInProgress, actionError = current.actionError,
+                    automaticPaused = recordingPolicy.automaticPaused,
+                    automaticEnabled = recordingPolicy.automaticEnabled)
+            }
+        }
+    }
+
+    @Synchronized
+    private fun publishOperations() {
+        val age = mutableStateUpdatedAtElapsedRealtimeMs.value?.let { SystemClock.elapsedRealtime() - it }
+        mutableOperations.value = operationsObserver.update(OpsObservation(
+            state.value, failures.value, mavlinkIdentityStatus.value, missionProgress.value,
+            missionUploadStatus.value, runtimeLifecycle.value, appVisible,
+            runtimeActive && age != null && age in 0..2_000L,
+            recordingStatus.value.active, recordingStatus.value.actionError,
+            recordingStatus.value.automaticEnabled,
+        ), System.currentTimeMillis())
     }
 
     private fun updateDroneSoundSettings(transform: (DroneSoundSettings) -> DroneSoundSettings) {
@@ -913,6 +1012,8 @@ object AppRuntime {
     }
 
     private const val RecordingSampleMs = 200L
+    private const val RecordingPrefsName = "mavlab_recording"
+    private const val AutomaticRecordingKey = "automatic_on_arm"
     private const val PhoneSensorMaxRollAngleRad = 0.5235988f
     private const val PhoneSensorMaxPitchAngleRad = 0.5235988f
     private const val PhoneSensorMaxYawAngleRad = 0.7853982f

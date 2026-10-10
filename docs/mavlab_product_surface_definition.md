@@ -7,7 +7,7 @@ The UI/UX feature branch uses four surfaces in this order: **Cockpit, Control, S
 | Cockpit | Live vehicle state, authority and recovery | Concise authority/progress and a useful recovery or Control link |
 | Control | Local input and deliberate flight actions | Conditional collapsed mission row; essential progress and valid engine actions when expanded |
 | SIM | Digital twin and spatial understanding | Received route, all navigation nodes, active leg, actual position/trail and measured deviation |
-| Ops | Technical evidence and recovery | Exact upload status/errors, source, sequence counts, partial behavior, peers, protocol events and recordings |
+| Ops | Technical evidence and recovery | Active incidents/recovery, peers/identity, exact upload evidence, runtime components, failure exercises, recording/review and bounded transition history |
 
 Every view reads `DroneState`, `MissionProgress` and upload status from the shared runtime. The engine owns mission execution; a UI route, ACK or connected peer cannot create flight progress. `CONTROLLER` remains the local control-authority enum even though its destination is now called Control.
 

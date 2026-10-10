@@ -180,6 +180,40 @@ class FlightRecorderTest {
         }
     }
 
+    @Test
+    fun reportUsesSampledPathModesAndFinalMissionSnapshot() {
+        withRecorder { recorder, baseDir ->
+            recorder.startSession("ground", "review")
+            recorder.appendTelemetry(DroneState(northMeters = 0f, eastMeters = 0f))
+            recorder.appendTelemetry(DroneState(northMeters = 3f, eastMeters = 4f,
+                mode = com.ascend.mavlab.simulation.engine.FlightMode.AUTO,
+                controlAuthority = com.ascend.mavlab.simulation.engine.ControlAuthority.GCS_MISSION))
+            recorder.saveMissionSnapshot(MissionProgress(items = listOf(MissionItem(sequence = 0,
+                command = MissionCommand.WAYPOINT, latitudeDeg = -1.2921, longitudeDeg = 36.8219,
+                altitudeAglMeters = 10f)), complete = true))
+            recorder.closeSession("done", 3000)
+            val report = baseDir.resolve("mavlab/flights/review/report.md").readText()
+            assertTrue(report.contains("Observed horizontal path:** 5.0 m"))
+            assertTrue(report.contains("Flight modes:** STABILIZE, AUTO"))
+            assertTrue(report.contains("Observed authorities:** IDLE, GCS_MISSION"))
+            assertTrue(report.contains("Mission status:** Completed"))
+        }
+    }
+
+    @Test
+    fun emptyMissionReportDoesNotClaimCompletionAndTimelineHasTimestamps() {
+        withRecorder { recorder, baseDir ->
+            recorder.startSession("explicit ground exercise", "no-mission")
+            recorder.saveMissionSnapshot(MissionProgress())
+            recorder.closeSession("done", 3000)
+            val report = baseDir.resolve("mavlab/flights/no-mission/report.md").readText()
+            assertTrue(report.contains("Mission status:** No mission loaded"))
+            assertTrue(report.contains("1970-01-01 00:00:01 UTC"))
+            assertTrue(report.contains("1970-01-01 00:00:03 UTC"))
+            assertTrue(!report.contains("**?**"))
+        }
+    }
+
     private fun withRecorder(block: (FlightRecorder, java.io.File) -> Unit) {
         val baseDir = Files.createTempDirectory("mavlab-flight-recorder-test").toFile()
         try {

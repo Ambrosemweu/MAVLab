@@ -20,6 +20,10 @@ data class FlightRecordingStatus(
     val currentSession: FlightSession? = null,
     val lastSession: FlightSession? = null,
     val sessionHistory: List<FlightSession> = emptyList(),
+    val actionInProgress: Boolean = false,
+    val actionError: String? = null,
+    val automaticPaused: Boolean = false,
+    val automaticEnabled: Boolean = false,
 ) {
     val displayText: String
         get() = when {

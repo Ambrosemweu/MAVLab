@@ -82,3 +82,5 @@ Mission is contextual across these four surfaces; reusable mission presentation 
 4. Protocol claims match implemented behavior and evidence.
 5. Local uncommitted behavior is not release behavior.
 6. Published research remains tied to its evaluated release.
+
+Ops health and recent transitions are projections from authoritative state, maintained by a bounded process-local `OperationsObserver` in AppRuntime. Recording defaults to off; Ops offers explicit Begin/Stop-save and a persisted, disarmed-only opt-in to automatic arm capture. See [ADR-0008](decisions/0008-ops-health-and-recording.md).
