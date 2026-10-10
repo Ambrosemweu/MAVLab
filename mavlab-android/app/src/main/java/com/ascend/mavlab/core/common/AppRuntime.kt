@@ -2,6 +2,7 @@ package com.ascend.mavlab.core.common
 
 import android.content.Context
 import android.hardware.SensorManager
+import android.os.SystemClock
 import com.ascend.mavlab.core.mavlink.DefaultMavLabVehicleSystemId
 import com.ascend.mavlab.core.mavlink.MavlinkIdentityStatus
 import com.ascend.mavlab.core.mavlink.MavlinkSocketConfig
@@ -46,6 +47,8 @@ import kotlinx.coroutines.launch
 object AppRuntime {
     private val simLoop = PhysicsSimulationEngine()
     private val fallbackStatus = MutableStateFlow("Stopped")
+    private val mutableRuntimeLifecycle = MutableStateFlow(RuntimeLifecycleState.STOPPED)
+    private val mutableStateUpdatedAtElapsedRealtimeMs = MutableStateFlow<Long?>(null)
     private val mutableSystemId = MutableStateFlow(1)
     private val fallbackIdentityStatus = MutableStateFlow(MavlinkIdentityStatus())
     private val mutableRecordingStatus = MutableStateFlow(FlightRecordingStatus())
@@ -63,6 +66,7 @@ object AppRuntime {
     private var flightRecorder: FlightRecorder? = null
     private var droneSoundController: DroneSoundController? = null
     private var recordingJob: Job? = null
+    private var stateFreshnessJob: Job? = null
     private var phoneSensorJob: Job? = null
     private var applicationContext: Context? = null
     private var runtimeActive = false
@@ -73,6 +77,9 @@ object AppRuntime {
     private var phoneSensorYawTrim = 0f
 
     val state = simLoop.state
+    val runtimeLifecycle: StateFlow<RuntimeLifecycleState> = mutableRuntimeLifecycle.asStateFlow()
+    val stateUpdatedAtElapsedRealtimeMs: StateFlow<Long?> =
+        mutableStateUpdatedAtElapsedRealtimeMs.asStateFlow()
     val failures: StateFlow<FailureState> = simLoop.failures
     val missionProgress: StateFlow<MissionProgress> = simLoop.missionProgress
     val missionUploadStatus: StateFlow<MissionUploadStatus> = simLoop.missionUploadStatus
@@ -94,35 +101,50 @@ object AppRuntime {
     val systemId: StateFlow<Int> = mutableSystemId.asStateFlow()
 
     fun start(context: Context) {
+        if (runtimeActive) {
+            mutableRuntimeLifecycle.value = RuntimeLifecycleState.RUNNING
+            return
+        }
+        mutableRuntimeLifecycle.value = RuntimeLifecycleState.STARTING
         val appContext = context.applicationContext
-        applicationContext = appContext
-        if (flightRecorder == null) {
-            flightRecorder = FlightRecorder(appContext.filesDir)
+        try {
+            applicationContext = appContext
+            if (flightRecorder == null) {
+                flightRecorder = FlightRecorder(appContext.filesDir)
+            }
+            refreshSessionHistory()
+            restoreSimLocation(appContext)
+            restorePersistedMission(appContext)
+            if (mavlinkServer == null) {
+                val id = stableSystemId(appContext)
+                mutableSystemId.value = id
+                mavlinkServer = MavlinkUdpServer(
+                    simLoop = simLoop,
+                    config = MavlinkSocketConfig(systemId = id),
+                    onMissionLoaded = { items ->
+                        MissionPersistence.save(appContext, items)
+                        recordFailureEvent("mission_upload", "${items.size} items uploaded")
+                    },
+                    onMissionCleared = {
+                        MissionPersistence.clear(appContext)
+                        recordFailureEvent("mission_cleared", "mission cleared")
+                    },
+                )
+            }
+            startStateFreshnessMonitor()
+            simLoop.start()
+            mavlinkServer?.start(appContext)
+            runtimeActive = true
+            mutableRuntimeLifecycle.value = RuntimeLifecycleState.RUNNING
+            applyRuntimeComponentPolicy(appContext)
+            startRecordingMonitor()
+        } catch (error: Throwable) {
+            stateFreshnessJob?.cancel()
+            stateFreshnessJob = null
+            runtimeActive = false
+            mutableRuntimeLifecycle.value = RuntimeLifecycleState.ERROR
+            throw error
         }
-        refreshSessionHistory()
-        restoreSimLocation(appContext)
-        restorePersistedMission(appContext)
-        if (mavlinkServer == null) {
-            val id = stableSystemId(appContext)
-            mutableSystemId.value = id
-            mavlinkServer = MavlinkUdpServer(
-                simLoop = simLoop,
-                config = MavlinkSocketConfig(systemId = id),
-                onMissionLoaded = { items ->
-                    MissionPersistence.save(appContext, items)
-                    recordFailureEvent("mission_upload", "${items.size} items uploaded")
-                },
-                onMissionCleared = {
-                    MissionPersistence.clear(appContext)
-                    recordFailureEvent("mission_cleared", "mission cleared")
-                },
-            )
-        }
-        simLoop.start()
-        mavlinkServer?.start(appContext)
-        runtimeActive = true
-        applyRuntimeComponentPolicy(appContext)
-        startRecordingMonitor()
     }
 
     fun setAppVisible(visible: Boolean) {
@@ -132,15 +154,30 @@ object AppRuntime {
     }
 
     fun stop() {
+        mutableRuntimeLifecycle.value = RuntimeLifecycleState.STOPPING
         mavlinkServer?.stopNow()
         recordingJob?.cancel()
         recordingJob = null
+        stateFreshnessJob?.cancel()
+        stateFreshnessJob = null
         runtimeActive = false
         applyRuntimeComponentPolicy(applicationContext)
         flightRecorder?.closeSession("runtime stopped")
         refreshSessionHistory()
         syncRecordingStatus()
         simLoop.stop()
+        mutableStateUpdatedAtElapsedRealtimeMs.value = null
+        mutableRuntimeLifecycle.value = RuntimeLifecycleState.STOPPED
+    }
+
+    private fun startStateFreshnessMonitor() {
+        stateFreshnessJob?.cancel()
+        mutableStateUpdatedAtElapsedRealtimeMs.value = null
+        stateFreshnessJob = scope.launch {
+            state.drop(1).collect {
+                mutableStateUpdatedAtElapsedRealtimeMs.value = SystemClock.elapsedRealtime()
+            }
+        }
     }
 
     private fun applyRuntimeComponentPolicy(context: Context?) {

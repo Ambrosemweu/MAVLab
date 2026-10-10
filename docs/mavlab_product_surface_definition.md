@@ -192,15 +192,17 @@ Systems can return in a future version when it has a sharper purpose, for exampl
 
 **Current code:**
 
-- `mavlab-android/app/src/main/java/com/ascend/mavlab/feature/dashboard/DashboardScreen.kt`
-- Navigation label is already `Cockpit`, but file/class still says `DashboardScreen`.
+- `mavlab-android/app/src/main/java/com/ascend/mavlab/feature/dashboard/CockpitScreen.kt`
+- `mavlab-android/app/src/main/java/com/ascend/mavlab/feature/dashboard/CockpitUiState.kt`
 
-**Needed cleanup:**
+**Implemented working-tree direction:**
 
-- Add a clear `Control: Controller / GCS Mission / GCS Direct / Idle` telemetry card.
-- Add `GCS: Connected / Listening / Last packet ...` status.
-- Rename `DashboardScreen` package/file to `CockpitScreen` later, after the UX is stable.
-- Keep Cockpit lightweight and glanceable.
+- Authority, flight mode, and vehicle state are distinct in the first viewport.
+- QGC peer state remains separate from control authority.
+- The Arm/Disarm toggle and SIM remain in the main dock; contextual flight/recovery actions appear in the task card.
+- The grounded instrument offers a labelled phone-attitude preview; flight attitude and all telemetry use the engine.
+- Stale or unavailable state locks flight actions and routes to Ops.
+- Charts and engineering detail are collapsed and sample only while visible.
 
 **Acceptance test:**
 
@@ -713,7 +715,7 @@ The user-facing nav has pivoted, but internal code names still reflect the old a
 
 | User tab | Current implementation name | Desired later name |
 | --- | --- | --- |
-| Cockpit | `DashboardScreen` | `CockpitScreen` |
+| Cockpit | `CockpitScreen` | complete |
 | Controller | `ControllerScreen` | `ControllerScreen` |
 | SIM | `Drone3DScreen` | `SIMScreen` |
 | Ops | `SettingsScreen` | `OpsScreen` |

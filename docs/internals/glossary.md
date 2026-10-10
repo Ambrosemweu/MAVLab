@@ -48,6 +48,10 @@ Last verified: 2026-08-31
 
 **DroneState** — authoritative vehicle-state snapshot published by the physics engine.
 
+**Data freshness** — whether the latest authoritative runtime state is live, delayed, stale, or unavailable. Freshness describes trust in displayed values, not MAVLink peer connectivity.
+
+**Cockpit flight phase** — UI-facing presentation derived conservatively from authoritative armed state, mode, altitude, vertical speed, and session evidence until the engine publishes an explicit phase contract.
+
 **AGL** — altitude above ground level.
 
 **MSL** — altitude relative to mean sea level.

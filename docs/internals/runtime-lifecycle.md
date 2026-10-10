@@ -13,6 +13,8 @@ This document explains when MAVLab keeps the on-phone runtime alive and when it 
 - `BackgroundRuntimePolicy` decides whether background execution is retained.
 - `AppRuntime` owns simulation and supporting components.
 
+`AppRuntime.runtimeLifecycle` publishes `STARTING`, `RUNNING`, `STOPPING`, `STOPPED`, or `ERROR` for UI state. `stateUpdatedAtElapsedRealtimeMs` records the latest engine-state emission using Android elapsed realtime. These are runtime/freshness signals; neither replaces MAVLink connection status or control authority.
+
 ## Intended model
 
 ```text
@@ -57,6 +59,7 @@ Deliberate shutdown wins over retention conditions. Notification Stop and explic
 5. Keep motor audio synchronized with authoritative simulation state for the full retained runtime.
 6. Timing or retention changes require policy tests and user-doc review.
 7. Manifest foreground-service declarations must match actual use.
+8. A stopped, unavailable, or stale runtime must not present default telemetry as live state.
 
 ## Evidence
 

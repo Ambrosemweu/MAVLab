@@ -71,7 +71,7 @@ Compose surfaces observe these states. They must not maintain a separate fake si
 | Mission | What mission is loaded and progressing? | `feature/mission` |
 | Ops | Is the runtime healthy and configurable? | `feature/settings`, failures, logs |
 
-Implementation names such as `DashboardScreen` and `SettingsScreen` may lag product labels. Documentation uses product labels and links current source names.
+`CockpitScreen` now matches the product label. Remaining implementation names such as `SettingsScreen` may still lag product labels; documentation uses product labels and links current source names.
 
 ## Cross-cutting invariants
 

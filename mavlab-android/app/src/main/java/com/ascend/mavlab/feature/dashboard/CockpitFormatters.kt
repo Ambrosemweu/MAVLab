@@ -1,10 +1,7 @@
 package com.ascend.mavlab.feature.dashboard
 
 import com.ascend.mavlab.core.mavlink.MavlinkIdentityStatus
-import com.ascend.mavlab.core.sensors.OrientationSource
-import com.ascend.mavlab.simulation.engine.ControlAuthority
 import com.ascend.mavlab.simulation.engine.DroneState
-import com.ascend.mavlab.simulation.engine.FlightMode
 import com.ascend.mavlab.simulation.mission.MissionCommand
 import com.ascend.mavlab.simulation.mission.MissionProgress
 import kotlin.math.sqrt
@@ -57,25 +54,6 @@ internal fun missionProgressLabel(mission: MissionProgress): String {
     } else {
         "No route"
     }
-}
-
-internal fun shouldUsePhoneAttitudeForCockpit(
-    sensorSource: OrientationSource,
-    state: DroneState,
-    mission: MissionProgress,
-): Boolean {
-    return sensorSource != OrientationSource.Unavailable && !missionIsOngoing(state, mission)
-}
-
-private fun missionIsOngoing(
-    state: DroneState,
-    mission: MissionProgress,
-): Boolean {
-    return mission.loaded &&
-        !mission.complete &&
-        state.armed &&
-        state.mode == FlightMode.AUTO &&
-        state.controlAuthority == ControlAuthority.GCS_MISSION
 }
 
 internal fun distanceFromHomeMeters(state: DroneState): Float {

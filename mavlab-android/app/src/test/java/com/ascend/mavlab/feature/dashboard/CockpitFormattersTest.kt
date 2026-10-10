@@ -1,17 +1,12 @@
 package com.ascend.mavlab.feature.dashboard
 
 import com.ascend.mavlab.core.mavlink.MavlinkIdentityStatus
-import com.ascend.mavlab.core.sensors.OrientationSource
-import com.ascend.mavlab.simulation.engine.ControlAuthority
 import com.ascend.mavlab.simulation.engine.DroneState
-import com.ascend.mavlab.simulation.engine.FlightMode
 import com.ascend.mavlab.simulation.mission.MissionCommand
 import com.ascend.mavlab.simulation.mission.MissionItem
 import com.ascend.mavlab.simulation.mission.MissionProgress
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class CockpitFormattersTest {
     @Test
@@ -69,47 +64,6 @@ class CockpitFormattersTest {
 
         assertEquals(5f, distanceFromHomeMeters(state))
         assertEquals("5.0 m", distanceFromHomeLabel(state))
-    }
-
-    @Test
-    fun cockpitPhoneAttitudeRequiresAvailableSensorsAndNoOngoingMission() {
-        val loadedMission = MissionProgress(
-            items = listOf(missionItem(0, MissionCommand.WAYPOINT)),
-            complete = false,
-        )
-
-        assertTrue(
-            shouldUsePhoneAttitudeForCockpit(
-                OrientationSource.RotationVector,
-                DroneState(),
-                MissionProgress(),
-            ),
-        )
-        assertFalse(
-            shouldUsePhoneAttitudeForCockpit(
-                OrientationSource.Unavailable,
-                DroneState(),
-                MissionProgress(),
-            ),
-        )
-        assertTrue(
-            shouldUsePhoneAttitudeForCockpit(
-                OrientationSource.RotationVector,
-                DroneState(mode = FlightMode.STABILIZE, armed = false),
-                loadedMission,
-            ),
-        )
-        assertFalse(
-            shouldUsePhoneAttitudeForCockpit(
-                OrientationSource.RotationVector,
-                DroneState(
-                    armed = true,
-                    mode = FlightMode.AUTO,
-                    controlAuthority = ControlAuthority.GCS_MISSION,
-                ),
-                loadedMission,
-            ),
-        )
     }
 
     private fun missionItem(sequence: Int, command: MissionCommand): MissionItem {
