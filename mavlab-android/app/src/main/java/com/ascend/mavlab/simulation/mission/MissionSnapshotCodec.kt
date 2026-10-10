@@ -18,6 +18,7 @@ object MissionSnapshotCodec {
                         item.localNorthMeters?.toString().orEmpty(),
                         item.localEastMeters?.toString().orEmpty(),
                         item.speedMetersPerSecond?.toString().orEmpty(),
+                        item.altitudeIsMsl.toString(),
                     ).joinToString(FieldSeparator),
                 )
             }
@@ -30,7 +31,7 @@ object MissionSnapshotCodec {
             ?.filter { it.isNotBlank() }
             ?.toList()
             ?: return emptyList()
-        if (lines.firstOrNull() != Version) return emptyList()
+        if (lines.firstOrNull() !in setOf(Version, LegacyVersion)) return emptyList()
 
         return runCatching {
             lines.drop(1).map { line ->
@@ -47,13 +48,15 @@ object MissionSnapshotCodec {
                     localNorthMeters = fields[7].toFloatOrNull(),
                     localEastMeters = fields[8].toFloatOrNull(),
                     speedMetersPerSecond = fields.getOrNull(9)?.toFloatOrNull(),
+                    altitudeIsMsl = fields.getOrNull(10)?.toBooleanStrictOrNull() ?: false,
                 )
             }
         }.getOrElse { emptyList() }
     }
 
-    private const val Version = "MAVLAB_MISSION_V1"
+    private const val Version = "MAVLAB_MISSION_V2"
+    private const val LegacyVersion = "MAVLAB_MISSION_V1"
     private const val FieldSeparator = "\t"
     private const val LegacyFieldCount = 9
-    private const val FieldCount = 10
+    private const val FieldCount = 11
 }

@@ -23,9 +23,9 @@ Altitude, speed, battery, GPS, task progress, and warning state come from the au
 
 The main buttons are the arm/disarm toggle and `SIM`. The toggle shows `Arm` while disarmed and `Disarm` while armed, so its label describes the next action. Arming is disabled while external control has authority or when current state does not permit arming. Both directions are disabled if runtime state is unavailable or stale. SIM opens the digital twin view.
 
-State-specific actions remain in the task card, including Takeoff, Land, Disarm, Open Controller, View Mission, and Open Ops. The vehicle truth strip always shows the current armed state.
+State-specific actions remain in the task card, including Takeoff, Land, Disarm, Open Control, Mission controls, and Open Ops. The vehicle truth strip always shows the current armed state.
 
-With Phone Sensors selected, a new local arm restores manual sensor control. Local Takeoff uses altitude hold while retaining phone attitude steering, including after switching directly to SIM. See [Controller](controller.md) for this canonical control flow.
+With Phone Sensors selected, a new local arm restores manual sensor control. Local Takeoff uses altitude hold while retaining phone attitude steering, including after switching directly to SIM. See [Control](controller.md) for this canonical control flow.
 
 If GCS Direct or GCS Mission has authority, `Take control & land` requires confirmation. Confirming it deliberately changes authority to Controller and commands LAND. Dismissing the dialog preserves external control.
 
@@ -37,7 +37,7 @@ Cockpit labels late state as delayed and shows the update age. If authoritative 
 
 ## Telemetry and details
 
-Charts, motor RPM, protocol messages, exact mission upload status, recording location, and other engineering details are collapsed under `Telemetry & details`.
+Charts, motor RPM, protocol messages, recording location, and other engineering details are collapsed under `Telemetry & details`.
 
 - **Flight telemetry** combines altitude, roll, pitch, and yaw in one graph with a shared time axis. Each labelled line key shows its latest sampled value.
 - **Altitude AGL** uses the amber solid line and the **left metre scale**, with ground at zero.
@@ -45,3 +45,7 @@ Charts, motor RPM, protocol messages, exact mission upload status, recording loc
 - Both vertical scales are labelled with their units and adjust independently; line heights should be read against the appropriate scale. The horizontal axis runs from `10 s ago` to `Now`; a short history fills from the right as samples arrive.
 
 The graph shows authoritative simulated-vehicle telemetry, including on the ground where the main instrument may preview phone attitude. It samples four times per second only while this section is open, retains ten seconds, and starts a fresh window when reopened.
+
+## Contextual missions
+
+Mission awareness is compact: a received-source label and progress/state, with a link into expanded mission controls or a current recovery action. Cockpit has no waypoint list or standalone Mission destination. Rejected uploads and unknown saved sources are shown as blocked; exact diagnostics live in [Ops](ops.md). A successful upload does not mean AUTO is running.

@@ -7,6 +7,7 @@ import com.ascend.mavlab.simulation.engine.ControlAuthority
 import com.ascend.mavlab.simulation.engine.DroneState
 import com.ascend.mavlab.simulation.engine.FlightMode
 import com.ascend.mavlab.simulation.failures.FailureState
+import com.ascend.mavlab.feature.mission.deriveMissionUiState
 import com.ascend.mavlab.simulation.mission.MissionProgress
 import com.ascend.mavlab.simulation.mission.MissionUploadPhase
 import com.ascend.mavlab.simulation.mission.MissionUploadStatus
@@ -70,6 +71,7 @@ internal data class CockpitTaskPresentation(
     val detail: String,
     val trailing: String,
     val progress: Float? = null,
+    val compactMission: Boolean = false,
 )
 
 internal data class CockpitUiState(
@@ -128,6 +130,8 @@ internal fun deriveCockpitUiState(
         identity = identity,
         flightPhase = flightPhase,
         controllerInputMode = controllerInputMode,
+        failures = failures,
+        live = freshness in setOf(CockpitDataFreshness.LIVE, CockpitDataFreshness.DELAYED),
     )
     val actions = resolveCockpitActions(
         state = state,
@@ -162,7 +166,12 @@ internal fun deriveCockpitUiState(
                     )),
         ),
         secondaryAction = CockpitActionSpec(CockpitAction.OPEN_SIM, "SIM"),
-        taskActions = listOfNotNull(actions.first, actions.second).filter {
+        taskActions = if (task.compactMission) listOf(actionSpec(when {
+            freshness !in setOf(CockpitDataFreshness.LIVE, CockpitDataFreshness.DELAYED) -> CockpitAction.OPEN_OPS
+            alert?.severity == CockpitAlertSeverity.CRITICAL && alert.recoveryAction != null -> alert.recoveryAction
+            state.armed && state.controlAuthority == ControlAuthority.GCS_MISSION -> CockpitAction.TAKE_CONTROL_AND_LAND
+            else -> CockpitAction.OPEN_MISSION
+        })) else listOfNotNull(actions.first, actions.second).filter {
             it.action != CockpitAction.ARM && it.action != CockpitAction.OPEN_SIM
         },
         systemStatus = when {
@@ -356,6 +365,8 @@ private fun resolveCockpitTask(
     identity: MavlinkIdentityStatus,
     flightPhase: CockpitFlightPhase,
     controllerInputMode: ControllerInputMode,
+    failures: FailureState,
+    live: Boolean,
 ): CockpitTaskPresentation {
     if (flightPhase == CockpitFlightPhase.FLIGHT_COMPLETE) {
         val session = recording.lastSession
@@ -364,6 +375,15 @@ private fun resolveCockpitTask(
             detail = session?.let { "Session ${it.id} saved locally" } ?: "Session saved locally",
             trailing = "LOG SAVED",
             progress = 1f,
+        )
+    }
+    val missionUi = deriveMissionUiState(state, mission, uploadStatus, failures, live)
+    if (missionUi.visible && state.mode != FlightMode.LAND && state.mode != FlightMode.RTL) {
+        return CockpitTaskPresentation(
+            title = if (mission.received) "GCS Mission" else "Mission",
+            detail = missionUi.summary,
+            trailing = missionUi.phase.label,
+            compactMission = true,
         )
     }
     if (state.mode == FlightMode.LAND || flightPhase == CockpitFlightPhase.LANDING) {
@@ -390,18 +410,6 @@ private fun resolveCockpitTask(
             trailing = "LOITER",
         )
     }
-    val missionActive = mission.loaded && !mission.complete &&
-        state.mode == FlightMode.AUTO && state.controlAuthority == ControlAuthority.GCS_MISSION
-    if (missionActive) {
-        val current = mission.activeTarget?.sequence?.plus(1) ?: (mission.currentIndex + 1)
-        val total = mission.items.size.coerceAtLeast(1)
-        return CockpitTaskPresentation(
-            title = "WP $current of $total · Active",
-            detail = missionFocusLabel(mission),
-            trailing = "AUTO · GCS MISSION",
-            progress = (mission.completedCount.toFloat() / total).coerceIn(0f, 1f),
-        )
-    }
     if (state.controlAuthority == ControlAuthority.GCS_DIRECT) {
         return CockpitTaskPresentation(
             title = "GCS direct control",
@@ -411,16 +419,9 @@ private fun resolveCockpitTask(
     }
     if (state.controlAuthority == ControlAuthority.CONTROLLER) {
         return CockpitTaskPresentation(
-            title = if (state.armed) "${controllerInputMode.label} active" else "Controller ready",
+            title = if (state.armed) "${controllerInputMode.label} active" else "Control ready",
             detail = if (state.armed) "Local input is accepted by the simulation engine" else "Arm when the control path is ready",
             trailing = "AUTH · CONTROLLER",
-        )
-    }
-    if (mission.loaded && (uploadStatus.phase == MissionUploadPhase.ACCEPTED || !mission.complete)) {
-        return CockpitTaskPresentation(
-            title = "Mission accepted · not running",
-            detail = "${mission.items.size} items loaded into the simulated vehicle",
-            trailing = "MISSION READY",
         )
     }
     return CockpitTaskPresentation(
@@ -513,8 +514,8 @@ private fun actionSpec(action: CockpitAction): CockpitActionSpec {
         CockpitAction.TAKEOFF -> "Takeoff"
         CockpitAction.LAND -> "Land"
         CockpitAction.TAKE_CONTROL_AND_LAND -> "Take control & land"
-        CockpitAction.OPEN_CONTROLLER -> "Open Controller"
-        CockpitAction.OPEN_MISSION -> "View Mission"
+        CockpitAction.OPEN_CONTROLLER -> "Open Control"
+        CockpitAction.OPEN_MISSION -> "Mission controls"
         CockpitAction.OPEN_SIM -> "Open SIM"
         CockpitAction.OPEN_OPS -> "Open Ops"
         CockpitAction.REVIEW_FLIGHT -> "Review flight"

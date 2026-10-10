@@ -19,6 +19,7 @@ data class MissionItem(
     val localNorthMeters: Float? = null,
     val localEastMeters: Float? = null,
     val speedMetersPerSecond: Float? = null,
+    val altitudeIsMsl: Boolean = false,
 )
 
 enum class MissionCommand(val mavCmdId: Int) {
@@ -52,7 +53,13 @@ data class MissionProgress(
     val complete: Boolean = true,
     val lastReachedSequence: Int? = null,
     val activeTarget: MissionItem? = null,
+    val origin: MissionOrigin = MissionOrigin.UNVERIFIED,
+    val executionStarted: Boolean = false,
 ) {
     val loaded: Boolean get() = items.isNotEmpty()
+    val received: Boolean get() = loaded && origin == MissionOrigin.GCS_UPLOAD
     val completedCount: Int get() = if (complete) items.size else currentIndex.coerceAtMost(items.size)
 }
+
+/** Provenance belongs to the authoritative mission, including after process restoration. */
+enum class MissionOrigin { GCS_UPLOAD, UNVERIFIED, INTERNAL_FIXTURE }

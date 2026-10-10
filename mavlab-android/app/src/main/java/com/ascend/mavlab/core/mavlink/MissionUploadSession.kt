@@ -45,7 +45,7 @@ class MissionUploadSession(
         }
 
         fun parseMissionItemInt(packet: MavlinkPacket): MissionItem? {
-            if (packet.payload.size < 37) return null
+            if (missionItemRejection(packet) != null) return null
             val latitudeDeg = packet.payload.leInt32(16) / 1e7
             val longitudeDeg = packet.payload.leInt32(20) / 1e7
             return missionItem(
@@ -57,11 +57,12 @@ class MissionUploadSession(
                 acceptanceRadiusMeters = packet.payload.leFloat(4),
                 speedMetersPerSecond = packet.payload.leFloat(4),
                 autocontinue = packet.payload[36].toInt() != 0,
+                altitudeIsMsl = packet.payload[34].toInt() in listOf(0, 5),
             )
         }
 
         fun parseMissionItem(packet: MavlinkPacket): MissionItem? {
-            if (packet.payload.size < 37) return null
+            if (missionItemRejection(packet) != null) return null
             return missionItem(
                 sequence = packet.payload.leUInt16(28),
                 commandId = packet.payload.leUInt16(30),
@@ -71,6 +72,7 @@ class MissionUploadSession(
                 acceptanceRadiusMeters = packet.payload.leFloat(4),
                 speedMetersPerSecond = packet.payload.leFloat(4),
                 autocontinue = packet.payload[36].toInt() != 0,
+                altitudeIsMsl = packet.payload[34].toInt() in listOf(0, 5),
             )
         }
 
@@ -83,10 +85,11 @@ class MissionUploadSession(
             acceptanceRadiusMeters: Float,
             speedMetersPerSecond: Float,
             autocontinue: Boolean,
+            altitudeIsMsl: Boolean,
         ): MissionItem? {
-            val command = MissionCommand.fromMavCmdId(commandId)
+            val command = MissionCommand.entries.firstOrNull { it.mavCmdId == commandId } ?: return null
             if (command != MissionCommand.CHANGE_SPEED &&
-                (!latitudeDeg.isFinite() || !longitudeDeg.isFinite() || !altitudeAglMeters.isFinite())
+                (!latitudeDeg.isFinite() || !longitudeDeg.isFinite() || !altitudeAglMeters.isFinite() || latitudeDeg !in -90.0..90.0 || longitudeDeg !in -180.0..180.0)
             ) {
                 return null
             }
@@ -95,7 +98,8 @@ class MissionUploadSession(
                 command = command,
                 latitudeDeg = latitudeDeg.takeIf { it.isFinite() } ?: 0.0,
                 longitudeDeg = longitudeDeg.takeIf { it.isFinite() } ?: 0.0,
-                altitudeAglMeters = altitudeAglMeters.takeIf { it.isFinite() }?.coerceAtLeast(0f) ?: 0f,
+                altitudeAglMeters = altitudeAglMeters.takeIf { it.isFinite() }?.let { if (altitudeIsMsl) it else it.coerceAtLeast(0f) } ?: 0f,
+                altitudeIsMsl = altitudeIsMsl,
                 acceptanceRadiusMeters = acceptanceRadiusMeters
                     .takeIf { it.isFinite() && it > 0f }
                     ?: 2f,

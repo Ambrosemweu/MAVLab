@@ -33,7 +33,7 @@ It is not the same as flight mode, connection status, or armed state.
 
 Generic joystick/manual input must not be documented as automatically preempting active `GCS_MISSION` unless implementation and tests prove that transition. Explicit commands may follow different rules.
 
-Controller disables local manipulation while observed GCS mission/direct authority is active and explains the blocking state. Confirmed **Take control & land** calls the existing local Land command. The sensor acceptance rules are unchanged: Phone Sensors can follow a GCS_DIRECT command and reclaim Controller authority; the UI does not promise an external-direct lock. Custom Input and Direct RPM are now applied by AppRuntime rather than screen effects. GCS mission/direct authority suspends the Direct RPM override.
+Control disables local manipulation while observed GCS mission/direct authority is active and explains the blocking state. Confirmed **Take control & land** calls the existing local Land command. The sensor acceptance rules are unchanged: Phone Sensors can follow a GCS_DIRECT command and reclaim Controller authority; the UI does not promise an external-direct lock. Custom Input and Direct RPM are now applied by AppRuntime rather than screen effects. GCS mission/direct authority suspends the Direct RPM override.
 
 A GCS connection indicator is not itself an autopilot failsafe. Do not claim automatic RTL or safety-mode reversion on heartbeat loss unless implemented and tested.
 
@@ -41,4 +41,10 @@ A GCS connection indicator is not itself an autopilot failsafe. Do not claim aut
 
 Changes identify transitions for arm/disarm, local takeoff/land, GCS mode/direct command, mission upload/start/completion/cancel, manual input during mission, heartbeat expiry, failure injection, service stop, and reset.
 
-Primary source: `ControlAuthority.kt`, `PhysicsSimulationEngine.kt`, `AppRuntime.kt`, `MavlinkUdpServer.kt`, and the Cockpit/Controller/Mission surfaces. Focused tests should assert transitions rather than only labels.
+Primary source: `ControlAuthority.kt`, `PhysicsSimulationEngine.kt`, `AppRuntime.kt`, `MavlinkUdpServer.kt`, and the Cockpit/Control/SIM/Ops surfaces. Focused tests should assert transitions rather than only labels.
+
+## Contextual mission controls
+
+Control is the destination name; CONTROLLER remains the local authority. GCS Mission visibly replaces local input controls with a paused state. Local Start AUTO confirms and rechecks source, freshness and ground/navigation/reserve requirements before engine arm/AUTO. Take control & land remains the implemented reverse path; no pause/resume authority is introduced. Clear is guarded disarmed/outside upload. MAVLink direct commands keep their separate existing contract. See [ADR-0007](decisions/0007-contextual-missions.md).
+
+While disarmed under GCS Mission authority, **Take local control** is a confirmed return to manual STABILIZE through the existing engine mode command. Clearing route data does not silently change control authority; the action remains available even after the mission row disappears.

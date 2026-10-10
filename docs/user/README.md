@@ -21,10 +21,11 @@ User documents should:
 
 ## Product surfaces
 
-1. **[Cockpit](cockpit.md)** — live flight state, telemetry, control authority, and contextual recovery.
-2. **[Controller](controller.md)** — phone-sensor or manual flight input.
-3. **SIM** — 3D digital-twin view driven by simulation state.
-4. **Mission** — uploaded mission and progress visibility.
-5. **Ops** — connectivity, settings, failures, logs, and operational tools.
+The following surface guides describe the UI/UX feature branch. Published v1.5.3 retains its earlier navigation until this branch is merged and released.
 
-Lesson and Labs code may exist internally without being active primary navigation. User documentation follows the shipped UI, not an old plan.
+1. **[Cockpit](cockpit.md)** — live flight state, authority and contextual recovery.
+2. **[Control](controller.md)** — phone/manual input and conditional received-mission actions.
+3. **[SIM](sim.md)** — engine-driven 3D vehicle and received-route spatial view.
+4. **[Ops](ops.md)** — connectivity, upload evidence, failures, logs and setup.
+
+[Mission operation](mission.md) spans these surfaces; it is not a separate destination. Lesson and Labs code remains internal and is not active primary navigation.

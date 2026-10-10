@@ -527,6 +527,22 @@ private fun CockpitTaskCard(
     actions: List<CockpitActionSpec>,
     onAction: (CockpitAction) -> Unit,
 ) {
+    if (task.compactMission) {
+        ElevatedCard(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { onAction(CockpitAction.OPEN_MISSION) }, modifier = Modifier.weight(1f)) {
+                    Column(Modifier.fillMaxWidth()) {
+                        Text(task.title, style = MaterialTheme.typography.labelLarge, color = CockpitBlue)
+                        Text(task.detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                actions.filter { it.action != CockpitAction.OPEN_MISSION }.take(1).forEach { action ->
+                    TextButton(onClick = { onAction(action.action) }, enabled = action.enabled) { Text(action.label) }
+                }
+            }
+        }
+        return
+    }
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -635,7 +651,6 @@ private fun CockpitDetailCard(
         "Attitude" to "R ${degrees(state.rollRadians)} · P ${degrees(state.pitchRadians)} · Y ${degrees(state.yawRadians)}",
         "Home" to distanceFromHomeLabel(state),
         "Motors" to rpmSummary(state),
-        "Mission" to missionProgressLabel(mission),
         "Upload" to uploadStatus.displayText.removePrefix("Upload: "),
         "MAVLink" to "${mavlinkStatusLabel(mavlinkStatus, identityStatus)} · Vehicle SYSID $systemId",
         "Recording" to recording.displayText,

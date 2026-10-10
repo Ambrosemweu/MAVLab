@@ -11,7 +11,7 @@ class OnboardingPagesTest {
             listOf(
                 "What is MAVLab?",
                 "One shared runtime",
-                "Five surfaces, one drone",
+                "Four surfaces, one drone",
                 "Connect a ground station",
                 "Your first takeoff",
                 "Fly with phone tilt",
@@ -24,9 +24,10 @@ class OnboardingPagesTest {
     }
 
     @Test
-    fun surfacePageNamesTheFiveTabs() {
+    fun surfacePageNamesTheFourTabs() {
         val surfacePage = OnboardingPages.first { it.visual == OnboardingVisual.SurfaceGallery }
-        listOf("Cockpit", "Controller", "SIM", "Mission", "Ops").forEach { tab ->
+        assertTrue(!surfacePage.body.contains("Mission"))
+        listOf("Cockpit", "Control", "SIM", "Ops").forEach { tab ->
             assertTrue(surfacePage.body.contains(tab), "Missing tab name: $tab")
         }
     }

@@ -6,6 +6,8 @@ import java.nio.ByteOrder
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.test.assertNotNull
 
 class MissionUploadSessionTest {
@@ -110,6 +112,26 @@ class MissionUploadSessionTest {
         )
 
         assertEquals(true, session.expired)
+    }
+
+    @Test
+    fun unknownCommandsAndFramesAreRejectedWithExactEvidence() {
+        val unknown = missionItemIntPacket(sequence = 2, commandId = 999)
+        assertNull(MissionUploadSession.parseMissionItemInt(unknown))
+        assertEquals(3, missionItemRejection(unknown)?.ack)
+        assertTrue(missionItemRejection(unknown)!!.reason.contains("999 at sequence 2"))
+        val localFrame = missionItemIntPacket(sequence = 1).let { it.copy(payload = it.payload.copyOf().apply { this[34] = 1 }) }
+        assertNull(MissionUploadSession.parseMissionItemInt(localFrame))
+        assertEquals(2, missionItemRejection(localFrame)?.ack)
+        assertTrue(missionItemRejection(localFrame)!!.reason.contains("frame 1"))
+    }
+
+    @Test
+    fun mslFrameIsRetainedForEngineBoundaryConversion() {
+        val packet = missionItemIntPacket(1, altitudeMeters = 1610f).let { it.copy(payload = it.payload.copyOf().apply { this[34] = 0 }) }
+        val item = assertNotNull(MissionUploadSession.parseMissionItemInt(packet))
+        assertTrue(item.altitudeIsMsl)
+        assertEquals(1610f, item.altitudeAglMeters)
     }
 
     private fun missionCountPayload(count: Int): ByteArray {

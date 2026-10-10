@@ -42,7 +42,7 @@ https://github.com/user-attachments/assets/1b7cdebd-bcb9-48b3-9dc3-ca9344e6c6aa
 - **Diagnostics Dashboard (Cockpit):** Live telemetry panels and rolling real-time graphs charting altitude, roll, pitch, and yaw.
 - **Multi-Mode Control Surface:** Interactive dual joysticks or phone accelerometer tilt control.
 - **3D Digital Twin View (SIM):** Live 3D rendering of the drone's position, attitude, and propeller speeds utilizing a bundled GLB model.
-- **Waypoint Mission Execution:** Full autonomous mission upload, track plotting, active waypoint navigation, and Guided waypoint offsets.
+- **Mission Operation:** GCS upload, engine-driven waypoint navigation and Guided offsets, with explicit partial/unsupported behavior in the [MAVLink contract](docs/internals/mavlink-contract.md).
 - **MAVLink UDP Protocol Server:** Interoperable with QGroundControl, supporting heartbeats, position/attitude streams, parameter downloads, mission synchronization, GCS-commanded home position, COMMAND_INT, and simultaneous multi-GCS telemetry.
 - **Failure Labs Scenarios:** Test Operator recovery under failure scenarios:
   - GPS Loss, GPS Drift, Compass Loss, and Barometer offset failures.
@@ -115,3 +115,5 @@ Documentation is organized by audience and purpose:
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
+
+The UI/UX feature branch uses **Cockpit · Control · SIM · Ops**. Missions are contextual: concise Cockpit awareness, expandable Control actions, received-route geometry in SIM, and upload evidence in Ops. See [surface responsibilities](docs/mavlab_product_surface_definition.md). This branch layout is not yet a published release.

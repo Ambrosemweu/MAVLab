@@ -9,6 +9,19 @@ import kotlin.test.assertTrue
 
 class MissionEngineTest {
     @Test
+    fun resetRetainsReceivedSourceAndClearsExecutionHistory() {
+        val engine = MissionEngine()
+        engine.load(listOf(missionItem(0)), com.ascend.mavlab.simulation.mission.MissionOrigin.GCS_UPLOAD)
+        engine.update(com.ascend.mavlab.simulation.engine.DroneState())
+        assertTrue(engine.progress.value.executionStarted)
+        engine.reset()
+        assertTrue(engine.progress.value.received)
+        assertFalse(engine.progress.value.executionStarted)
+        engine.clear()
+        assertFalse(engine.progress.value.received)
+    }
+
+    @Test
     fun setCurrentSelectsExistingMissionSequence() {
         val engine = MissionEngine()
         engine.load(

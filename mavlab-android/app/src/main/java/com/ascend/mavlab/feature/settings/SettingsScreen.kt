@@ -62,6 +62,8 @@ import com.ascend.mavlab.simulation.failures.FailureScenarios
 import com.ascend.mavlab.simulation.failures.FailureSeverity
 import com.ascend.mavlab.simulation.failures.FailureState
 import com.ascend.mavlab.simulation.mission.MissionProgress
+import com.ascend.mavlab.simulation.mission.MissionUploadPhase
+import com.ascend.mavlab.feature.mission.missionLimitations
 import com.ascend.mavlab.simulation.recording.FlightRecordingStatus
 import com.ascend.mavlab.simulation.recording.FlightSession
 import java.time.Instant
@@ -100,7 +102,7 @@ fun SettingsScreen(
             )
             InfoCard(
                 title = "About MAVLab",
-                body = "MAVLab by Ascend Labs is a phone-based drone digital twin and training platform. Cockpit is live operations, Controller is local/manual control, Mission is autonomous route execution, SIM is physical behavior visualization, and Ops is diagnostics, logs, export, and setup.",
+                body = "MAVLab by Ascend Labs is a phone-based drone digital twin and training platform. Cockpit shows live operations, Control owns local inputs and mission actions, SIM shows the simulated vehicle and received route, and Ops holds diagnostics, logs, export, and setup.",
             )
             Button(
                 onClick = onReplayOnboarding,
@@ -112,6 +114,24 @@ fun SettingsScreen(
                 connected = gcsConnected,
                 identityStatus = identityStatus,
             )
+            if (mission.loaded || uploadStatus.phase != MissionUploadPhase.IDLE) {
+                InfoCard(
+                    title = "Mission upload diagnostics",
+                    body = buildString {
+                        append(uploadStatus.displayText)
+                        append("\nStored source: ${mission.origin}")
+                        append("\nLoaded items: ${mission.items.size}")
+                        append("\nExpected / received: ${uploadStatus.expectedCount} / ${uploadStatus.receivedCount}")
+                        append("\nLast requested sequence (zero-based): ${uploadStatus.lastRequestedSequence ?: "none"}")
+                        append("\nLast received sequence (zero-based): ${uploadStatus.lastReceivedSequence ?: "none"}")
+                        uploadStatus.lastError?.let { append("\nRejection: $it") }
+                        if (mission.loaded && !mission.received) append("\nSaved source is unknown. Re-upload from QGC before displaying or starting this route. Saved items are retained until cleared.")
+                        if (mission.received) append("\nReceived mission retained. An accepted upload is not proof of AUTO execution.")
+                        if (mission.received && uploadStatus.phase == MissionUploadPhase.IDLE) append("\nRestored from storage; no upload ACK occurred in this process.")
+                        missionLimitations(mission).forEach { append("\nPartial behavior: $it") }
+                    },
+                )
+            }
             SimLocationCard(
                 state = state,
                 mission = mission,
@@ -135,7 +155,7 @@ fun SettingsScreen(
             )
             InfoCard(
                 title = "GCS diagnostics",
-                body = "Last inbound: ${state.lastInboundMessage}\nLast ACK: ${state.lastAck}\n${uploadStatus.displayText}\nMission: ${mission.items.size} items, active ${mission.activeTarget?.sequence?.plus(1) ?: "none"}",
+                body = "Last inbound: ${state.lastInboundMessage}\nLast ACK: ${state.lastAck}",
             )
             FailureOpsCatalog(failures = failures)
             FlightLogSection(recording = recording)
@@ -145,7 +165,7 @@ fun SettingsScreen(
             )
             InfoCard(
                 title = "Release QA",
-                body = "Run onboarding, QGC discovery, mission upload, demo mission, GPS loss, and same-device QGC connection before tagging a release.",
+                body = "Run onboarding, QGC discovery, received mission execution, GPS loss, and same-device QGC connection before tagging a release.",
             )
         }
     }

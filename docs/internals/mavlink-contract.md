@@ -60,3 +60,11 @@ Validate upload count/sequence, item decoding, ACK behavior, engine loading, mis
 MAVLab exposes a simulated vehicle. Protocol compatibility does not certify real-aircraft control, ArduPilot firmware equivalence, or safe hardware operation.
 
 Primary evidence: `MavlinkUdpServer.kt`, `MavlinkMessageBuilder.kt`, `MavlinkIdentityStatus.kt`, `ArduPilotCompatibilityProfile.kt`, focused tests, and versioned records under `docs/validation/results/`.
+
+## Mission consolidation boundary changes (UI/UX branch)
+
+- Upload completion records GCS source; persisted restoration is not a new upload ACK. AUTO mission progress requires an armed autopilot; mode/ACK alone does not establish execution.
+- Unknown mission command IDs are rejected with UNSUPPORTED (3). Unsupported frames are rejected with UNSUPPORTED_FRAME (2); diagnostics name command/frame/zero-based sequence. Invalid values retain INVALID (5). Accepted command IDs are 16, 22, 21, 20, 19 and 178. An unsuccessful replacement does not remove the previous loaded mission.
+- Navigation coordinates accept geographic GLOBAL / GLOBAL_INT (0/5, MSL) or GLOBAL_RELATIVE_ALT / INT (3/6, home-relative metres). Frame MISSION (2) accepts only CHANGE_SPEED or RTL. Local/body/terrain frames are rejected; no terrain model is implemented. Raw MSL altitude converts to AGL at engine load using current simulation ground MSL. Flat simulation ground makes relative-home altitude equal AGL. See [MAVLink frame definitions](https://mavlink.io/en/messages/common.html#MAV_FRAME) and [mission results](https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT).
+- LOITER_TIME is **partial**: arrival is implemented, timed dwell is not. autocontinue=false is an **accepted no-op for pausing**: the engine still advances on arrival. These limitations appear in Ops and affected navigation nodes are hollow in SIM. CHANGE_SPEED retains the existing speed handling and has no spatial node.
+- Local Control's Start AUTO/Clear use guarded application actions; this does not redefine external mission start/clear ACKs, add pause/resume support, or advertise new capabilities. Live QGC upload/rejection/start/land interoperability needs separate evidence.

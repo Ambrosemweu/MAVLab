@@ -1,5 +1,6 @@
 package com.ascend.mavlab.simulation.engine
 
+import com.ascend.mavlab.simulation.mission.MissionOrigin
 import com.ascend.mavlab.simulation.autopilot.Autopilot
 import com.ascend.mavlab.simulation.autopilot.MissionEngine
 import com.ascend.mavlab.simulation.autopilot.PilotInput
@@ -332,14 +333,14 @@ class PhysicsSimulationEngine(
         noteAck("GUIDED OFFSET")
     }
 
-    fun loadMission(items: List<MissionItem>) {
+    fun loadMission(items: List<MissionItem>, origin: MissionOrigin = MissionOrigin.INTERNAL_FIXTURE) {
         val current = mutableState.value
         val sorted = items.sortedBy { it.sequence }
         val homeMarker = sorted.takeIf { isQgcHomeMarker(it) }?.firstOrNull()
         val returnAltitude = sorted
             .filterNot { it == homeMarker }
             .filter { it.command == com.ascend.mavlab.simulation.mission.MissionCommand.TAKEOFF || it.command == com.ascend.mavlab.simulation.mission.MissionCommand.WAYPOINT }
-            .map { it.altitudeAglMeters }
+            .map { if (it.altitudeIsMsl) it.altitudeAglMeters - (current.altitudeMslMeters - current.altitudeAglMeters) else it.altitudeAglMeters }
             .filter { it.isFinite() && it > 0f }
             .maxOrNull()
             ?: current.altitudeAglMeters.coerceAtLeast(0f)
@@ -361,17 +362,18 @@ class PhysicsSimulationEngine(
             val altitude = if (rtlHome && item.altitudeAglMeters <= 0f) {
                 returnAltitude.coerceAtLeast(MinimumAirborneReturnAltitudeMeters)
             } else {
-                item.altitudeAglMeters
+                if (item.altitudeIsMsl) (item.altitudeAglMeters - (current.altitudeMslMeters - current.altitudeAglMeters)).coerceAtLeast(0f) else item.altitudeAglMeters
             }
             item.copy(
                 latitudeDeg = lat,
                 longitudeDeg = lon,
                 altitudeAglMeters = altitude,
+                altitudeIsMsl = false,
                 localNorthMeters = current.northMeters + ((lat - current.latitudeDeg) * METERS_PER_LAT_DEG).toFloat(),
                 localEastMeters = current.eastMeters + ((lon - current.longitudeDeg) * lonMetersPerDeg(current)).toFloat(),
             )
         }
-        missionEngine.load(sanitized)
+        missionEngine.load(sanitized, origin)
         missionEngine.progress.value.activeTarget?.let { autopilot.setTargetAltitude(it.altitudeAglMeters) }
         noteAck("MISSION ${items.size}")
     }
@@ -401,19 +403,28 @@ class PhysicsSimulationEngine(
     }
 
     fun acceptMissionUpload(count: Int, lastReceivedSequence: Int? = null) {
+        val previous = mutableMissionUploadStatus.value
         mutableMissionUploadStatus.value = MissionUploadStatus(
             phase = MissionUploadPhase.ACCEPTED,
             expectedCount = count,
             receivedCount = count,
+            lastRequestedSequence = previous.lastRequestedSequence.takeIf {
+                previous.phase == MissionUploadPhase.UPLOADING && previous.expectedCount == count
+            },
             lastReceivedSequence = lastReceivedSequence,
         )
     }
 
     fun rejectMissionUpload(reason: String, expectedCount: Int = 0, receivedCount: Int = 0) {
+        val previous = mutableMissionUploadStatus.value.takeIf {
+            it.phase == MissionUploadPhase.UPLOADING && it.expectedCount == expectedCount
+        }
         mutableMissionUploadStatus.value = MissionUploadStatus(
             phase = MissionUploadPhase.REJECTED,
             expectedCount = expectedCount,
             receivedCount = receivedCount,
+            lastRequestedSequence = previous?.lastRequestedSequence,
+            lastReceivedSequence = previous?.lastReceivedSequence,
             lastError = reason,
         )
     }
@@ -549,6 +560,7 @@ class PhysicsSimulationEngine(
     }
 
     private fun activePilotInput(state: DroneState, dt: Float): PilotInput {
+        if (autopilot.mode == FlightMode.AUTO && !autopilot.armed) return PilotInput(throttle = 0f)
         return when {
             !state.armed -> PilotInput(throttle = 0f)
             autopilot.mode == FlightMode.LOITER -> {

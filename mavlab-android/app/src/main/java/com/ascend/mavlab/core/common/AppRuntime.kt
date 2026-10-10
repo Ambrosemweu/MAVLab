@@ -1,5 +1,8 @@
 package com.ascend.mavlab.core.common
 
+import com.ascend.mavlab.simulation.mission.missionActionPolicy
+import com.ascend.mavlab.simulation.mission.MissionActionPolicy
+import com.ascend.mavlab.simulation.mission.MissionOrigin
 import android.content.Context
 import android.hardware.SensorManager
 import android.os.SystemClock
@@ -122,7 +125,7 @@ object AppRuntime {
                     simLoop = simLoop,
                     config = MavlinkSocketConfig(systemId = id),
                     onMissionLoaded = { items ->
-                        MissionPersistence.save(appContext, items)
+                        MissionPersistence.save(appContext, items, MissionOrigin.GCS_UPLOAD)
                         recordFailureEvent("mission_upload", "${items.size} items uploaded")
                     },
                     onMissionCleared = {
@@ -582,22 +585,34 @@ object AppRuntime {
 
     fun loadDemoMission() {
         simLoop.loadDemoMission()
-        applicationContext?.let { MissionPersistence.save(it, simLoop.missionProgress.value.items) }
     }
 
-    fun clearMission() {
+    fun clearMission(): Boolean {
+        if (!localMissionPolicy().canClear) return false
         simLoop.clearMission()
         applicationContext?.let { MissionPersistence.clear(it) }
+        return true
     }
 
-    fun startAutoMission() {
+    fun startAutoMission(): Boolean {
         applicationContext?.let { restorePersistedMission(it) }
-        if (!simLoop.missionProgress.value.loaded) {
-            simLoop.noteAck("MISSION_START NO MISSION")
-            return
+        val policy = localMissionPolicy()
+        if (!policy.canStart) {
+            simLoop.noteAck("LOCAL AUTO BLOCKED: ${policy.startBlockedReason}")
+            return false
         }
         simLoop.setArmed(true, ControlAuthority.GCS_MISSION)
         simLoop.setMode(FlightMode.AUTO, ControlAuthority.GCS_MISSION)
+        syncControllerMotorOverride()
+        return true
+    }
+
+    private fun localMissionPolicy(): MissionActionPolicy {
+        val age = mutableStateUpdatedAtElapsedRealtimeMs.value?.let { SystemClock.elapsedRealtime() - it }
+        return missionActionPolicy(
+            state.value, missionProgress.value, missionUploadStatus.value, failures.value,
+            mutableRuntimeLifecycle.value == RuntimeLifecycleState.RUNNING && age != null && age in 0L..5_000L,
+        )
     }
 
     fun sendGuidedOffset(northMeters: Float, eastMeters: Float, altitudeAglMeters: Float) {
@@ -611,13 +626,13 @@ object AppRuntime {
 
     private fun restorePersistedMission(context: Context) {
         if (restoredPersistedMission || simLoop.missionProgress.value.loaded) return
-        val items = MissionPersistence.load(context)
+        val stored = MissionPersistence.load(context)
         restoredPersistedMission = true
-        if (items.isEmpty()) return
+        if (stored.items.isEmpty()) return
 
-        simLoop.loadMission(items)
-        simLoop.acceptMissionUpload(count = items.size)
-        simLoop.noteAck("MISSION RESTORED ${items.size}")
+        simLoop.loadMission(stored.items, stored.origin)
+        // Restoration is not an upload ACK and does not restore an executing flight.
+        simLoop.noteAck("MISSION RESTORED ${stored.items.size} ${stored.origin}")
     }
 
     private fun restoreSimLocation(context: Context) {

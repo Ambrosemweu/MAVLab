@@ -67,3 +67,7 @@ Documentation classifies behavior as:
 Tests control time, initial state, parameters, mission, and failure inputs where practical. New randomness exposes or records a seed. Performance/fidelity claims include scenario, device/build, method, and comparison target.
 
 Source areas: `simulation/engine`, `simulation/physics`, `simulation/autopilot`, `simulation/mission`, and `simulation/failures`. Real-device evidence is still needed for timing, rendering, sensors, and Android lifecycle behavior.
+
+## Received mission publication
+
+MissionProgress carries source and actual AUTO execution history. Disarmed AUTO does not advance mission items. GCS upload completion tags received source; internal demo fixtures do not create received routes. Raw MSL mission altitudes normalize to AGL once at engine load; local north/east metre targets are published to all surfaces. SIM fits these targets together with the actual vehicle and observed trail using equal spatial scale, without changing physics or inventing vehicle movement. See [ADR-0007](decisions/0007-contextual-missions.md).

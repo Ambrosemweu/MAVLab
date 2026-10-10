@@ -49,6 +49,9 @@ import com.ascend.mavlab.core.common.ControllerInputMode
 import com.ascend.mavlab.core.common.ControllerInputState
 import com.ascend.mavlab.core.sensors.OrientationData
 import com.ascend.mavlab.core.sensors.OrientationSource
+import com.ascend.mavlab.feature.mission.MissionControlRow
+import com.ascend.mavlab.feature.mission.deriveMissionUiState
+import com.ascend.mavlab.simulation.engine.ControlAuthority
 import com.ascend.mavlab.feature.dashboard.CockpitDataFreshness
 import com.ascend.mavlab.simulation.autopilot.PilotInput
 import com.ascend.mavlab.simulation.engine.DroneState
@@ -61,11 +64,15 @@ import kotlin.math.PI
 @Composable
 fun ControllerScreen(
     modifier: Modifier = Modifier,
-    onOpenMission: () -> Unit = {},
+    missionInitiallyExpanded: Boolean = false,
+    onOpenSim: () -> Unit = {},
     onOpenOps: () -> Unit = {},
 ) {
     val state by AppRuntime.state.collectAsStateWithLifecycle()
     val failures by AppRuntime.failures.collectAsStateWithLifecycle()
+    val mission by AppRuntime.missionProgress.collectAsStateWithLifecycle()
+    val upload by AppRuntime.missionUploadStatus.collectAsStateWithLifecycle()
+    var missionExpanded by rememberSaveable { mutableStateOf(missionInitiallyExpanded) }
     val source by AppRuntime.phoneSensorSource.collectAsStateWithLifecycle()
     val orientation by AppRuntime.phoneSensorOrientation.collectAsStateWithLifecycle()
     val pilotInput by AppRuntime.phoneSensorPilotInput.collectAsStateWithLifecycle()
@@ -97,7 +104,10 @@ fun ControllerScreen(
             feedback = null
         }
     }
-    val ui = deriveControllerUiState(state, inputs.inputMode, source, failures, identity, lifecycle, updatedAt, nowElapsed)
+    val inputUi = deriveControllerUiState(state, inputs.inputMode, source, failures, identity, lifecycle, updatedAt, nowElapsed)
+    val missionUi = deriveMissionUiState(state, mission, upload, failures, inputUi.freshness == CockpitDataFreshness.LIVE || inputUi.freshness == CockpitDataFreshness.DELAYED)
+    fun missionActionOrOps(action: ControllerActionSpec) = if (!missionUi.visible && action.action == ControllerAction.OPEN_MISSION) ControllerActionSpec(ControllerAction.OPEN_OPS, "Open Ops") else action
+    val ui = inputUi.copy(primaryAction = missionActionOrOps(inputUi.primaryAction), secondaryAction = missionActionOrOps(inputUi.secondaryAction))
     val execute: (ControllerAction) -> Unit = { action ->
         when (action) {
             ControllerAction.ARM -> AppRuntime.setArmed(true)
@@ -109,7 +119,7 @@ fun ControllerScreen(
             }
             ControllerAction.DISARM -> if (ui.onGround) AppRuntime.setArmed(false) else confirmation = action
             ControllerAction.TAKE_CONTROL, ControllerAction.TAKE_CONTROL_AND_LAND -> confirmation = action
-            ControllerAction.OPEN_MISSION -> onOpenMission()
+            ControllerAction.OPEN_MISSION -> if (missionUi.visible) missionExpanded = true else onOpenOps()
             ControllerAction.OPEN_OPS -> onOpenOps()
         }
     }
@@ -122,45 +132,50 @@ fun ControllerScreen(
                     bodyModifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    InputSelector(inputs.inputMode, ui.inputSelectionEnabled, state.armed) { mode ->
-                        if (mode != inputs.inputMode) {
-                            if (mode == ControllerInputMode.DIRECT_RPM) confirmDirectRpm = true
-                            else {
-                                AppRuntime.setControllerInputMode(mode)
-                                feedback = "${mode.label} selected"
+                    MissionControlRow(mission, missionUi, missionExpanded, { missionExpanded = !missionExpanded }, onOpenSim, onOpenOps)
+                    if (state.controlAuthority == ControlAuthority.GCS_MISSION) {
+                        Text("Local inputs paused · GCS Mission has control", style = MaterialTheme.typography.bodyMedium)
+                    } else {
+                        InputSelector(inputs.inputMode, ui.inputSelectionEnabled, state.armed) { mode ->
+                            if (mode != inputs.inputMode) {
+                                if (mode == ControllerInputMode.DIRECT_RPM) confirmDirectRpm = true
+                                else {
+                                    AppRuntime.setControllerInputMode(mode)
+                                    feedback = "${mode.label} selected"
+                                }
                             }
                         }
-                    }
-                    ControllerInputCard(ui, feedback, source, inputs, orientation, pilotInput, state.motors)
-                    Disclosure("Calibration & control setup", setupExpanded, { setupExpanded = !setupExpanded }) {
-                        if (inputs.inputMode == ControllerInputMode.PHONE_SENSORS) {
-                            Text("Hold the phone comfortably and keep it still. Calibrate saves this position as neutral.", style = MaterialTheme.typography.bodyMedium)
-                            OutlinedButton(
-                                onClick = { AppRuntime.calibratePhoneSensors(); feedback = "Neutral position saved" },
-                                enabled = ui.calibrationEnabled,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) { Text("Calibrate neutral") }
-                            if (!ui.calibrationEnabled) Text("Calibration requires a live sensor source, local authority and a disarmed vehicle.", style = MaterialTheme.typography.bodySmall)
-                            ControlSlider("Yaw trim", inputs.manualYaw, signedPercent(inputs.manualYaw), -1f, 1f, ui.controlsEnabled, AppRuntime::setControllerManualYaw)
-                            Text("Yaw trim: −100% to +100% added to phone rotation.", style = MaterialTheme.typography.bodySmall)
-                            Text("Mapping: 30° roll/pitch · 45° yaw · 3° dead zone", style = MaterialTheme.typography.bodySmall)
-                        } else if (inputs.inputMode == ControllerInputMode.CUSTOM_INPUT) {
-                            OutlinedButton(onClick = {
-                                AppRuntime.setControllerManualRoll(0f)
-                                AppRuntime.setControllerManualPitch(0f)
-                                AppRuntime.setControllerManualYaw(0f)
-                                AppRuntime.setControllerThrottle(0.5f)
-                                feedback = "Inputs centered · throttle 50%"
-                            }, enabled = ui.controlsEnabled, modifier = Modifier.fillMaxWidth()) { Text("Center inputs") }
-                        }
-                        Text("Takeoff height · metres above ground", style = MaterialTheme.typography.labelLarge)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf(5f, 10f, 20f).forEach { height ->
-                                FilterChip(selected = takeoffHeight == height, onClick = { takeoffHeight = height }, enabled = !state.armed && ui.inputSelectionEnabled, label = { Text("${height.toInt()} m") })
+                        ControllerInputCard(ui, feedback, source, inputs, orientation, pilotInput, state.motors)
+                        Disclosure("Calibration & control setup", setupExpanded, { setupExpanded = !setupExpanded }) {
+                            if (inputs.inputMode == ControllerInputMode.PHONE_SENSORS) {
+                                Text("Hold the phone comfortably and keep it still. Calibrate saves this position as neutral.", style = MaterialTheme.typography.bodyMedium)
+                                OutlinedButton(
+                                    onClick = { AppRuntime.calibratePhoneSensors(); feedback = "Neutral position saved" },
+                                    enabled = ui.calibrationEnabled,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) { Text("Calibrate neutral") }
+                                if (!ui.calibrationEnabled) Text("Calibration requires a live sensor source, local authority and a disarmed vehicle.", style = MaterialTheme.typography.bodySmall)
+                                ControlSlider("Yaw trim", inputs.manualYaw, signedPercent(inputs.manualYaw), -1f, 1f, ui.controlsEnabled, AppRuntime::setControllerManualYaw)
+                                Text("Yaw trim: −100% to +100% added to phone rotation.", style = MaterialTheme.typography.bodySmall)
+                                Text("Mapping: 30° roll/pitch · 45° yaw · 3° dead zone", style = MaterialTheme.typography.bodySmall)
+                            } else if (inputs.inputMode == ControllerInputMode.CUSTOM_INPUT) {
+                                OutlinedButton(onClick = {
+                                    AppRuntime.setControllerManualRoll(0f)
+                                    AppRuntime.setControllerManualPitch(0f)
+                                    AppRuntime.setControllerManualYaw(0f)
+                                    AppRuntime.setControllerThrottle(0.5f)
+                                    feedback = "Inputs centered · throttle 50%"
+                                }, enabled = ui.controlsEnabled, modifier = Modifier.fillMaxWidth()) { Text("Center inputs") }
                             }
+                            Text("Takeoff height · metres above ground", style = MaterialTheme.typography.labelLarge)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf(5f, 10f, 20f).forEach { height ->
+                                    FilterChip(selected = takeoffHeight == height, onClick = { takeoffHeight = height }, enabled = !state.armed && ui.inputSelectionEnabled, label = { Text("${height.toInt()} m") })
+                                }
+                            }
+                            FlightModeSelector(state.mode, ui.flightModesEnabled, AppRuntime::setMode)
+                            Text("Stabilize and Alt Hold accept attitude input. Loiter, RTL and Land use autopilot navigation. Input mode is separate from flight mode.", style = MaterialTheme.typography.bodySmall)
                         }
-                        FlightModeSelector(state.mode, ui.flightModesEnabled, AppRuntime::setMode)
-                        Text("Stabilize and Alt Hold accept attitude input. Loiter, RTL and Land use autopilot navigation. Input mode is separate from flight mode.", style = MaterialTheme.typography.bodySmall)
                     }
                     Disclosure("Learn about control", learningExpanded, { learningExpanded = !learningExpanded }) {
                         Text("Authority tells you who owns flight intent. A connected QGC peer does not by itself have control.", style = MaterialTheme.typography.bodyMedium)
@@ -230,8 +245,8 @@ fun ControllerScreen(
             title = { Text(if (action == ControllerAction.DISARM) "Stop motors in flight?" else "Replace GCS control?") },
             text = { Text(when (action) {
                 ControllerAction.DISARM -> "Disarming cuts motor thrust immediately. The simulated vehicle may fall. Use Land for a controlled descent."
-                ControllerAction.TAKE_CONTROL_AND_LAND -> "Controller will replace GCS intent and command a landing through the simulation engine."
-                else -> "Hold the phone neutral. Controller will replace external intent with manual control."
+                ControllerAction.TAKE_CONTROL_AND_LAND -> "Local control will replace GCS intent and command a landing through the simulation engine."
+                else -> "Hold the phone neutral. Local control will replace external intent with manual control."
             }) },
             confirmButton = {
                 TextButton(onClick = {
@@ -259,14 +274,14 @@ private fun ControllerStatus(state: DroneState, ui: ControllerUiState, inputMode
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (compact) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Controller", style = MaterialTheme.typography.titleMedium)
+                Text("Control", style = MaterialTheme.typography.titleMedium)
                 Text("Authority · ${state.controlAuthority.displayName}", style = MaterialTheme.typography.labelLarge)
                 Text("${if (state.armed) "Armed" else "Disarmed"} · ${state.mode.displayName}", style = MaterialTheme.typography.labelLarge)
                 Text("${inputMode.label} · Battery ${state.batteryRemainingPercent}%", style = MaterialTheme.typography.labelLarge)
             }
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Controller", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                Text("Control", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                 Text(if (ui.freshness == CockpitDataFreshness.UNAVAILABLE || ui.freshness == CockpitDataFreshness.STALE) "STATE NOT LIVE" else "Battery ${state.batteryRemainingPercent}%", style = MaterialTheme.typography.labelLarge)
             }
             Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(14.dp)) {

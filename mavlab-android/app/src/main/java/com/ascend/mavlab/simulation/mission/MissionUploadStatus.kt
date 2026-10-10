@@ -11,9 +11,9 @@ data class MissionUploadStatus(
     val displayText: String
         get() = when (phase) {
             MissionUploadPhase.IDLE -> "Upload: Idle"
-            MissionUploadPhase.UPLOADING -> "Upload: Receiving $receivedCount/$expectedCount from QGC" +
+            MissionUploadPhase.UPLOADING -> "Upload: Receiving $receivedCount/$expectedCount from GCS" +
                 (lastRequestedSequence?.let { " - requested ${it + 1}" } ?: "")
-            MissionUploadPhase.ACCEPTED -> "Upload: Accepted $receivedCount waypoints"
+            MissionUploadPhase.ACCEPTED -> "Upload: Accepted $receivedCount mission items"
             MissionUploadPhase.REJECTED -> "Upload: Rejected ${lastError ?: "unknown error"}"
         }
 }

@@ -35,9 +35,11 @@ class MissionDisplayTest {
             currentIndex = 1,
             complete = false,
             activeTarget = missionItem(1, MissionCommand.WAYPOINT),
+            executionStarted = true,
         )
 
         assertEquals(33, missionProgressPercent(mission))
+        assertEquals(0, missionProgressPercent(mission.copy(executionStarted = false)))
         assertEquals("Fly to WP2", missionObjectiveLabel(mission))
         assertEquals("Active", waypointStatusLabel(mission.items[1], mission))
         assertEquals("Queued", waypointStatusLabel(mission.items[2], mission))

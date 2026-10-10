@@ -15,7 +15,7 @@ This document explains when MAVLab keeps the on-phone runtime alive and when it 
 
 `AppRuntime.runtimeLifecycle` publishes `STARTING`, `RUNNING`, `STOPPING`, `STOPPED`, or `ERROR` for UI state. `stateUpdatedAtElapsedRealtimeMs` records the latest engine-state emission using Android elapsed realtime. These are runtime/freshness signals; neither replaces MAVLink connection status or control authority.
 
-All Controller input application belongs to AppRuntime. Phone samples retain the canonical foreground lifecycle; Custom Input setters send PilotInput directly, and Direct RPM follows armed/mission state through runtime observation. Composing or leaving Controller does not apply, cancel or recreate these control paths. This ownership change does not change background retention or phone-sensor suspension. See [ADR-0006](decisions/0006-controller-operational-layout.md).
+All Controller input application belongs to AppRuntime. Phone samples retain the canonical foreground lifecycle; Custom Input setters send PilotInput directly, and Direct RPM follows armed/mission state through runtime observation. Composing or leaving Control does not apply, cancel or recreate these control paths. This ownership change does not change background retention or phone-sensor suspension. See [ADR-0006](decisions/0006-controller-operational-layout.md).
 
 ## Intended model
 
@@ -78,3 +78,7 @@ Focused test:
 - `mavlab-android/app/src/test/java/com/ascend/mavlab/core/common/RuntimeComponentPolicyTest.kt`
 
 Real-device validation records the device, Android version, battery restrictions, QGC build, exact MAVLab build, and observed notification/background behavior.
+
+## Mission consolidation review
+
+Four-tab navigation and contextual mission views create no additional runtime owner. Received source survives process recreation; the stored mission restores as loaded, with fresh execution history and no fabricated upload ACK. Unknown legacy source remains retained but blocked for local AUTO/route display until re-upload. Mission action freshness uses the existing RUNNING and elapsed-realtime state-age contract. Retention, background handoff, locks and phone-sensor suspension are unchanged. See [ADR-0007](decisions/0007-contextual-missions.md).

@@ -32,7 +32,7 @@ MAVLab runs physics, networking, recording, audio, sensors, and Compose UI on a 
 
 ### 7. Armed manual phone-sensor control is canonical
 
-With Phone Sensors selected, an armed local simulated vehicle must accept calibrated phone input through the simulation engine while MAVLab is visible, regardless of whether Cockpit, Controller, or SIM is selected. A new local sensor flight must restore a manual mode and clear stale motor overrides. Local takeoff must retain phone attitude steering while controlling altitude. Future UI/UX changes must preserve this invariant and its regression tests; screen composition must never own sensor eligibility. Explicit GCS mission authority, navigation/recovery commands, chosen advanced input modes, and background sensor suspension remain distinct control states with visible meaning. Never substitute a UI-only 3D rotation for engine response.
+With Phone Sensors selected, an armed local simulated vehicle must accept calibrated phone input through the simulation engine while MAVLab is visible, regardless of whether Cockpit, Control, or SIM is selected. A new local sensor flight must restore a manual mode and clear stale motor overrides. Local takeoff must retain phone attitude steering while controlling altitude. Future UI/UX changes must preserve this invariant and its regression tests; screen composition must never own sensor eligibility. Explicit GCS mission authority, navigation/recovery commands, chosen advanced input modes, and background sensor suspension remain distinct control states with visible meaning. Never substitute a UI-only 3D rotation for engine response.
 
 ## A small glossary
 
@@ -61,7 +61,7 @@ Use these terms consistently. The complete glossary is in `docs/internals/glossa
 
 Before calling a change complete, state which rows apply and what was verified:
 
-- **Product surfaces**: Cockpit, Controller, SIM, Mission, Ops, onboarding.
+- **Product surfaces**: Cockpit, Control, SIM, Ops, contextual missions, onboarding.
 - **Control paths**: local/manual input, phone sensors, GCS direct commands, GCS missions.
 - **Runtime states**: foreground, background handoff, validated GCS, armed flight, AUTO mission, explicit stop, process recreation.
 - **Simulation**: physics, autopilot, failures, battery, mission progression, state publication.

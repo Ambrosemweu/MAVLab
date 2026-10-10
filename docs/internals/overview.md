@@ -9,7 +9,7 @@ MAVLab is a single-module Android application whose simulation, control, visuali
 
 ```text
 Compose product surfaces
-Cockpit · Controller · SIM · Mission · Ops
+Cockpit · Control · SIM · Ops
                   │ StateFlow + commands
                   ▼
               AppRuntime
@@ -66,10 +66,11 @@ Compose surfaces observe these states. They must not maintain a separate fake si
 | Surface | Question it answers | Source area |
 |---|---|---|
 | Cockpit | What is the drone doing, and who controls it? | `feature/dashboard` |
-| Controller | How do I control the simulation locally? | `feature/controller` |
-| SIM | How is authoritative state represented physically? | `feature/drone3d` |
-| Mission | What mission is loaded and progressing? | `feature/mission` |
+| Control | How do I control local input and received missions? | `feature/controller` |
+| SIM | Where are the vehicle and received route in space? | `feature/drone3d` |
 | Ops | Is the runtime healthy and configurable? | `feature/settings`, failures, logs |
+
+Mission is contextual across these four surfaces; reusable mission presentation remains under `feature/mission`, without a standalone destination. The UI/UX branch navigation supersedes the released v1.5.3 layout. See [ADR-0007](decisions/0007-contextual-missions.md).
 
 `CockpitScreen` now matches the product label. Remaining implementation names such as `SettingsScreen` may still lag product labels; documentation uses product labels and links current source names.
 

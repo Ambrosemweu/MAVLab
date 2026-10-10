@@ -325,13 +325,13 @@ private fun MissionLab(
                 Text("Load demo")
             }
             OutlinedButton(
-                onClick = AppRuntime::startAutoMission,
+                onClick = { AppRuntime.startAutoMission() },
                 modifier = Modifier.weight(1f),
             ) {
                 Text("Start Auto")
             }
             OutlinedButton(
-                onClick = AppRuntime::clearMission,
+                onClick = { AppRuntime.clearMission() },
                 modifier = Modifier.weight(1f),
             ) {
                 Text("Clear")

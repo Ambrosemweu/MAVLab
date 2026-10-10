@@ -1,5 +1,6 @@
 package com.ascend.mavlab.core.mavlink
 
+import com.ascend.mavlab.simulation.mission.MissionOrigin
 import android.content.Context
 import android.util.Log
 import com.ascend.mavlab.simulation.engine.ControlAuthority
@@ -780,8 +781,9 @@ class MavlinkUdpServer(
         }
         if (item == null) {
             missionUploadSession = null
-            simLoop.rejectMissionUpload("invalid mission item", expectedCount = session.expectedCount, receivedCount = session.receivedCount)
-            sendMissionAck(MAV_MISSION_INVALID, packet, destination, "MISSION_ITEM invalid")
+            val rejection = missionItemRejection(packet) ?: MissionItemRejection(MAV_MISSION_INVALID, "Invalid mission item at sequence ${packet.payload.leUInt16(28)}")
+            simLoop.rejectMissionUpload(rejection.reason, expectedCount = session.expectedCount, receivedCount = session.receivedCount)
+            sendMissionAck(rejection.ack, packet, destination, "MISSION_ITEM ${rejection.reason}")
             logInbound(packet, peer, length, "rejected invalid-item")
             return
         }
@@ -803,7 +805,7 @@ class MavlinkUdpServer(
             }
             is MissionUploadResult.Complete -> {
                 missionUploadSession = null
-                simLoop.loadMission(result.items)
+                simLoop.loadMission(result.items, MissionOrigin.GCS_UPLOAD)
                 onMissionLoaded(result.items)
                 simLoop.acceptMissionUpload(count = result.items.size, lastReceivedSequence = item.sequence)
                 lastReachedSequenceSent = null

@@ -14,7 +14,7 @@ Last verified: 2026-08-31
 
 **Digital twin view** — the SIM surface rendering authoritative simulation state. Here “digital twin” means state-linked simulation and visualization, not certified fidelity to a specific airframe.
 
-**Product surface** — Cockpit, Controller, SIM, Mission, or Ops.
+**Product surface** — Cockpit, Control, SIM, or Ops. Mission is a contextual operating state.
 
 ## Control and flight
 
@@ -63,3 +63,9 @@ Last verified: 2026-08-31
 **Validation result** — immutable execution record tied to a version/commit, device, Android version, QGC version, tester, date, and evidence.
 
 **ADR** — architecture decision record: context, decision, consequences, and replacement conditions.
+
+**Control** — the product destination for local inputs and received-mission actions; the local control-authority enum remains `CONTROLLER`.
+
+**Received mission** — non-empty mission items explicitly loaded from a successful GCS upload, with provenance retained by the engine and persistence. A received ACK does not establish execution.
+
+**Unverified saved mission** — retained legacy items with no source metadata; local AUTO start and spatial route display require a new GCS upload.

@@ -10,12 +10,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import android.os.SystemClock
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ascend.mavlab.feature.dashboard.CockpitDataFreshness
+import com.ascend.mavlab.feature.dashboard.resolveCockpitFreshness
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,8 +41,6 @@ import com.ascend.mavlab.core.common.AppRuntime
 import com.ascend.mavlab.simulation.engine.DroneState
 import com.ascend.mavlab.simulation.engine.FlightMode
 import com.ascend.mavlab.simulation.failures.FailureState
-import com.ascend.mavlab.simulation.mission.MissionCommand
-import com.ascend.mavlab.simulation.mission.MissionItem
 import com.ascend.mavlab.simulation.mission.MissionProgress
 import io.github.sceneview.SceneView
 import io.github.sceneview.SceneScope
@@ -50,15 +58,25 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 @Composable
-fun Drone3DScreen(modifier: Modifier = Modifier) {
-    val state by AppRuntime.state.collectAsState()
-    val failures by AppRuntime.failures.collectAsState()
-    val mission by AppRuntime.missionProgress.collectAsState()
+fun Drone3DScreen(modifier: Modifier = Modifier, routeInitiallyOpen: Boolean = false) {
+    val state by AppRuntime.state.collectAsStateWithLifecycle()
+    val failures by AppRuntime.failures.collectAsStateWithLifecycle()
+    val mission by AppRuntime.missionProgress.collectAsStateWithLifecycle()
+    val lifecycle by AppRuntime.runtimeLifecycle.collectAsStateWithLifecycle()
+    val updatedAt by AppRuntime.stateUpdatedAtElapsedRealtimeMs.collectAsStateWithLifecycle()
+    var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    var routeOpen by rememberSaveable { mutableStateOf(routeInitiallyOpen) }
+    LaunchedEffect(Unit) {
+        while (isActive) { now = SystemClock.elapsedRealtime(); delay(1_000L) }
+    }
+    val freshness = resolveCockpitFreshness(lifecycle, updatedAt, now)
+    val positionLive = freshness in setOf(CockpitDataFreshness.LIVE, CockpitDataFreshness.DELAYED) &&
+        failures.gpsEnabled && state.gpsFixType.toInt() >= 3 && state.northMeters.isFinite() && state.eastMeters.isFinite()
     val modelController = remember { DroneModelController() }
-    val trail = remember { mutableStateListOf<SimPathPoint>() }
+    val trail = remember(mission.items) { mutableStateListOf<SimPathPoint>() }
 
-    LaunchedEffect(state.northMeters, state.eastMeters, state.altitudeAglMeters) {
-        trail.pushTrailPoint(
+    LaunchedEffect(state.northMeters, state.eastMeters, state.altitudeAglMeters, positionLive) {
+        if (positionLive) trail.pushTrailPoint(
             SimPathPoint(
                 northMeters = state.northMeters,
                 eastMeters = state.eastMeters,
@@ -73,20 +91,26 @@ fun Drone3DScreen(modifier: Modifier = Modifier) {
             modelController = modelController,
             modifier = Modifier.fillMaxSize(),
         )
-        SimFlightOverlay(
-            state = state,
-            mission = mission,
-            failures = failures,
-            trail = trail,
-            modifier = Modifier.fillMaxSize(),
-        )
-        SimHud(
-            state = state,
-            failures = failures,
-            mission = mission,
-            modelController = modelController,
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (routeOpen && mission.received) {
+            MissionRoutePanel(state, mission, trail, positionLive, { routeOpen = false }, Modifier.fillMaxSize())
+        } else {
+            SimFlightOverlay(
+                state = state,
+                failures = failures,
+                trail = trail,
+                modifier = Modifier.fillMaxSize(),
+            )
+            SimHud(
+                state = state,
+                failures = failures,
+                mission = mission,
+                modelController = modelController,
+                modifier = Modifier.fillMaxSize(),
+            )
+            if (mission.received) {
+                TextButton(onClick = { routeOpen = true }, modifier = Modifier.align(Alignment.TopStart).padding(top = 42.dp, start = 8.dp)) { Text("View received route") }
+            }
+        }
     }
 }
 
@@ -213,7 +237,6 @@ private fun SimHud(
 @Composable
 private fun SimFlightOverlay(
     state: DroneState,
-    mission: MissionProgress,
     failures: FailureState,
     trail: List<SimPathPoint>,
     modifier: Modifier = Modifier,
@@ -275,32 +298,6 @@ private fun SimFlightOverlay(
                     cap = StrokeCap.Round,
                 )
             }
-        }
-
-        val markers = missionMarkers(state, mission)
-        val home = markers.firstOrNull { it.type == SimMissionMarkerType.Home }
-        if (state.mode == FlightMode.RTL && home != null) {
-            drawLine(
-                color = SimWarningColor.copy(alpha = 0.78f),
-                start = center,
-                end = mapPoint(home.northMeters, home.eastMeters),
-                strokeWidth = 3f,
-                cap = StrokeCap.Round,
-            )
-        }
-        markers.forEach { marker ->
-            val point = mapPoint(marker.northMeters, marker.eastMeters)
-            val color = markerColor(marker.type)
-            drawCircle(
-                color = color.copy(alpha = 0.18f),
-                radius = if (marker.type == SimMissionMarkerType.Active) 14f else 10f,
-                center = point,
-            )
-            drawCircle(
-                color = color,
-                radius = if (marker.type == SimMissionMarkerType.Active) 6f else 4f,
-                center = point,
-            )
         }
 
         drawLine(
@@ -406,6 +403,7 @@ private fun gpsLabel(state: DroneState): String {
 }
 
 private fun waypointLabel(state: DroneState, mission: MissionProgress): String {
+    if (!mission.received) return "None"
     return mission.activeTarget?.let { target ->
         "${target.sequence + 1}/${mission.items.size} -> %.1f m".format(missionTargetDistanceMeters(state, mission))
     } ?: if (mission.loaded && mission.complete) "Complete" else "None"
@@ -439,19 +437,6 @@ internal enum class SimAircraftVisualState(val label: String) {
     Failure("FAIL"),
 }
 
-internal enum class SimMissionMarkerType {
-    Home,
-    Active,
-    Remaining,
-}
-
-internal data class SimMissionMarker(
-    val type: SimMissionMarkerType,
-    val northMeters: Float,
-    val eastMeters: Float,
-    val label: String,
-)
-
 internal fun aircraftVisualState(
     state: DroneState,
     failures: FailureState,
@@ -462,40 +447,6 @@ internal fun aircraftVisualState(
         state.batteryRemainingPercent.toInt() <= 30 || state.gpsFixType.toInt() < 3 -> SimAircraftVisualState.Warning
         else -> SimAircraftVisualState.Normal
     }
-}
-
-internal fun missionMarkers(
-    state: DroneState,
-    mission: MissionProgress,
-): List<SimMissionMarker> {
-    if (!mission.loaded) return emptyList()
-    val markers = mutableListOf<SimMissionMarker>()
-    val home = mission.items.firstOrNull()
-    if (home != null) {
-        markers += SimMissionMarker(
-            type = SimMissionMarkerType.Home,
-            northMeters = localNorthFor(state, home),
-            eastMeters = localEastFor(state, home),
-            label = "HOME",
-        )
-    }
-    mission.items
-        .filter { it.command.isNav && it.command != MissionCommand.RTL }
-        .drop(mission.currentIndex.coerceAtLeast(0))
-        .take(MaxMissionMarkers)
-        .forEach { item ->
-            markers += SimMissionMarker(
-                type = if (item.sequence == mission.activeTarget?.sequence) {
-                    SimMissionMarkerType.Active
-                } else {
-                    SimMissionMarkerType.Remaining
-                },
-                northMeters = localNorthFor(state, item),
-                eastMeters = localEastFor(state, item),
-                label = "WP${item.sequence + 1}",
-            )
-        }
-    return markers.distinctBy { "${it.type}:${it.label}:${it.northMeters}:${it.eastMeters}" }
 }
 
 private fun MutableList<SimPathPoint>.pushTrailPoint(point: SimPathPoint) {
@@ -519,14 +470,6 @@ private fun aircraftVisualColor(state: SimAircraftVisualState): Color {
     }
 }
 
-private fun markerColor(type: SimMissionMarkerType): Color {
-    return when (type) {
-        SimMissionMarkerType.Home -> Color(0xFF8ED1FF)
-        SimMissionMarkerType.Active -> Color(0xFFFFF176)
-        SimMissionMarkerType.Remaining -> Color(0xFFE8FFF7)
-    }
-}
-
 private fun failureSummary(failures: FailureState): String {
     return if (failures.activeCount == 0) "CLEAR" else "${failures.activeCount} ACTIVE"
 }
@@ -539,19 +482,10 @@ private fun motorFailureSummary(state: DroneState): String {
 
 private fun trailLabel(mission: MissionProgress): String {
     return when {
-        mission.loaded && mission.complete -> "MISSION COMPLETE"
-        mission.loaded -> "MISSION"
+        mission.received && mission.complete -> "MISSION COMPLETE"
+        mission.received -> "MISSION"
         else -> "FREE FLIGHT"
     }
-}
-
-private fun localNorthFor(state: DroneState, item: MissionItem): Float {
-    return item.localNorthMeters ?: ((item.latitudeDeg - state.latitudeDeg) * MetersPerLatDeg).toFloat() + state.northMeters
-}
-
-private fun localEastFor(state: DroneState, item: MissionItem): Float {
-    val lonScale = MetersPerLatDeg * max(0.2, cos(Math.toRadians(state.latitudeDeg)))
-    return item.localEastMeters ?: ((item.longitudeDeg - state.longitudeDeg) * lonScale).toFloat() + state.eastMeters
 }
 
 private const val DroneAssetPath = "models/drone.glb"
@@ -560,4 +494,3 @@ private const val MaxRollForLighting = 0.8f
 private const val MetersPerLatDeg = 111_320.0
 private const val MaxTrailPoints = 120
 private const val MinimumTrailSpacingMeters = 0.35f
-private const val MaxMissionMarkers = 8

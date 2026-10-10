@@ -86,7 +86,6 @@ internal fun deriveControllerUiState(
     val primary = when {
         !ready -> ControllerActionSpec(ControllerAction.OPEN_OPS, "Open Ops")
         external && state.armed -> ControllerActionSpec(ControllerAction.TAKE_CONTROL_AND_LAND, "Take control & land")
-        external && state.controlAuthority == ControlAuthority.GCS_MISSION -> ControllerActionSpec(ControllerAction.OPEN_MISSION, "View Mission")
         external -> ControllerActionSpec(ControllerAction.TAKE_CONTROL, "Take local control")
         !state.armed -> ControllerActionSpec(ControllerAction.ARM, "Arm", armReady)
         inputMode == ControllerInputMode.DIRECT_RPM -> ControllerActionSpec(ControllerAction.DISARM, "Stop motors")
@@ -95,7 +94,7 @@ internal fun deriveControllerUiState(
         else -> ControllerActionSpec(ControllerAction.TAKEOFF, "Takeoff", !sensorMissing && !critical)
     }
     val secondary = when {
-        !ready -> ControllerActionSpec(ControllerAction.OPEN_MISSION, "View Mission")
+        !ready -> ControllerActionSpec(ControllerAction.OPEN_MISSION, "Mission details")
         state.armed && primary.action != ControllerAction.DISARM -> ControllerActionSpec(ControllerAction.DISARM, "Disarm")
         external -> ControllerActionSpec(ControllerAction.OPEN_OPS, "Open Ops")
         !state.armed && inputMode == ControllerInputMode.PHONE_SENSORS && !sensorMissing ->

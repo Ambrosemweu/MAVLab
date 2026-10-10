@@ -1,0 +1,39 @@
+# ADR-0007: Contextual missions and four product surfaces
+
+Status: Accepted for UI/UX feature-branch implementation
+Date: 2026-10-10
+Source: User-approved Mission Consolidation Decision and revised MAVLab UIUX Upgrade Consolidated Specification. This supersedes the five-destination assumptions retained at the ADR-0006 checkpoint.
+
+## Decision
+
+Navigation is Cockpit, Control, SIM, Ops. Controller is renamed Control in product copy; `CONTROLLER` remains the authority enum and local source name. The shell composes only the selected destination. The selected tab and contextual route/details state survive activity recreation; this saves UI selection, not an executing flight. Mission is not a screen or planner: Cockpit carries concise awareness/recovery, Control carries a conditional collapsed row and valid actions, SIM carries received spatial geometry, and Ops carries technical evidence. Context links can open Control's row or SIM's route view directly. There is no new pager.
+
+The standalone Mission screen and product demo-loading action are removed. The deterministic demo remains a non-persisted internal fixture. No UI can create route geometry without an explicitly received mission. Local mission actions recheck live state and requirements at execution; confirmation cannot bypass state changes while a dialog is open. Clear is available only disarmed outside an upload. Start AUTO can arm from the ground and continues at the current engine item. Completed missions require a new upload rather than an invented restart operation. Existing confirmed Take control & land replaces mission authority through engine landing; no pause/resume contract is added.
+
+## Authoritative state and persistence
+
+`MissionProgress.origin` distinguishes GCS_UPLOAD, UNVERIFIED and INTERNAL_FIXTURE. MAVLink marks GCS_UPLOAD only after an upload session completes. Clear removes provenance with the mission. `executionStarted` is set during armed AUTO engine progression; mode/ACK alone does not establish execution. AUTO item advancement requires an armed autopilot; mode/ACK alone cannot advance it. Reset preserves origin and starts a new execution history. Surface presentation distinguishes accepted, active, interrupted, completed and blocked without introducing a second mission state owner.
+
+Mission preferences write a V2 item snapshot (reading legacy V1 records) and add an atomic `mission_origin` sidecar. Only received missions are persisted. Old snapshots with no source remain stored as UNVERIFIED, with re-upload guidance and no route/local AUTO start. Restoration does not synthesize an accepted upload status or restore an executing flight. Snapshot decoding remains compatible with prior V1 nine/ten-field records; V2 uses an eleventh field that records whether a raw stored altitude is MSL, so normalization is repeatable after process recreation.
+
+## Spatial boundary and protocol review
+
+Known navigation commands remain WAYPOINT, TAKEOFF, LAND, RTL and LOITER_TIME; CHANGE_SPEED is non-spatial. Unknown IDs are rejected with MAV_MISSION_UNSUPPORTED (3), rather than silently defaulting to WAYPOINT. Unsupported frames use MAV_MISSION_UNSUPPORTED_FRAME (2), with the frame/command/sequence preserved in the rejection reason. Supported geographic frames are GLOBAL/GLOBAL_INT (0/5, MSL) and GLOBAL_RELATIVE_ALT/INT (3/6, relative to home). Frame MISSION (2) is accepted only for CHANGE_SPEED and RTL, whose navigation coordinates are not specified by that frame. Invalid/truncated values use INVALID (5). Previously loaded items are retained on rejected uploads.
+
+The upload parser retains MSL metadata; `PhysicsSimulationEngine.loadMission` converts it once to AGL using the simulation ground altitude (current MSL minus current AGL), then publishes normalized local N/E metres and AGL. Relative-home altitude equals AGL in MAVLab's flat simulation environment. Geographic conversion remains the engine's existing local tangent approximation: 111,320 metres per latitude degree and longitude scaled by cos(latitude), clamped to 0.2. SIM introduces no second geographic transform. A single equal x/y metre scale, with optional pinch zoom/pan and Fit route reset, fits route, actual vehicle and bounded observed trail; vehicle position is never snapped. All navigation nodes remain, with completed/current/remaining status derived by item index before non-spatial filtering.
+
+SIM's route view is north-up and offers a return to the 3D model. Active-leg deviation is distance to the finite previous-to-current navigation segment; no prior segment means unavailable. Current vehicle/deviation are hidden for stale/unavailable state, missing GPS fix or non-finite coordinates. The trail samples engine positions while SIM is composed, is bounded to 120 points/minimum 0.35 metre spacing, and resets on mission replacement. It is not a reconstructed flight recording. Remaining route distance and ETA are horizontal; ETA requires moving AUTO and uses observed ground speed, not a promised command speed.
+
+LOITER_TIME dwell and autocontinue=false pausing remain partial/unimplemented behavior. Ops reports these item limitations and SIM uses hollow navigation nodes. No protocol capability bits, identity profile, networking/discovery rules or GCS COMMAND_LONG start contract are expanded. The [MAVLink definitions](https://mavlink.io/en/messages/common.html#MAV_FRAME) establish frame meanings; the [mission result enum](https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT) establishes ACK classifications. Live QGC compatibility remains a separate verification requirement.
+
+## Documentation and lifecycle review
+
+User guides, the surface definition, glossary, control-authority, simulation-model and MAVLink contract were reviewed/updated. The previous surface proposal is archived rather than left as current architecture. Service ownership, background retention, sensor suspension, and compatibility identity are unchanged. Canonical foreground Phone Sensors behavior from ADR-0005 remains globally owned by AppRuntime, independent of selected surface. AUTO suspends local inputs; confirmed landing restores local intent through the existing recovery command. Starting AUTO explicitly synchronizes the Direct RPM override against mission authority.
+
+## Verification boundary
+
+Phone checks prompted presentation corrections: progress remains zero before execution instead of counting the initial skipped home marker as a completed flight item, and SIM labels cursor-relative nodes as earlier/current/remaining. Co-located nodes share one label and the route panel uses an opaque background. The panel scrolls with a minimum 220 dp map height instead of collapsing its map in landscape; selection is saved across rotation. Terminal upload diagnostics retain the last requested and validated sequences, rather than erasing them on acceptance/rejection.
+
+Focused tests cover source migration, normalized MSL/local geometry, unknown-command/frame rejection, disarmed AUTO non-execution, mission lifecycle/action guards, full-route topology including non-spatial items, equal-scale fitting, actual off-route position and measured deviation. The full regression gate includes canonical local phone arm/takeoff, custom inputs and Direct RPM. Automated results and any named-device evidence belong in an immutable validation record. Android visual/QGC/device acceptance and Pen.dev design revisions are not implied by JVM tests or compilation.
+
+While disarmed under GCS Mission authority, **Take local control** is a confirmed return to manual STABILIZE through the existing engine mode command. Clearing route data does not silently change control authority; the action remains available even after the mission row disappears.

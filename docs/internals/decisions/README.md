@@ -8,4 +8,7 @@ Architecture Decision Records preserve why consequential choices were made witho
 - [ADR-0004: Cockpit state derivation, ground preview, and actions](0004-cockpit-state-and-actions.md)
 - [ADR-0005: Canonical armed phone-sensor control](0005-canonical-phone-sensor-control.md)
 
+- [ADR-0006: Controller operational layout](0006-controller-operational-layout.md)
+- [ADR-0007: Contextual missions](0007-contextual-missions.md)
+
 Future decisions should cover foreground-service retention, system-ID strategy, ArduPilot-compatible identity, protocol/engine boundaries, and simulation time after those choices are finalized.

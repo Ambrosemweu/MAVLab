@@ -35,8 +35,8 @@ val OnboardingPages = listOf(
         visual = OnboardingVisual.PfdTelemetry,
     ),
     OnboardingPage(
-        title = "Five surfaces, one drone",
-        body = "Cockpit, Controller, SIM, Mission and Ops — swipe to explore.",
+        title = "Four surfaces, one drone",
+        body = "Cockpit, Control, SIM and Ops — swipe to explore.",
         primaryAction = "Next",
         visual = OnboardingVisual.SurfaceGallery,
     ),
@@ -61,7 +61,7 @@ val OnboardingPages = listOf(
     ),
     OnboardingPage(
         title = "Run a mission",
-        body = "Upload a route, fly AUTO, and track waypoint progress.",
+        body = "Upload from QGC, start AUTO in Control, and view the received route in SIM. Upload evidence lives in Ops.",
         primaryAction = "Next",
         visual = OnboardingVisual.MissionPlot,
     ),

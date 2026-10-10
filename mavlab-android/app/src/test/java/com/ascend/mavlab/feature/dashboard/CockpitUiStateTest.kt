@@ -9,6 +9,7 @@ import com.ascend.mavlab.simulation.engine.FlightMode
 import com.ascend.mavlab.simulation.failures.FailureState
 import com.ascend.mavlab.simulation.mission.MissionCommand
 import com.ascend.mavlab.simulation.mission.MissionItem
+import com.ascend.mavlab.simulation.mission.MissionOrigin
 import com.ascend.mavlab.simulation.mission.MissionProgress
 import com.ascend.mavlab.simulation.mission.MissionUploadStatus
 import com.ascend.mavlab.simulation.recording.FlightRecordingStatus
@@ -85,9 +86,9 @@ class CockpitUiStateTest {
         )
 
         assertEquals("AUTO MISSION · LIVE", ui.eyebrow)
-        assertEquals("WP 2 of 3 · Active", ui.task.title)
-        assertEquals(CockpitAction.OPEN_MISSION, ui.taskActions.getOrNull(0)?.action)
-        assertEquals(CockpitAction.TAKE_CONTROL_AND_LAND, ui.taskActions.getOrNull(1)?.action)
+        assertEquals("GCS Mission", ui.task.title)
+        assertEquals("WP 2/3 · 33%", ui.task.detail)
+        assertEquals(CockpitAction.TAKE_CONTROL_AND_LAND, ui.taskActions.single().action)
     }
 
     @Test
@@ -213,7 +214,9 @@ class CockpitUiStateTest {
             currentIndex = 1,
             complete = false,
             lastReachedSequence = 0,
+            origin = MissionOrigin.GCS_UPLOAD,
             activeTarget = items[1],
+            executionStarted = true,
         )
     }
 

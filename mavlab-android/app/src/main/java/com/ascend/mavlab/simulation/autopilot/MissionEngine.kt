@@ -4,6 +4,7 @@ import com.ascend.mavlab.simulation.engine.DroneState
 import com.ascend.mavlab.simulation.mission.MissionCommand
 import com.ascend.mavlab.simulation.mission.MissionItem
 import com.ascend.mavlab.simulation.mission.MissionProgress
+import com.ascend.mavlab.simulation.mission.MissionOrigin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +17,7 @@ class MissionEngine {
     private val mutableProgress = MutableStateFlow(MissionProgress())
     val progress: StateFlow<MissionProgress> = mutableProgress.asStateFlow()
 
-    fun load(items: List<MissionItem>) {
+    fun load(items: List<MissionItem>, origin: MissionOrigin = MissionOrigin.INTERNAL_FIXTURE) {
         val sorted = items.sortedBy { it.sequence }
         val startIndex = if (isQgcHomeMarker(sorted)) 1 else 0
         mutableProgress.value = MissionProgress(
@@ -24,6 +25,7 @@ class MissionEngine {
             currentIndex = startIndex,
             complete = sorted.size <= startIndex,
             activeTarget = sorted.getOrNull(startIndex),
+            origin = origin,
         )
     }
 
@@ -45,12 +47,13 @@ class MissionEngine {
     }
 
     fun reset() {
-        val items = mutableProgress.value.items
-        load(items)
+        val previous = mutableProgress.value
+        load(previous.items, previous.origin)
     }
 
     fun update(state: DroneState): MissionProgress {
-        val progress = mutableProgress.value
+        val progress = mutableProgress.value.copy(executionStarted = true)
+        mutableProgress.value = progress
         val current = progress.activeTarget ?: return progress
         if (current.command == MissionCommand.CHANGE_SPEED) {
             val nextIndex = progress.currentIndex + 1

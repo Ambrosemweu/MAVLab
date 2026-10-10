@@ -174,7 +174,7 @@ private fun PfdTelemetryVisual() {
 }
 
 // ---------------------------------------------------------------------------
-// 3 · Surface gallery — the five app surfaces as a scrollable card rail.
+// 3 · Surface gallery — the four app surfaces as a scrollable card rail.
 // ---------------------------------------------------------------------------
 private data class Surface(val name: String, val blurb: String, val icon: ImageVector, val tint: Color)
 
@@ -182,9 +182,8 @@ private data class Surface(val name: String, val blurb: String, val icon: ImageV
 private fun SurfaceGalleryVisual() {
     val surfaces = listOf(
         Surface("Cockpit", "Telemetry, safety state, mission awareness", Icons.Default.Analytics, Blue),
-        Surface("Controller", "Phone sensors, manual input, quick test", Icons.Default.ControlCamera, Blue),
-        Surface("SIM", "3D attitude, altitude, motors", Icons.Default.Height, Green),
-        Surface("Mission", "QGC upload, waypoints, AUTO", Icons.Default.Route, Amber),
+        Surface("Control", "Local inputs and received mission actions", Icons.Default.ControlCamera, Blue),
+        Surface("SIM", "3D vehicle and received route", Icons.Default.Height, Green),
         Surface("Ops", "MAVLink status, logs, export", Icons.Default.Settings, Slate),
     )
     val scrollState = rememberScrollState()

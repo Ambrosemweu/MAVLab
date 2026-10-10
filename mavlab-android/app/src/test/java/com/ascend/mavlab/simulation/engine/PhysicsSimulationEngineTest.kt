@@ -13,6 +13,54 @@ import kotlin.test.assertTrue
 
 class PhysicsSimulationEngineTest {
     @Test
+    fun finalUploadDiagnosticsRetainTheLastRequestedAndValidatedSequence() {
+        val engine = PhysicsSimulationEngine()
+        engine.beginMissionUpload(expectedCount = 5, requestedSequence = 0)
+        engine.recordMissionUploadProgress(5, 2, lastReceivedSequence = 1, nextRequestedSequence = 2)
+        engine.rejectMissionUpload("Unsupported command 999 at sequence 2", expectedCount = 5, receivedCount = 2)
+        assertEquals(2, engine.missionUploadStatus.value.lastRequestedSequence)
+        assertEquals(1, engine.missionUploadStatus.value.lastReceivedSequence)
+        engine.beginMissionUpload(expectedCount = 1, requestedSequence = 0)
+        engine.acceptMissionUpload(1, lastReceivedSequence = 0)
+        assertEquals(0, engine.missionUploadStatus.value.lastRequestedSequence)
+        assertEquals(0, engine.missionUploadStatus.value.lastReceivedSequence)
+        engine.acceptMissionUpload(0)
+        assertEquals(null, engine.missionUploadStatus.value.lastRequestedSequence)
+    }
+
+    @Test
+    fun receivedSourceAndMslAltitudeNormalizeBeforeSpatialPublication() {
+        val engine = PhysicsSimulationEngine()
+        val initial = engine.state.value
+        engine.loadMission(listOf(MissionItem(0, MissionCommand.WAYPOINT, initial.latitudeDeg, initial.longitudeDeg, initial.altitudeMslMeters + 20f, altitudeIsMsl = true)), com.ascend.mavlab.simulation.mission.MissionOrigin.GCS_UPLOAD)
+        val mission = engine.missionProgress.value
+        assertTrue(mission.received)
+        assertFalse(mission.executionStarted)
+        assertEquals(20f, mission.items.single().altitudeAglMeters)
+        assertFalse(mission.items.single().altitudeIsMsl)
+        assertEquals(0f, mission.items.single().localNorthMeters)
+        engine.clearMission()
+        assertFalse(engine.missionProgress.value.received)
+        engine.loadDemoMission()
+        assertFalse(engine.missionProgress.value.received)
+    }
+
+    @Test
+    fun autoModeAckWhileDisarmedDoesNotAdvanceMissionOrClaimExecution() {
+        val engine = PhysicsSimulationEngine()
+        val initial = engine.state.value
+        engine.loadMission(listOf(MissionItem(0, MissionCommand.WAYPOINT, initial.latitudeDeg, initial.longitudeDeg, 0f)), com.ascend.mavlab.simulation.mission.MissionOrigin.GCS_UPLOAD)
+        engine.setMode(FlightMode.AUTO)
+        repeat(5) { engine.tickForTest(0.02f) }
+        assertFalse(engine.missionProgress.value.executionStarted)
+        assertFalse(engine.missionProgress.value.complete)
+        engine.setArmed(true, ControlAuthority.GCS_MISSION)
+        engine.tickForTest(0.02f)
+        assertTrue(engine.missionProgress.value.executionStarted)
+        assertTrue(engine.missionProgress.value.complete)
+    }
+
+    @Test
     fun localTakeoffKeepsPhonePilotInputEffectiveInAuthoritativeState() {
         val engine = PhysicsSimulationEngine()
         engine.takeoff(5f, ControlAuthority.CONTROLLER)

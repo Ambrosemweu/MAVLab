@@ -1,4 +1,4 @@
-# Controller
+# Control
 
 Phone Sensors is the default local input mode. While MAVLab is visible, calibrated phone tilt and rotation feed the simulated vehicle through the shared engine, including when Cockpit or SIM is selected.
 
@@ -12,7 +12,7 @@ Arming and takeoff are separate actions. On the ground, accepted attitude input 
 
 An active GCS mission owns autonomous flight intent. Custom Input and Direct RPM are explicit alternative input modes. Backgrounding MAVLab suspends phone-sensor control. These control states remain distinct from ordinary foreground Phone Sensors operation.
 
-## Controller layout
+## Control layout
 
 The header keeps authority, flight mode, armed state, selected input, battery, GPS and QGC peer status visible. A peer connection is separate from control authority. Critical warnings remain in the header when you scroll.
 
@@ -29,4 +29,14 @@ Input-mode selection and neutral calibration are locked while armed. Disarm befo
 - Direct RPM requires explicit confirmation while disarmed. It starts at 0 RPM, bypasses the autopilot and commands the same target to all four simulated motors. After arming, adjust the 0–10,000 RPM target and observe actual motor telemetry. **Stop motors** disarms and restores Phone sensors. Changing surfaces retains the command. GCS mission/direct authority suspends the RPM override; a local Land command clears it before landing.
 - Flight-mode settings, control explanations, failure injection and sound experiments are below the main input area. Loiter, RTL and Land retain their navigation semantics; manual attitude controls are shown as limited in those modes.
 
-An active GCS mission blocks local input and mode selection. **Take control & land** requires confirmation, then uses the existing local engine landing command. Direct GCS commands retain existing behavior: subsequent phone input may reclaim Controller authority. The UI reports observed authority and does not promise a persistent GCS-direct lock. There is no horizontal screen pager; dragging a Controller slider cannot switch surfaces.
+An active GCS mission blocks local input and mode selection. **Take control & land** requires confirmation, then uses the existing local engine landing command. Direct GCS commands retain existing behavior: subsequent phone input may reclaim Controller authority. The UI reports observed authority and does not promise a persistent GCS-direct lock. There is no horizontal screen pager; dragging a Control slider cannot switch surfaces.
+
+## Received missions
+
+A collapsed mission row appears only while receiving, loaded, active, completed or blocked. Expand it for source, current/next item, completed count and percentage, remaining horizontal route distance, valid actions, and View route in SIM. A horizontal ETA estimate appears only during moving AUTO flight; it uses current ground speed and excludes climb/descent time.
+
+**Start AUTO** requires received source, live simulation state, a grounded vehicle, GPS 3D fix, healthy motors and battery reserve, and no active upload or injected lost link. Confirmation explains that it arms the simulated vehicle and gives GCS Mission authority. It continues from the current item; it does not reset a completed mission. **Clear mission** is offered only while disarmed with live state and no upload, and requires confirmation. Both actions recheck state when submitted.
+
+During GCS Mission control, the local input area is replaced by a visible paused state. **Take control & land** remains the supported way to leave autonomous flight. This is a landing takeover, not an implemented mission pause/resume operation. See [Mission operation](mission.md).
+
+While disarmed under GCS Mission authority, **Take local control** is a confirmed return to manual STABILIZE through the existing engine mode command. Clearing route data does not silently change control authority; the action remains available even after the mission row disappears.

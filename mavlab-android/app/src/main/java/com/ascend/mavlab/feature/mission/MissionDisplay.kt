@@ -42,6 +42,7 @@ internal fun missionObjectiveLabel(mission: MissionProgress): String {
 internal fun missionProgressPercent(mission: MissionProgress): Int {
     if (!mission.loaded) return 0
     if (mission.complete) return 100
+    if (!mission.executionStarted) return 0
     return ((mission.completedCount.toFloat() / mission.items.size.toFloat()) * 100f)
         .roundToInt()
         .coerceIn(0, 100)

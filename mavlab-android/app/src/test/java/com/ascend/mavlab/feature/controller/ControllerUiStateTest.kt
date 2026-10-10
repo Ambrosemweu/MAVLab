@@ -64,6 +64,9 @@ class ControllerUiStateTest {
         assertFalse(ui.flightModesEnabled)
         assertTrue(ui.blockedReason!!.contains("GCS mission"))
         assertEquals(ControllerAction.TAKE_CONTROL_AND_LAND, ui.primaryAction.action)
+        val disarmed = derive(DroneState(mode = FlightMode.AUTO, controlAuthority = ControlAuthority.GCS_MISSION))
+        assertFalse(disarmed.controlsEnabled)
+        assertEquals(ControllerAction.TAKE_CONTROL, disarmed.primaryAction.action)
     }
 
     @Test

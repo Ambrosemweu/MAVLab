@@ -14,18 +14,18 @@ class MissionUploadStatusTest {
             lastReceivedSequence = 2,
         )
 
-        assertEquals("Upload: Receiving 3/4 from QGC - requested 4", status.displayText)
+        assertEquals("Upload: Receiving 3/4 from GCS - requested 4", status.displayText)
     }
 
     @Test
-    fun acceptedStatusDisplaysWaypointCount() {
+    fun acceptedStatusDisplaysItemCount() {
         val status = MissionUploadStatus(
             phase = MissionUploadPhase.ACCEPTED,
             expectedCount = 4,
             receivedCount = 4,
         )
 
-        assertEquals("Upload: Accepted 4 waypoints", status.displayText)
+        assertEquals("Upload: Accepted 4 mission items", status.displayText)
     }
 
     @Test
