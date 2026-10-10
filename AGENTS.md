@@ -30,6 +30,10 @@ The user must be able to tell who controls the simulated vehicle, how to leave t
 
 MAVLab runs physics, networking, recording, audio, sensors, and Compose UI on a phone. Avoid UI-thread blocking, unnecessary repainting, unbounded state, and abstraction built only for hypothetical future products. Measure the real constraint and prefer the smallest model that makes correct behavior unsurprising.
 
+### 7. Armed manual phone-sensor control is canonical
+
+With Phone Sensors selected, an armed local simulated vehicle must accept calibrated phone input through the simulation engine while MAVLab is visible, regardless of whether Cockpit, Controller, or SIM is selected. A new local sensor flight must restore a manual mode and clear stale motor overrides. Local takeoff must retain phone attitude steering while controlling altitude. Future UI/UX changes must preserve this invariant and its regression tests; screen composition must never own sensor eligibility. Explicit GCS mission authority, navigation/recovery commands, chosen advanced input modes, and background sensor suspension remain distinct control states with visible meaning. Never substitute a UI-only 3D rotation for engine response.
+
 ## A small glossary
 
 Use these terms consistently. The complete glossary is in `docs/internals/glossary.md`.

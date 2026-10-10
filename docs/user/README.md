@@ -22,7 +22,7 @@ User documents should:
 ## Product surfaces
 
 1. **Cockpit** — live flight state, telemetry, and control authority.
-2. **Controller** — phone-sensor or manual flight input.
+2. **[Controller](controller.md)** — phone-sensor or manual flight input.
 3. **SIM** — 3D digital-twin view driven by simulation state.
 4. **Mission** — uploaded mission and progress visibility.
 5. **Ops** — connectivity, settings, failures, logs, and operational tools.

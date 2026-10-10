@@ -27,6 +27,8 @@ It is not the same as flight mode, connection status, or armed state.
 4. UI controls do not imply ownership they lack.
 5. SIM and telemetry observe engine state; they do not establish authority independently.
 
+6. Armed local Phone Sensors control is canonical and independent of the selected surface. Fresh local sensor arming clears stale RPM overrides and restores a manual mode. Local takeoff uses ALT_HOLD to preserve phone attitude steering; GCS takeoff remains GUIDED navigation. See [ADR-0005](decisions/0005-canonical-phone-sensor-control.md).
+
 ## Important current limits
 
 Generic joystick/manual input must not be documented as automatically preempting active `GCS_MISSION` unless implementation and tests prove that transition. Explicit commands may follow different rules.

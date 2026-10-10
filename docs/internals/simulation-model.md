@@ -34,6 +34,8 @@ control source / mission intent
 
 STABILIZE, ALT_HOLD, AUTO, GUIDED, LOITER, RTL, and LAND exist in the current engine. A familiar mode name does not guarantee complete ArduCopter equivalence.
 
+Local takeoff uses ALT_HOLD: the autopilot controls altitude while retaining normalized pilot roll, pitch, and yaw intent. GCS takeoff uses GUIDED position control. Fresh local Phone Sensors arming resets a retained autonomous mode to STABILIZE, preserves an explicitly selected ALT_HOLD mode, and clears stale direct-RPM overrides. This canonical sensor-control contract is recorded in [ADR-0005](decisions/0005-canonical-phone-sensor-control.md).
+
 ## Frames and units
 
 Every boundary states its frame and unit explicitly:

@@ -290,6 +290,8 @@ Use the phone as the controller:
 
 This is good for immersive manual flight.
 
+Armed local Phone Sensors control is canonical across Cockpit, Controller, and SIM. A new local sensor flight restores a manual mode and clears stale motor overrides. Local takeoff uses ALT_HOLD so height control does not replace phone attitude steering. See [ADR-0005](internals/decisions/0005-canonical-phone-sensor-control.md) for the invariant and regression scope.
+
 #### Custom/manual input
 
 Use sliders/sticks without requiring physical phone motion:

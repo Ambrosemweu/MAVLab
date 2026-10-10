@@ -188,6 +188,20 @@ class PhysicsSimulationEngine(
         )
     }
 
+    fun armForLocalInput(input: PilotInput) {
+        // A fresh local sensor flight must not inherit a navigation controller
+        // or a uniform-RPM override that would mask the pilot's attitude input.
+        val manualMode = if (autopilot.mode == FlightMode.ALT_HOLD) {
+            FlightMode.ALT_HOLD
+        } else {
+            FlightMode.STABILIZE
+        }
+        setMotorSpeedOverrideRpm(null)
+        setMode(manualMode, ControlAuthority.CONTROLLER)
+        setPilotInput(input)
+        setArmed(true, ControlAuthority.CONTROLLER)
+    }
+
     fun setMode(
         mode: FlightMode,
         authority: ControlAuthority = ControlAuthority.CONTROLLER,
@@ -224,6 +238,12 @@ class PhysicsSimulationEngine(
         guidedAltitudeMeters = targetAltitudeM
         positionController.reset()
         autopilot.takeoff(current, targetAltitudeM)
+        if (authority == ControlAuthority.CONTROLLER) {
+            // Local takeoff controls height while the pilot retains attitude
+            // steering. GCS takeoff continues to use GUIDED position control.
+            autopilot.setMode(FlightMode.ALT_HOLD, current)
+            autopilot.setTargetAltitude(targetAltitudeM.coerceAtLeast(current.altitudeAglMeters + 0.5f))
+        }
         mutableState.value = current.copy(
             armed = autopilot.armed,
             mode = autopilot.mode,
@@ -453,9 +473,9 @@ class PhysicsSimulationEngine(
         mutableState.value = mutableState.value.copy(lastAck = message)
     }
 
-    private fun tick() {
+    private fun tick(fixedDtSeconds: Float? = null) {
         val nowNs = System.nanoTime()
-        val dt = ((nowNs - lastTickNs) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
+        val dt = fixedDtSeconds ?: ((nowNs - lastTickNs) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
         lastTickNs = nowNs
 
         val current = applyFailsafes(mutableState.value)
@@ -502,8 +522,8 @@ class PhysicsSimulationEngine(
         )
     }
 
-    internal fun tickForTest() {
-        tick()
+    internal fun tickForTest(dtSeconds: Float? = null) {
+        tick(dtSeconds)
     }
 
     private fun authorityAfterArmedChange(

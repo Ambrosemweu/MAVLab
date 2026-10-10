@@ -228,7 +228,15 @@ object AppRuntime {
     }
 
     fun setArmed(armed: Boolean) {
-        simLoop.setArmed(armed, ControlAuthority.CONTROLLER)
+        if (armed && !state.value.armed &&
+            mutableControllerInputState.value.inputMode == ControllerInputMode.PHONE_SENSORS
+        ) {
+            mutableMotorSpeedOverrideRpm.value = null
+            simLoop.armForLocalInput(mapPhoneSensorInput(mutablePhoneSensorOrientation.value))
+            refreshPhoneSensorPilotInput()
+        } else {
+            simLoop.setArmed(armed, ControlAuthority.CONTROLLER)
+        }
         if (!armed) {
             resetControllerInputsAfterDisarm()
         }

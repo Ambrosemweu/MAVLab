@@ -13,6 +13,85 @@ import kotlin.test.assertTrue
 
 class PhysicsSimulationEngineTest {
     @Test
+    fun localTakeoffKeepsPhonePilotInputEffectiveInAuthoritativeState() {
+        val engine = PhysicsSimulationEngine()
+        engine.takeoff(5f, ControlAuthority.CONTROLLER)
+        engine.setPilotInput(PilotInput(roll = 0.4f, pitch = -0.3f, yaw = 0.2f, throttle = 0.5f))
+
+        repeat(150) { engine.tickForTest(0.02f) }
+
+        val state = engine.state.value
+        assertTrue(state.armed)
+        assertTrue(state.altitudeAglMeters > 0.5f)
+        assertTrue(state.rollRadians > 0.05f, "Local takeoff must retain roll input: ${state.rollRadians}")
+        assertTrue(state.pitchRadians < -0.05f, "Local takeoff must retain pitch input: ${state.pitchRadians}")
+        assertTrue(state.yawRadians > 0.05f, "Local takeoff must retain yaw input: ${state.yawRadians}")
+        assertEquals(ControlAuthority.CONTROLLER, state.controlAuthority)
+        assertEquals(FlightMode.ALT_HOLD, state.mode)
+    }
+
+    @Test
+    fun newPhoneFlightClearsRetainedNavigationModeAndRpmOverride() {
+        val engine = PhysicsSimulationEngine()
+        engine.setMode(FlightMode.GUIDED, ControlAuthority.GCS_DIRECT)
+        engine.setMotorSpeedOverrideRpm(4_000f)
+        engine.armForLocalInput(PilotInput(roll = 0.4f, pitch = -0.3f, yaw = 0.2f, throttle = 0.65f))
+
+        repeat(100) { engine.tickForTest(0.02f) }
+
+        val state = engine.state.value
+        assertTrue(state.armed)
+        assertEquals(FlightMode.STABILIZE, state.mode)
+        assertEquals(ControlAuthority.CONTROLLER, state.controlAuthority)
+        assertTrue(state.rollRadians > 0.05f)
+        assertTrue(state.pitchRadians < -0.05f)
+        assertTrue(state.yawRadians > 0.05f)
+        assertTrue(state.motors.map { it.rpm }.distinct().size > 1, "Stale RPM override must not mask sensor input")
+    }
+
+    @Test
+    fun localRearmPreservesAnExplicitManualAltitudeHoldMode() {
+        val engine = PhysicsSimulationEngine()
+        engine.setMode(FlightMode.ALT_HOLD)
+        engine.armForLocalInput(PilotInput(throttle = 0.5f))
+
+        assertTrue(engine.state.value.armed)
+        assertEquals(FlightMode.ALT_HOLD, engine.state.value.mode)
+    }
+
+    @Test
+    fun defaultThrottlePhoneInputChangesMotorCommandsImmediatelyAfterArming() {
+        val engine = PhysicsSimulationEngine()
+        engine.armForLocalInput(PilotInput(roll = 0.4f, pitch = -0.3f, throttle = 0.5f))
+        engine.tickForTest(0.02f)
+
+        val armed = engine.state.value
+        assertTrue(armed.armed)
+        assertTrue(armed.motors.map { it.command }.distinct().size > 1)
+        assertTrue(armed.motors.map { it.rpm }.distinct().size > 1)
+
+        engine.setArmed(false)
+        engine.tickForTest(0.02f)
+        assertTrue(engine.state.value.motors.all { it.rpm == 0f })
+    }
+
+    @Test
+    fun gcsTakeoffRetainsGuidedNavigationInsteadOfLocalGyroSteering() {
+        val engine = PhysicsSimulationEngine()
+        engine.setPilotInput(PilotInput(roll = 0.4f, pitch = -0.3f, yaw = 0.2f))
+        engine.takeoff(5f, ControlAuthority.GCS_DIRECT)
+
+        repeat(150) { engine.tickForTest(0.02f) }
+
+        val state = engine.state.value
+        assertTrue(state.altitudeAglMeters > 0.5f)
+        assertEquals(FlightMode.GUIDED, state.mode)
+        assertEquals(ControlAuthority.GCS_DIRECT, state.controlAuthority)
+        assertEquals(0f, state.rollRadians, absoluteTolerance = 0.001f)
+        assertEquals(0f, state.pitchRadians, absoluteTolerance = 0.001f)
+    }
+
+    @Test
     fun initialStateStartsOnGroundForQgcTakeoff() {
         val engine = PhysicsSimulationEngine()
 

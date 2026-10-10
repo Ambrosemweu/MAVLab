@@ -1,6 +1,7 @@
 package com.ascend.mavlab.simulation.autopilot
 
 import com.ascend.mavlab.simulation.engine.DroneState
+import com.ascend.mavlab.simulation.engine.ControlAuthority
 import com.ascend.mavlab.simulation.engine.FlightMode
 import com.ascend.mavlab.simulation.engine.PhysicsSimulationEngine
 import com.ascend.mavlab.simulation.physics.QuadcopterParams
@@ -33,10 +34,10 @@ class AutopilotTest {
     }
 
     @Test
-    fun takeoffSwitchesToGuidedAndArms() {
+    fun gcsTakeoffSwitchesToGuidedAndArms() {
         val engine = PhysicsSimulationEngine()
 
-        engine.takeoff(12f)
+        engine.takeoff(12f, ControlAuthority.GCS_DIRECT)
         val state = engine.state.value
 
         assertTrue(state.armed)

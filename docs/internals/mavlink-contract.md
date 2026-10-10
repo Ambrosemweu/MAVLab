@@ -49,6 +49,8 @@ An accepted ACK is never proof of complete implementation.
 
 Code includes mode changes, `COMMAND_LONG`, `COMMAND_INT`, parameters, mission upload/download/current/clear, and selected arm/takeoff/land/mission/calibration flows. Some stream-interval and calibration requests are accepted without full behavior. Keep exact classification synchronized with source and tests.
 
+The canonical phone-sensor correction changes local takeoff to ALT_HOLD so local attitude steering remains effective. MAVLink takeoff still passes GCS_DIRECT authority to the engine and retains GUIDED position control; command ACKs and capability declarations are unchanged. Focused engine tests cover this separation.
+
 ## Mission evidence
 
 Validate upload count/sequence, item decoding, ACK behavior, engine loading, mission start/progress, clear/set-current, reconnect/re-upload, and malformed/unsupported items.

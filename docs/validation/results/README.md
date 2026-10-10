@@ -5,3 +5,4 @@ Store immutable, build-specific MAVLab validation records here. Do not overwrite
 ## Results
 
 - [v1.5.3 — 2026-09-01](v1.5.3-2026-09-01.md)
+- [Armed phone-sensor control, working tree — 2026-10-10](phone-sensor-control-working-tree-2026-10-10.md)
