@@ -1,0 +1,85 @@
+{
+  "date": "2026-10-10",
+  "timezone": "Africa/Nairobi",
+  "tester": "Codex",
+  "implementation_commit": "51aeb15c5fc954cda0d4a5fd6e8c371238f3f09c",
+  "branch": "feature/mavlab-uiux-refinements",
+  "version_name": "1.5.3",
+  "version_code": 18,
+  "device": {
+    "model": "Samsung SM-G970U",
+    "android_version": "12"
+  },
+  "qgc": {
+    "used": false,
+    "version": null,
+    "protocol_source": "Isolated synthetic GCS 255/190, ADB Toybox netcat to Android loopback UDP 14551"
+  },
+  "final_apk": {
+    "sha256": "988baaccc9db0e82bc159c11d4343620cea71cd40473a7f027b71b28cfbcd09b",
+    "install_result": "Success",
+    "installed_package_checksum_verified": false,
+    "phone_checks": {
+      "health_and_gps_injection_observed": true,
+      "cockpit_gps_no_fix_observed": true,
+      "gps_reset_confirmed": true,
+      "synthetic_upload": {
+        "action": "upload",
+        "items": 5,
+        "mission_ack": 0,
+        "source": "isolated synthetic GCS peer 255/190",
+        "destination": "specified MAVLab test device UDP endpoint",
+        "first_lat_e7": -12921000,
+        "first_lon_e7": 368219000
+      },
+      "armed_auto_gcs_mission_authority_observed": true,
+      "recording_stopped_during_auto_observed": true,
+      "session_folder_count_before_auto": 75,
+      "session_folder_count_during_auto": 75,
+      "auto_flight_did_not_record": true,
+      "take_control_and_land_confirmed": true,
+      "landing_completion_verified": false,
+      "synthetic_rejection": {
+        "action": "reject",
+        "items": 1,
+        "mission_ack": 3,
+        "source": "isolated synthetic GCS peer 255/190",
+        "destination": "specified MAVLab test device UDP endpoint",
+        "first_lat_e7": -12917196,
+        "first_lon_e7": 368219003
+      },
+      "rejection_ui_and_final_reveal_verified": false
+    },
+    "screenshots": [
+      "ops-health-2026-10-10.png",
+      "ops-gps-incident-2026-10-10.png",
+      "ops-auto-recording-off-2026-10-10.png"
+    ]
+  },
+  "earlier_default_off_apk": {
+    "sha256": "e310a9b42eab4683ac4e29db14155fabcfe7f2774ce5d20a1dcd1cf321d519c1",
+    "difference_from_final": "Final build adjusts incident recovery scrolling to reveal the whole section card; recording logic is unchanged.",
+    "phone_checks": {
+      "automatic_opt_in_saved": true,
+      "automatic_opt_in_restored_after_cold_restart": true,
+      "opted_in_arm_recorded": true,
+      "deliberate_stop_paused_current_flight": true,
+      "automatic_recording_left_off": true,
+      "synthetic_clear": {
+        "action": "clear",
+        "ack": 0
+      }
+    },
+    "screenshots": [
+      "ops-recording-off-2026-10-10.png",
+      "ops-recording-opt-in-2026-10-10.png"
+    ]
+  },
+  "cleanup": {
+    "mission_preferences_restored": true,
+    "display_settings_retained": true,
+    "remaining_phone_checks_deferred_by_user": true
+  },
+  "application_left_stopped": true,
+  "scope": "Partial physical-phone checkpoint; not release, QGC, accessibility or complete Ops acceptance."
+}
