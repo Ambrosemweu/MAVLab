@@ -1,0 +1,39 @@
+{
+  "source_commit": "3dde4a2419ef0eccb5f01ee759f37d108fe72479",
+  "version_name": "1.5.3",
+  "version_code": 18,
+  "apk_sha256": "20169010d2fb5527eab444e55e92b3e0db5f1ca9f9c9ee917a8ad35232674f6e",
+  "device": "Samsung SM-G970U",
+  "android": "12",
+  "tester": "Codex",
+  "date": "2026-10-10",
+  "timezone": "Africa/Nairobi",
+  "qgc_client_used": false,
+  "transport": "ADB shell Toybox netcat to MAVLab loopback UDP 14551",
+  "tests": {
+    "tests": 213,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "upload": {
+    "action": "upload",
+    "items": 5,
+    "mission_ack": 0,
+    "source": "isolated synthetic GCS peer 255/190",
+    "destination": "specified MAVLab test device UDP endpoint",
+    "first_lat_e7": -12921000,
+    "first_lon_e7": 368219000
+  },
+  "rejected_replacement": {
+    "action": "reject",
+    "items": 1,
+    "mission_ack": 3,
+    "source": "isolated synthetic GCS peer 255/190",
+    "destination": "specified MAVLab test device UDP endpoint",
+    "first_lat_e7": -12912895,
+    "first_lon_e7": 368219000
+  },
+  "original_mission_preferences_restored_byte_for_byte": true,
+  "original_phone_display_settings_restored": true
+}
