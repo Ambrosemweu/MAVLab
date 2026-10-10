@@ -19,7 +19,7 @@ GRADLE_USER_HOME="$PWD/.gradle" ./gradlew testDebugUnitTest lintDebug assembleDe
 
 Result: BUILD SUCCESSFUL in 1m 43s; **193 tests, zero failures, errors or skips**. Lint and debug assembly passed. [Final Gradle log](evidence/controller-gradle-gate-2026-10-10.log).
 
-The gate ran against the pre-commit implementation tree. Afterwards, one trailing blank line at the end of ControllerTools.kt was removed for the Git whitespace check; no executable code changed. The source commit identifies the committed implementation. The separate validation commit adds only this record and its log.
+The gate ran against the pre-commit implementation tree. Afterwards, one trailing blank line at the end of ControllerTools.kt was removed for the Git whitespace check; no executable code changed. The source commit identifies the committed implementation. The validation checkpoint changes only documentation and the captured build log.
 
 Thirteen added tests cover nine Controller presentation scenarios, three runtime integration scenarios, and Direct RPM authority gating. The runtime integration tests step the actual engine and assert custom roll/pitch/altitude response and Direct RPM motor speed without composing Controller. The existing canonical Phone Sensors tests remain in the full gate.
 
@@ -43,6 +43,16 @@ No final-build portrait, landscape, large-font, calibration, flight-action or se
 | Reverse states | Contextual Arm/Takeoff/Land/Disarm, landed disarm, motor stop, stale-state recovery and deliberate external landing takeover are covered by presentation/runtime tests. In-flight disarm and Direct RPM entry have confirmation UI. Final manual execution pending. |
 | Evidence | 193 passing JVM tests, lint, assembly, APK checksum and Git whitespace review. Earlier-build installation only; final installation and physical-device interaction deferred by user. |
 | Documentation | Controller user guidance, runtime lifecycle, control-authority and simulation contracts reviewed; ADR-0006 records the layout, shared input ownership and unchanged sensor invariant. Mission consolidation is explicitly the next phase. |
+
+## Updated specification review
+
+The new approved Mission Consolidation Decision and the updated consolidated specification supersede the older five-surface design direction for the next implementation phase. The related Controller/Cockpit redesign plans, MAVLab Surface Directions and Target Experience Flows still contain standalone Mission and demo-route references; those are earlier design proposals, not the new navigation requirement.
+
+The reviewed direction is Cockpit, Control, SIM and Ops; conditional mission status/actions in Control; concise awareness in Cockpit; actual received-route geometry in SIM; and protocol/upload evidence in Ops. Mission authoring stays in QGC. Sample routes and normal-product Load route UI are removed in that phase, while deterministic fixtures may remain internal.
+
+A live-code finding for that later phase: MissionPersistence currently stores mission items without source/provenance, and the earlier user-facing demo path saves into the same storage. Legacy stored data therefore cannot automatically be described as a verified received QGC mission. Its provenance/migration requires explicit review before claiming the new real-route guardrail is satisfied. No persistence format or mission behavior changed in this Controller checkpoint.
+
+The user explicitly chose to handle consolidation next, so this review did not change the current navigation, Controller title, SIM route presentation or Ops mission UI.
 
 ## Remaining device checks
 
