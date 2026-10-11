@@ -36,6 +36,8 @@ enum class MavlinkProtocolCapability(val bit: Long) {
     MissionInt(4L),
     CommandInt(8L),
     Mavlink2(8192L),
+    MissionFence(16384L),
+    MissionRally(32768L),
 }
 
 data class ArduPilotCompatibilityProfile(
@@ -93,6 +95,8 @@ object MavLabArduPilotCompatibility {
             MavlinkProtocolCapability.MissionInt,
             MavlinkProtocolCapability.CommandInt,
             MavlinkProtocolCapability.Mavlink2,
+            MavlinkProtocolCapability.MissionFence,
+            MavlinkProtocolCapability.MissionRally,
         ),
         flightCustomVersion = "MAVLAB",
     )

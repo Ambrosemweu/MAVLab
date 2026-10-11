@@ -25,7 +25,7 @@ class MavlinkMessageBuilderTest {
         val packet = MavlinkParser.parse(data, length = data.size)
 
         assertNotNull(packet)
-        assertEquals(0xfe, data[0].toInt() and 0xff)
+        assertEquals(0xfd, data[0].toInt() and 0xff)
         assertEquals(148, packet.messageId)
         assertEquals(174, packet.systemId)
         val capabilities = packet.payload.leUInt64(0)
@@ -57,7 +57,7 @@ class MavlinkMessageBuilderTest {
         val packet = MavlinkParser.parse(data, length = data.size)
 
         assertNotNull(packet)
-        assertEquals(0xfe, data[0].toInt() and 0xff)
+        assertEquals(0xfd, data[0].toInt() and 0xff)
         assertEquals(44, packet.messageId)
         assertEquals(4, packet.payload.size)
         assertEquals(4, packet.payload.leUInt16(0))
@@ -73,7 +73,7 @@ class MavlinkMessageBuilderTest {
         val packet = MavlinkParser.parse(data, length = data.size)
 
         assertNotNull(packet)
-        assertEquals(0xfe, data[0].toInt() and 0xff)
+        assertEquals(0xfd, data[0].toInt() and 0xff)
         assertEquals(51, packet.messageId)
         assertEquals(4, packet.payload.size)
         assertEquals(3, packet.payload.leUInt16(0))
@@ -147,8 +147,10 @@ class MavlinkMessageBuilderTest {
             groundSpeedMS = 1805f,
         )
 
-        val vfrHud = assertNotNull(MavlinkParser.parse(builder.vfrHud(state), length = 28))
-        val gpsRaw = assertNotNull(MavlinkParser.parse(builder.gpsRaw(state), length = 38))
+        val hudBytes = builder.vfrHud(state)
+        val gpsBytes = builder.gpsRaw(state)
+        val vfrHud = assertNotNull(MavlinkParser.parse(hudBytes, length = hudBytes.size))
+        val gpsRaw = assertNotNull(MavlinkParser.parse(gpsBytes, length = gpsBytes.size))
 
         assertEquals(0f, vfrHud.payload.leFloat(0))
         assertEquals(80f, vfrHud.payload.leFloat(4))
@@ -230,28 +232,29 @@ class MavlinkMessageBuilderTest {
         val state = DroneState() // default armed=false, mode=STABILIZE
         val data = builder.heartbeat(state)
 
-        assertEquals(17, data.size) // header (6) + payload (9) + crc (2)
-        assertEquals(0xfe, data[0].toInt() and 0xff) // magic
+        assertEquals(21, data.size) // header (10) + payload (9) + crc (2)
+        assertEquals(0xfd, data[0].toInt() and 0xff) // magic
         assertEquals(9, data[1].toInt() and 0xff) // payload length
-        assertEquals(0, data[2].toInt() and 0xff) // sequence
-        assertEquals(1, data[3].toInt() and 0xff) // system ID
-        assertEquals(1, data[4].toInt() and 0xff) // component ID
-        assertEquals(0, data[5].toInt() and 0xff) // message ID
+        assertEquals(0, data[2].toInt() and 0xff) // incompatibility flags
+        assertEquals(0, data[3].toInt() and 0xff) // compatibility flags
+        assertEquals(0, data[4].toInt() and 0xff) // sequence
+        assertEquals(1, data[5].toInt() and 0xff) // system ID
+        assertEquals(1, data[6].toInt() and 0xff) // component ID
+        assertEquals(0, data[7].toInt() and 0xff) // message ID
         
         // Expected payload: [0, 0, 0, 0, 2, 3, 93, 3, 3]
-        assertEquals(0, data[6].toInt() and 0xff)
-        assertEquals(0, data[7].toInt() and 0xff)
-        assertEquals(0, data[8].toInt() and 0xff)
-        assertEquals(0, data[9].toInt() and 0xff)
-        assertEquals(2, data[10].toInt() and 0xff)
-        assertEquals(3, data[11].toInt() and 0xff)
-        assertEquals(93, data[12].toInt() and 0xff)
-        assertEquals(3, data[13].toInt() and 0xff)
-        assertEquals(3, data[14].toInt() and 0xff)
+        assertEquals(0, data[10].toInt() and 0xff)
+        assertEquals(0, data[11].toInt() and 0xff)
+        assertEquals(0, data[12].toInt() and 0xff)
+        assertEquals(0, data[13].toInt() and 0xff)
+        assertEquals(2, data[14].toInt() and 0xff)
+        assertEquals(3, data[15].toInt() and 0xff)
+        assertEquals(93, data[16].toInt() and 0xff)
+        assertEquals(3, data[17].toInt() and 0xff)
+        assertEquals(3, data[18].toInt() and 0xff)
 
-        // CRC low byte and high byte (expected CRC: 0xc64c)
-        assertEquals(0x4c, data[15].toInt() and 0xff)
-        assertEquals(0xc6, data[16].toInt() and 0xff)
+        // Independent generated-library fixture is checked by MavlinkParserTest.
+        assertNotNull(MavlinkParser.parse(data, data.size))
     }
 
     private fun ByteArray.leUInt64(offset: Int): Long {

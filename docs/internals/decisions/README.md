@@ -15,5 +15,6 @@ Architecture Decision Records preserve why consequential choices were made witho
 - [ADR-0010: SIM inspection lighting](0010-sim-inspection-lighting.md)
 - [ADR-0011: SIM initial inspection camera](0011-sim-inspection-camera.md)
 - [ADR-0012: Onboarding paging and truthful learning previews](0012-onboarding-paging-and-preview-truth.md)
+- [ADR-0013: Engine-owned simulated fence and rally behavior](0013-simulated-fence-and-rally.md)
 
 Future decisions should cover foreground-service retention, system-ID strategy, ArduPilot-compatible identity, protocol/engine boundaries, and simulation time after those choices are finalized.

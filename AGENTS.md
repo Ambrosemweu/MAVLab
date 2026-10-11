@@ -41,7 +41,7 @@ Use these terms consistently. The complete glossary is in `docs/internals/glossa
 - **MAVLab**: the Android application and its on-device simulation runtime.
 - **simulated vehicle**: the drone represented by the engine; never imply it is a real aircraft.
 - **GCS**: ground control station software; QGroundControl is the actively supported GCS.
-- **control authority**: the currently dominant high-level source of flight intent: `IDLE`, `CONTROLLER`, `GCS_DIRECT`, or `GCS_MISSION`.
+- **control authority**: the currently dominant high-level source of flight intent: `IDLE`, `CONTROLLER`, `GCS_DIRECT`, `GCS_MISSION`, or `SAFETY_RECOVERY` (automatic fence recovery).
 - **simulation state**: authoritative engine state such as attitude, position, velocity, battery, mode, and armed state.
 - **digital twin view**: the SIM surface rendering simulation state. It is not a separate physics model.
 - **peer**: a detected MAVLink endpoint receiving telemetry and/or sending commands.

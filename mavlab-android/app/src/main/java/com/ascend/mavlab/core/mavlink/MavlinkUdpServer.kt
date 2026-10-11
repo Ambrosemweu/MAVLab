@@ -39,6 +39,7 @@ class MavlinkUdpServer(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val vehicleSystemId = config.systemId
     private val builder = MavlinkMessageBuilder(vehicleSystemId, config.componentId)
+    private val safetyTransfer = SafetyMissionTransfer(simLoop, builder, ::send)
     private val mutableStatus = MutableStateFlow("Stopped")
     val status: StateFlow<String> = mutableStatus.asStateFlow()
     private val mutableIdentityStatus = MutableStateFlow(
@@ -57,6 +58,9 @@ class MavlinkUdpServer(
     private val activePeers = ConcurrentHashMap<UdpDestination, Long>()
     private var lastReachedSequenceSent: Int? = null
     private var missionUploadSession: MissionUploadSession? = null
+    private var completedUpload: MissionUploadSession? = null
+    private var completedUploadAtMs = 0L
+    private var uploadUsesLegacyItems = false
     @Volatile
     private var telemetryDestinations: List<UdpDestination> = emptyList()
     @Volatile
@@ -67,7 +71,7 @@ class MavlinkUdpServer(
         if (socket != null) return
         val openedSocket = openSocket()
         openedSocket.broadcast = true
-        openedSocket.soTimeout = 1000
+        openedSocket.soTimeout = 100
         socket = openedSocket
         mutableStatus.value = "Running UDP ${openedSocket.localPort} -> QGC ${config.sameDeviceQgcPort}"
 
@@ -115,6 +119,12 @@ class MavlinkUdpServer(
         gcsConnectionJob?.cancel()
         socket?.close()
         socket = null
+        missionUploadSession?.let { session ->
+            simLoop.rejectMissionUpload("upload interrupted: MAVLink stopped", session.expectedCount, session.receivedCount)
+        }
+        missionUploadSession = null
+        completedUpload = null
+        safetyTransfer.stop()
         activePeers.clear()
         lastPeer = null
         mutableIdentityStatus.value = mutableIdentityStatus.value.copy(
@@ -166,6 +176,8 @@ class MavlinkUdpServer(
             add(builder.vfrHud(state))
             add(builder.sysStatus(state))
             add(builder.batteryStatus(state))
+            add(builder.extendedSysState(state))
+            if (state.safety.enabled) add(builder.fenceStatus(state))
             if (telemetryBurstCount % HomePositionBurstInterval == 0) {
                 add(builder.homePosition(simLoop.homePosition()))
             }
@@ -199,7 +211,7 @@ class MavlinkUdpServer(
     }
 
     private suspend fun receiveLoop() {
-        val buffer = ByteArray(512)
+        val buffer = ByteArray(65_507) // maximum UDP payload; a datagram may contain many frames
         while (scope.coroutineContext.isActive) {
             val currentSocket = socket ?: return
             val packet = DatagramPacket(buffer, buffer.size)
@@ -209,17 +221,21 @@ class MavlinkUdpServer(
                 val sender = UdpDestination(host = host, port = packet.port)
                 handleInbound(packet.data.copyOf(packet.length), packet.length, sender)
             } catch (_: SocketTimeoutException) {
-                continue
+                // Poll below even without traffic, so a lost mission item can be retried.
             } catch (error: Exception) {
                 if (scope.coroutineContext.isActive) {
                     mutableStatus.value = "Receive failed: ${error.message}"
                 }
             }
+            retryMissionUpload()
         }
     }
 
     private fun handleInbound(data: ByteArray, length: Int, peer: UdpDestination?) {
-        val packet = MavlinkParser.parse(data, length) ?: return
+        MavlinkParser.parseAll(data, length).forEach { packet -> handlePacket(packet, length, peer) }
+    }
+
+    private fun handlePacket(packet: MavlinkPacket, length: Int, peer: UdpDestination?) {
         val timestampMs = System.currentTimeMillis()
         if (peer != null && packet.systemId != vehicleSystemId) {
             activePeers[peer] = timestampMs
@@ -317,7 +333,7 @@ class MavlinkUdpServer(
         simLoop.setMode(mode, ControlAuthority.GCS_DIRECT)
         simLoop.noteInbound("SET_MODE ${mode.displayName}")
         sendImmediateTelemetry()
-        ack(0, MAV_RESULT_ACCEPTED, peer, "SET_MODE")
+        ack(0, if (simLoop.state.value.mode == mode) MAV_RESULT_ACCEPTED else MAV_RESULT_DENIED, peer, "SET_MODE", packet)
     }
 
     private data class CommandInvocation(
@@ -343,7 +359,7 @@ class MavlinkUdpServer(
         )
         Log.i(TAG, "rx COMMAND_LONG: command=${invocation.command}")
         simLoop.noteInbound("COMMAND_LONG ${invocation.command}")
-        executeCommand(invocation, peer)
+        executeCommand(invocation, peer, packet)
     }
 
     private fun handleCommandInt(packet: MavlinkPacket, peer: UdpDestination?) {
@@ -361,25 +377,27 @@ class MavlinkUdpServer(
         )
         Log.i(TAG, "rx COMMAND_INT: command=${invocation.command}")
         simLoop.noteInbound("COMMAND_INT ${invocation.command}")
-        executeCommand(invocation, peer)
+        executeCommand(invocation, peer, packet)
     }
 
-    private fun executeCommand(invocation: CommandInvocation, peer: UdpDestination?) {
+    private fun executeCommand(invocation: CommandInvocation, peer: UdpDestination?, source: MavlinkPacket) {
+        fun ack(command: Int, result: Int, peer: UdpDestination?, label: String) =
+            this@MavlinkUdpServer.ack(command, result, peer, label, source)
         val command = invocation.command
         when (command) {
             MAV_CMD_COMPONENT_ARM_DISARM -> {
                 val arm = invocation.param1 >= 0.5f
                 simLoop.setArmed(arm, ControlAuthority.GCS_DIRECT)
                 sendImmediateTelemetry()
-                ack(command, MAV_RESULT_ACCEPTED, peer, if (arm) "ARM" else "DISARM")
+                ack(command, if (simLoop.state.value.armed == arm) MAV_RESULT_ACCEPTED else MAV_RESULT_DENIED, peer, if (arm) "ARM" else "DISARM")
             }
             MAV_CMD_NAV_TAKEOFF -> {
                 val requestedAltitude = invocation.altitude
                     .takeIf { it.isFinite() && it > 0f }
                     ?: 10f
-                simLoop.takeoff(requestedAltitude, ControlAuthority.GCS_DIRECT)
+                val accepted = simLoop.takeoff(requestedAltitude, ControlAuthority.GCS_DIRECT)
                 sendImmediateTelemetry()
-                ack(command, MAV_RESULT_ACCEPTED, peer, "TAKEOFF")
+                ack(command, if (accepted) MAV_RESULT_ACCEPTED else MAV_RESULT_DENIED, peer, "TAKEOFF")
             }
             MAV_CMD_NAV_LAND -> {
                 simLoop.land(ControlAuthority.GCS_DIRECT)
@@ -410,17 +428,18 @@ class MavlinkUdpServer(
                 ack(command, MAV_RESULT_ACCEPTED, peer, "SET_MESSAGE_INTERVAL")
             }
             MAV_CMD_REQUEST_MESSAGE -> {
-                handleRequestMessage(invocation.param1.toInt(), peer, command)
+                handleRequestMessage(invocation.param1.toInt(), peer, command, source)
             }
             MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES -> {
                 sendAutopilotVersion(peer)
                 ack(command, MAV_RESULT_ACCEPTED, peer, "REQUEST_AUTOPILOT_CAPABILITIES")
             }
             MAV_CMD_MISSION_START -> {
-                val accepted = simLoop.missionProgress.value.loaded
+                var accepted = simLoop.missionProgress.value.loaded
                 if (accepted) {
                     simLoop.setArmed(true, ControlAuthority.GCS_MISSION)
                     simLoop.setMode(FlightMode.AUTO, ControlAuthority.GCS_MISSION)
+                    accepted = simLoop.state.value.armed && simLoop.state.value.mode == FlightMode.AUTO
                     sendImmediateTelemetry()
                 }
                 ack(
@@ -435,7 +454,12 @@ class MavlinkUdpServer(
                 val mode = FlightMode.fromCustomMode(customMode)
                 simLoop.setMode(mode, ControlAuthority.GCS_DIRECT)
                 sendImmediateTelemetry()
-                ack(command, MAV_RESULT_ACCEPTED, peer, "DO_SET_MODE ${mode.displayName}")
+                ack(command, if (simLoop.state.value.mode == mode) MAV_RESULT_ACCEPTED else MAV_RESULT_DENIED, peer, "DO_SET_MODE ${mode.displayName}")
+            }
+            207 -> {
+                // Selective type/floor control is not silently treated as enabling all boundaries.
+                val accepted = invocation.param2 == 0f && invocation.param1 in listOf(0f, 1f) && simLoop.setSafetyParameter("FENCE_ENABLE", invocation.param1)
+                ack(command, if (accepted) MAV_RESULT_ACCEPTED else MAV_RESULT_DENIED, peer, "DO_FENCE_ENABLE")
             }
             MAV_CMD_PREFLIGHT_CALIBRATION -> {
                 ack(command, MAV_RESULT_ACCEPTED, peer, "PREFLIGHT_CALIBRATION")
@@ -459,7 +483,9 @@ class MavlinkUdpServer(
         }
     }
 
-    private fun handleRequestMessage(requestedMessageId: Int, peer: UdpDestination?, command: Int) {
+    private fun handleRequestMessage(requestedMessageId: Int, peer: UdpDestination?, command: Int, source: MavlinkPacket) {
+        fun ack(command: Int, result: Int, peer: UdpDestination?, label: String) =
+            this@MavlinkUdpServer.ack(command, result, peer, label, source)
         when (requestedMessageId) {
             MAVLINK_MSG_ID_AUTOPILOT_VERSION -> {
                 sendAutopilotVersion(peer)
@@ -468,6 +494,16 @@ class MavlinkUdpServer(
             MAVLINK_MSG_ID_HOME_POSITION -> {
                 sendHomePosition(peer)
                 ack(command, MAV_RESULT_ACCEPTED, peer, "REQUEST_MESSAGE HOME_POSITION")
+            }
+            245 -> {
+                val destination = peer ?: lastPeer ?: return
+                send(builder.extendedSysState(simLoop.state.value), destination)
+                ack(command, MAV_RESULT_ACCEPTED, peer, "REQUEST_MESSAGE EXTENDED_SYS_STATE")
+            }
+            162 -> {
+                val destination = peer ?: lastPeer ?: return
+                send(builder.fenceStatus(simLoop.state.value), destination)
+                ack(command, MAV_RESULT_ACCEPTED, peer, "REQUEST_MESSAGE FENCE_STATUS")
             }
             else -> {
                 ack(command, MAV_RESULT_UNSUPPORTED, peer, "REQUEST_MESSAGE unsupported $requestedMessageId")
@@ -498,15 +534,17 @@ class MavlinkUdpServer(
         val paramIdBytes = payload.copyOfRange(6, 22)
         val paramId = String(paramIdBytes, Charsets.US_ASCII).trimEnd { it == '\u0000' }
 
-        if (paramId == "WPNAV_SPEED") {
+        if (paramId == "WPNAV_SPEED" && paramValue.isFinite() && paramValue > 0f) {
             wpNavSpeed = paramValue
             simLoop.setWpNavSpeedParameter(paramValue / 100f)
             Log.i(TAG, "PARAM_SET: WPNAV_SPEED set to $paramValue cm/s (${paramValue / 100f} m/s)")
         }
+        simLoop.setSafetyParameter(paramId, paramValue)
 
         val params = getParamsList()
         val index = params.indexOfFirst { it.first == paramId }
-        val finalValue = if (paramId == "WPNAV_SPEED") wpNavSpeed else paramValue
+        if (index == -1) return // Unknown/read-only parameters are not falsely echoed as writes.
+        val finalValue = params[index].second
         val destination = peer ?: lastPeer ?: return
         send(
             builder.paramValue(paramId, finalValue, if (index != -1) index else 65535, params.size),
@@ -603,16 +641,12 @@ class MavlinkUdpServer(
             "LAND_SPEED" to 50f,
             "RTL_ALT_FINAL" to 0f,
             "RTL_LOIT_TIME" to 5000f,
-            "RTL_ALT" to 1500f,
-            "FENCE_MARGIN" to 2f,
-            "FENCE_ACTION" to 0f,
-            "FENCE_TYPE" to 0f,
-            "FENCE_RADIUS" to 150f,
-            "FENCE_ALT_MAX" to 100f,
-            "FENCE_ENABLE" to 0f,
             "FS_THR_VALUE" to 975f,
             "FS_THR_ENABLE" to 0f,
             "FS_GCS_ENABLE" to 0f,
+        ) + simLoop.safetyPlans.value.config.parameters() + listOf(
+            "FENCE_TOTAL" to simLoop.safetyPlans.value.fence.size.toFloat(),
+            "RALLY_TOTAL" to simLoop.safetyPlans.value.rally.size.toFloat(),
         )
     }
 
@@ -670,6 +704,9 @@ class MavlinkUdpServer(
 
     private fun sendMissionCount(packet: MavlinkPacket, peer: UdpDestination?) {
         if (!isTargetedToVehicle(packet, targetSystemOffset = 0, label = "MISSION_REQUEST_LIST")) return
+        if (!acceptMissionType(packet, peer, 2)) return
+        val type = missionType(packet, 2)
+        if (type != 0) { safetyTransfer.readCount(packet, peer ?: lastPeer ?: return, type); return }
         simLoop.noteInbound("MISSION_REQUEST_LIST")
         val destination = peer ?: lastPeer ?: return
         send(
@@ -690,6 +727,9 @@ class MavlinkUdpServer(
         if (packet.payload.size < 4) return
         val targetMatches = isTargetedToVehicle(packet, targetSystemOffset = 2, label = if (legacy) "MISSION_REQUEST" else "MISSION_REQUEST_INT")
         if (!targetMatches) return
+        if (!acceptMissionType(packet, peer, 4)) return
+        val type = missionType(packet, 4)
+        if (type != 0) { safetyTransfer.readItem(packet, peer ?: lastPeer ?: return, type, legacy); return }
         val sequence = packet.payload.leUInt16(0)
         val progress = simLoop.missionProgress.value
         val item = progress.items.getOrNull(sequence) ?: return
@@ -709,6 +749,19 @@ class MavlinkUdpServer(
             logInbound(packet, peer, length, "ignored target-mismatch")
             return
         }
+        if (!acceptMissionType(packet, destination, 4)) return
+        val type = missionType(packet, 4)
+        if (type != 0) {
+            if (isIdentityConflicted(packet, "SAFETY_COUNT")) {
+                sendMissionAck(MAV_MISSION_DENIED, packet, destination, "Safety identity conflict", type); return
+            }
+            safetyTransfer.count(packet, destination, type); return
+        }
+        val activeUpload = missionUploadSession
+        if (activeUpload != null && !activeUpload.owns(packet, destination)) {
+            sendMissionAck(MAV_MISSION_DENIED, packet, destination, "MISSION_COUNT other uploader")
+            return
+        }
         if (isIdentityConflicted(packet, "MISSION_COUNT")) {
             missionUploadSession = null
             simLoop.rejectMissionUpload("MAVLink system ID conflict. Set QGC system ID to $DefaultQgcSystemId.")
@@ -725,6 +778,7 @@ class MavlinkUdpServer(
         }
         if (session.expectedCount == 0) {
             missionUploadSession = null
+            completedUpload = null
             simLoop.clearMission()
             onMissionCleared()
             simLoop.acceptMissionUpload(0)
@@ -733,15 +787,10 @@ class MavlinkUdpServer(
             return
         }
         missionUploadSession = session
+        completedUpload = null
+        uploadUsesLegacyItems = false
         simLoop.beginMissionUpload(expectedCount = session.expectedCount, requestedSequence = 0)
-        send(
-            builder.missionRequestInt(
-                sequence = 0,
-                targetSystem = packet.systemId,
-                targetComponent = packet.componentId,
-            ),
-            destination,
-        )
+        requestMissionItem(session)
         logInbound(packet, peer, length, "accepted upload-count=${session.expectedCount} request=0")
     }
 
@@ -757,11 +806,27 @@ class MavlinkUdpServer(
             logInbound(packet, peer, length, "ignored target-mismatch")
             return
         }
+        if (!acceptMissionType(packet, destination, 37)) return
+        val type = missionType(packet, 37)
+        if (type != 0) { safetyTransfer.item(packet, destination, type, legacy); return }
         val session = missionUploadSession
         if (session == null) {
+            val previous = completedUpload
+            val duplicate = if (legacy) MissionUploadSession.parseMissionItem(packet) else MissionUploadSession.parseMissionItemInt(packet)
+            if (previous != null && previous.owns(packet, destination) && duplicate != null &&
+                System.currentTimeMillis() - completedUploadAtMs <= MissionUploadSession.UploadTimeoutMs &&
+                previous.matchesReceived(duplicate)
+            ) {
+                sendMissionAck(MAV_MISSION_ACCEPTED, packet, destination, "MISSION_UPLOAD repeated final ACK")
+                return
+            }
             simLoop.rejectMissionUpload("no active upload session")
             sendMissionAck(MAV_MISSION_ERROR, packet, destination, "MISSION_ITEM no session")
             logInbound(packet, peer, length, "rejected no-session")
+            return
+        }
+        if (!session.owns(packet, destination)) {
+            sendMissionAck(MAV_MISSION_DENIED, packet, destination, "MISSION_ITEM other uploader")
             return
         }
         if (session.expired) {
@@ -795,16 +860,14 @@ class MavlinkUdpServer(
                     lastReceivedSequence = item.sequence,
                     nextRequestedSequence = result.sequence,
                 )
-                val request = if (legacy) {
-                    builder.missionRequest(result.sequence, packet.systemId, packet.componentId)
-                } else {
-                    builder.missionRequestInt(result.sequence, packet.systemId, packet.componentId)
-                }
-                send(request, destination)
+                uploadUsesLegacyItems = legacy
+                requestMissionItem(session)
                 logInbound(packet, peer, length, "accepted item=${item.sequence} request=${result.sequence}")
             }
             is MissionUploadResult.Complete -> {
                 missionUploadSession = null
+                completedUpload = session
+                completedUploadAtMs = System.currentTimeMillis()
                 simLoop.loadMission(result.items, MissionOrigin.GCS_UPLOAD)
                 onMissionLoaded(result.items)
                 simLoop.acceptMissionUpload(count = result.items.size, lastReceivedSequence = item.sequence)
@@ -831,11 +894,26 @@ class MavlinkUdpServer(
             logInbound(packet, peer, length, "ignored target-mismatch")
             return
         }
+        if (!acceptMissionType(packet, destination, 2, allowAll = true)) return
+        val type = missionType(packet, 2)
+        if (type != 0) {
+            if (simLoop.state.value.armed || isIdentityConflicted(packet, "SAFETY_CLEAR")) {
+                sendMissionAck(MAV_MISSION_DENIED, packet, destination, "Disarm / resolve identity before safety clear", type); return
+            }
+            if (safetyTransfer.clear(packet, destination, type) && type == 255) {
+                missionUploadSession = null
+                completedUpload = null
+                onMissionCleared()
+                lastReachedSequenceSent = null
+            }
+            return
+        }
         missionUploadSession = null
+        completedUpload = null
         simLoop.clearMission()
         onMissionCleared()
         lastReachedSequenceSent = null
-        sendMissionAck(MAV_MISSION_ACCEPTED, packet, destination, "MISSION_CLEAR_ALL")
+        sendMissionAck(MAV_MISSION_ACCEPTED, packet, destination, "MISSION_CLEAR_ALL", type)
         logInbound(packet, peer, length, "accepted clear-all")
     }
 
@@ -857,15 +935,53 @@ class MavlinkUdpServer(
         logInbound(packet, peer, length, if (accepted) "accepted current=$sequence" else "rejected current=$sequence")
     }
 
-    private fun sendMissionAck(type: Int, packet: MavlinkPacket, destination: UdpDestination, label: String) {
+    private fun sendMissionAck(type: Int, packet: MavlinkPacket, destination: UdpDestination, label: String, missionType: Int = 0) {
         simLoop.noteAck(label)
-        send(builder.missionAck(type, packet.systemId, packet.componentId), destination)
+        send(builder.missionAck(type, packet.systemId, packet.componentId, missionType), destination)
     }
 
-    private fun ack(command: Int, result: Int, peer: UdpDestination?, label: String) {
+    private fun acceptMissionType(packet: MavlinkPacket, peer: UdpDestination?, offset: Int, allowAll: Boolean = false): Boolean {
+        val type = packet.payload.getOrNull(offset)?.toInt()?.and(0xff) ?: 0
+        if (type in 0..2 || allowAll && type == 255) return true
+        val destination = peer ?: lastPeer ?: return false
+        sendMissionAck(3, packet, destination, "Unsupported mission type $type", type)
+        return false
+    }
+
+    private fun missionType(packet: MavlinkPacket, offset: Int) = packet.payload.getOrNull(offset)?.toInt()?.and(0xff) ?: 0
+
+    private fun requestMissionItem(session: MissionUploadSession) {
+        val request = if (uploadUsesLegacyItems) {
+            builder.missionRequest(session.nextSequence, session.sourceSystemId, session.sourceComponentId)
+        } else {
+            builder.missionRequestInt(session.nextSequence, session.sourceSystemId, session.sourceComponentId)
+        }
+        send(request, session.peer)
+        session.markRequestSent(System.currentTimeMillis())
+    }
+
+    private fun retryMissionUpload() {
+        safetyTransfer.retry()
+        val session = missionUploadSession ?: return
+        when (val retry = session.pollRetry(System.currentTimeMillis())) {
+            MissionUploadRetry.None -> Unit
+            is MissionUploadRetry.Request -> {
+                requestMissionItem(session)
+                Log.i(TAG, "MISSION_UPLOAD retry request=${retry.sequence}")
+            }
+            MissionUploadRetry.Exhausted -> {
+                missionUploadSession = null
+                simLoop.rejectMissionUpload("upload timeout at sequence ${session.nextSequence}", session.expectedCount, session.receivedCount)
+                send(builder.missionAck(MAV_MISSION_ERROR, session.sourceSystemId, session.sourceComponentId), session.peer)
+                Log.w(TAG, "MISSION_UPLOAD timed out at sequence ${session.nextSequence}")
+            }
+        }
+    }
+
+    private fun ack(command: Int, result: Int, peer: UdpDestination?, label: String, source: MavlinkPacket) {
         simLoop.noteAck(label)
         val destination = peer ?: lastPeer ?: return
-        send(builder.commandAck(command, result), destination)
+        send(builder.commandAck(command, result, source.systemId, source.componentId), destination)
     }
 
     private fun isIdentityConflicted(packet: MavlinkPacket, label: String): Boolean {
@@ -890,7 +1006,10 @@ class MavlinkUdpServer(
             return false
         }
         val targetSystem = packet.payload[targetSystemOffset].toInt() and 0xff
-        val matches = targetSystem == 0 || targetSystem == vehicleSystemId
+        val targetComponent = if (packet.messageId == 11) 0 else
+            packet.payload.getOrNull(targetSystemOffset + 1)?.toInt()?.and(0xff) ?: 0
+        val matches = (targetSystem == 0 || targetSystem == vehicleSystemId) &&
+            (targetComponent == 0 || targetComponent == config.componentId)
         if (!matches) {
             simLoop.noteInbound("Ignored $label target_system=$targetSystem vehicle_system=$vehicleSystemId")
             Log.w(TAG, "Ignored $label target_system=$targetSystem vehicle_system=$vehicleSystemId")

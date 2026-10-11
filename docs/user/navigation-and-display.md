@@ -1,6 +1,6 @@
 # Navigation and display
 
-Working-tree UI/UX behavior; this is not a published release claim.
+Applies to v1.6.0. Device/build-specific acceptance and remaining qualification are recorded separately.
 
 MAVLab has four destinations: **Cockpit**, **Control**, **SIM**, and **Ops**. The compact bottom bar keeps all four names visible, including in full-screen mode. Tap a destination to open it. Tapping the selected destination leaves your current view intact.
 

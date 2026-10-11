@@ -18,6 +18,7 @@ It is not the same as flight mode, connection status, or armed state.
 | `CONTROLLER` | Built-in manual/phone input is dominant. | Controller input/source is visible. |
 | `GCS_DIRECT` | QGC issued direct commands without an active mission. | Cockpit shows GCS Direct. |
 | `GCS_MISSION` | Uploaded mission/autonomous GCS intent is dominant. | Mission progress and GCS Mission are visible. |
+| `SAFETY_RECOVERY` (v1.6.0) | An actionable simulated fence breach owns recovery intent. | Cockpit/Control name Fence recovery; Ops reports boundary, action and destination. |
 
 ## Required properties
 
@@ -32,6 +33,8 @@ It is not the same as flight mode, connection status, or armed state.
 ## Important current limits
 
 Generic joystick/manual input must not be documented as automatically preempting active `GCS_MISSION` unless implementation and tests prove that transition. Explicit commands may follow different rules.
+
+An enabled fence can supersede manual/GCS/mission intent with latched RTL/LAND. This is automatic simulation authority, not a connected GCS. Manual input, Direct RPM and non-recovery mode selection cannot take over the latch. LAND/DISARM remain available. Disabling enforcement releases the latch while retaining the current RTL/LAND mode; deliberately select a manual mode to resume steering. Touchdown disarm resolves recovery to IDLE. Uploading a fence never enables it. See [ADR-0013](decisions/0013-simulated-fence-and-rally.md) and the [safety contract](mavlink-contract.md#simulated-fence-and-rally-contract-working-tree).
 
 Control disables local manipulation while observed GCS mission/direct authority is active and explains the blocking state. Confirmed **Take control & land** calls the existing local Land command. The sensor acceptance rules are unchanged: Phone Sensors can follow a GCS_DIRECT command and reclaim Controller authority; the UI does not promise an external-direct lock. Custom Input and Direct RPM are now applied by AppRuntime rather than screen effects. GCS mission/direct authority suspends the Direct RPM override.
 

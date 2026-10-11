@@ -45,5 +45,5 @@ internal fun ControllerInputState.acceptsPhoneSensorInput(
 ): Boolean {
     return inputMode == ControllerInputMode.PHONE_SENSORS &&
         sensorAvailable &&
-        controlAuthority != ControlAuthority.GCS_MISSION
+        controlAuthority != ControlAuthority.GCS_MISSION && controlAuthority != ControlAuthority.SAFETY_RECOVERY
 }

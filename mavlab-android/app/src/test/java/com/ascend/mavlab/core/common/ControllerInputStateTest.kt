@@ -16,6 +16,7 @@ class ControllerInputStateTest {
         assertNull(inputs.activeDirectRpm(true, ControlAuthority.GCS_DIRECT))
         assertNull(inputs.activeDirectRpm(true, ControlAuthority.GCS_MISSION))
         assertNull(inputs.activeDirectRpm(true, ControlAuthority.IDLE))
+        assertNull(inputs.activeDirectRpm(true, ControlAuthority.SAFETY_RECOVERY))
         assertNull(inputs.copy(inputMode = ControllerInputMode.PHONE_SENSORS).activeDirectRpm(true, ControlAuthority.CONTROLLER))
     }
 
@@ -69,6 +70,7 @@ class ControllerInputStateTest {
     @Test
     fun phoneSensorInputRespectsModeAvailabilityAndMissionAuthority() {
         val phoneSensors = ControllerInputState(inputMode = ControllerInputMode.PHONE_SENSORS)
+        assertFalse(phoneSensors.acceptsPhoneSensorInput(true, ControlAuthority.SAFETY_RECOVERY))
 
         assertFalse(
             phoneSensors.acceptsPhoneSensorInput(

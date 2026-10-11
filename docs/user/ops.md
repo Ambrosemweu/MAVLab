@@ -16,6 +16,10 @@ Expand **Peers & identity** for vehicle/GCS system and component IDs, packet/hea
 
 **Mission upload** appears for a stored mission or a non-idle upload. It shows exact phase, expected/received counts, zero-based requested/validated sequences, rejection, stored source and partial behavior. Accepted upload is separate from AUTO execution. Restoration generates no new upload ACK. A rejected replacement retains the prior loaded mission; inspect the reason, correct it in QGC and re-upload. Unverified saved source requires re-upload before route display/local Start AUTO, or clear while disarmed in Control.
 
+## Flight boundaries and rally
+
+**Flight boundaries & rally** reports separate fence/rally uploads, enabled/breached state, configured response and return destination. Enable while disarmed; disable can release recovery while armed without cancelling the current RTL/LAND mode. Clear requires disarmed state and disables fencing without deleting the navigation mission. See [simulated flight boundaries](flight-boundaries.md) for configuration and reverse paths.
+
 ## Failure exercises
 
 Expand **Failure scenarios**, choose an exercise and confirm injection after reading the expected observation. **Learn why** exposes cause, telemetry signature, response and lesson. Reset a scenario explicitly, or confirm **Reset all failures**. The active issue area remains visible independently of whether the catalog is expanded. Recharging leaves accelerated drain active until that scenario is reset.
@@ -36,4 +40,4 @@ Recording has its own active indicator and elapsed time. Saved sessions offer **
 
 Confirmed **Stop simulation** stops physics/networking and saves the recording. It freezes vehicle state; it does not land or disarm. **Start simulation** resumes the same process state. Background handoff behavior remains unchanged.
 
-**Advanced configuration** contains QGC setup and the simulated GPS origin. Changing origin requires confirmation and disarmed state, and clears stored mission data. **About MAVLab** contains the Ascend Labs identity, installed version and onboarding replay.
+**Advanced configuration** contains QGC setup and the simulated GPS origin. Changing origin requires confirmation and disarmed state, clears stored navigation/fence/rally data and disables fencing. **About MAVLab** contains the Ascend Labs identity, installed version and onboarding replay.

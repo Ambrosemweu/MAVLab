@@ -532,6 +532,7 @@ private fun cockpitEyebrow(
 ): String {
     if (freshness == CockpitDataFreshness.STALE) return "RECONNECTING · ${formatAge(freshnessAgeMs)}"
     if (freshness == CockpitDataFreshness.UNAVAILABLE) return "RUNTIME · RESTORING"
+    if (state.controlAuthority == ControlAuthority.SAFETY_RECOVERY) return "FENCE RECOVERY · ${state.mode.displayName.uppercase()}"
     return when (flightPhase) {
         CockpitFlightPhase.DISARMED_GROUND -> "READY · DISARMED"
         CockpitFlightPhase.ARMED_GROUND -> "ARMED · GROUND"
@@ -542,7 +543,7 @@ private fun cockpitEyebrow(
             else -> "IN FLIGHT · MANUAL"
         }
         CockpitFlightPhase.HOLDING -> "HOLDING POSITION"
-        CockpitFlightPhase.RETURNING -> "RETURNING HOME"
+        CockpitFlightPhase.RETURNING -> if (state.safety.returnTarget in listOf("None", "Home")) "RETURNING HOME" else "RETURNING · ${state.safety.returnTarget.uppercase()}"
         CockpitFlightPhase.LANDING -> "LANDING · ACTIVE"
         CockpitFlightPhase.LANDED_ARMED -> "TOUCHDOWN · DISARM REQUIRED"
         CockpitFlightPhase.FLIGHT_COMPLETE -> "FLIGHT COMPLETE"

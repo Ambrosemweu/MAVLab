@@ -35,6 +35,7 @@ data class DroneState(
     val motors: List<MotorTelemetry> = List(4) { MotorTelemetry() },
     val lastInboundMessage: String = "None",
     val lastAck: String = "None",
+    val safety: com.ascend.mavlab.simulation.safety.SafetyStatus = com.ascend.mavlab.simulation.safety.SafetyStatus(),
 )
 
 enum class FlightMode(val customMode: UInt, val displayName: String) {

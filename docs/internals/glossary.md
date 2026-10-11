@@ -20,7 +20,11 @@ Last verified: 2026-08-31
 
 **Flight mode** — autopilot behavior such as STABILIZE, ALT_HOLD, AUTO, GUIDED, LOITER, RTL, or LAND.
 
-**Control authority** — dominant high-level flight intent: `IDLE`, `CONTROLLER`, `GCS_DIRECT`, or `GCS_MISSION`.
+**Control authority** — dominant high-level flight intent: `IDLE`, `CONTROLLER`, `GCS_DIRECT`, `GCS_MISSION`, or working-tree `SAFETY_RECOVERY` (an engine-owned fence response, not a GCS peer).
+
+**Fence recovery** — latched simulated RTL/LAND after an actionable geofence breach. Manual input resumes only after explicit disable-and-mode selection or disarm; re-entry alone does not cancel recovery.
+
+**Rally point** — uploaded alternative simulated RTL destination, selected by distance and eligibility. It is not an independently animated route or a real-aircraft landing-site certification.
 
 **Pilot input** — roll, pitch, yaw, and throttle intent from phone sensors or built-in controls.
 

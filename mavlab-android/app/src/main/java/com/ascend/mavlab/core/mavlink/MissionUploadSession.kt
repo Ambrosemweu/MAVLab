@@ -9,20 +9,47 @@ class MissionUploadSession(
     val expectedCount: Int,
     val peer: UdpDestination,
     val startedAtMs: Long = System.currentTimeMillis(),
+    val sourceSystemId: Int = 255,
+    val sourceComponentId: Int = 190,
 ) {
     private val receivedItems = mutableMapOf<Int, MissionItem>()
+    private var lastProgressAtMs = startedAtMs
+    private var lastRequestAtMs = startedAtMs
+    private var retries = 0
 
     val receivedCount: Int get() = receivedItems.size
     val nextSequence: Int
         get() = (0 until expectedCount).firstOrNull { receivedItems[it] == null } ?: expectedCount
     val complete: Boolean get() = receivedItems.size == expectedCount
-    val expired: Boolean get() = System.currentTimeMillis() - startedAtMs > UploadTimeoutMs
+    val expired: Boolean get() = timedOut(System.currentTimeMillis())
 
-    fun receive(item: MissionItem): MissionUploadResult {
+    fun owns(packet: MavlinkPacket, destination: UdpDestination): Boolean =
+        peer == destination && sourceSystemId == packet.systemId && sourceComponentId == packet.componentId
+
+    fun timedOut(nowMs: Long): Boolean = nowMs - lastProgressAtMs > UploadTimeoutMs
+
+    fun pollRetry(nowMs: Long): MissionUploadRetry {
+        if (complete || nowMs - lastRequestAtMs < RequestTimeoutMs) return MissionUploadRetry.None
+        if (retries >= MaxRetries || timedOut(nowMs)) return MissionUploadRetry.Exhausted
+        retries++
+        lastRequestAtMs = nowMs
+        return MissionUploadRetry.Request(nextSequence)
+    }
+
+    fun markRequestSent(nowMs: Long) { lastRequestAtMs = nowMs }
+
+    fun matchesReceived(item: MissionItem): Boolean = receivedItems[item.sequence] == item
+
+    fun receive(item: MissionItem, nowMs: Long = System.currentTimeMillis()): MissionUploadResult {
         if (item.sequence !in 0 until expectedCount) {
             return MissionUploadResult.Rejected("invalid seq ${item.sequence}")
         }
+        // A gap or a duplicate must re-request the expected item, not overwrite progress.
+        if (item.sequence != nextSequence) return MissionUploadResult.RequestNext(nextSequence)
         receivedItems[item.sequence] = item
+        lastProgressAtMs = nowMs
+        lastRequestAtMs = nowMs
+        retries = 0
         return if (complete) {
             MissionUploadResult.Complete(receivedItems.values.sortedBy { it.sequence })
         } else {
@@ -33,6 +60,8 @@ class MissionUploadSession(
     companion object {
         const val MaxMissionItems = 100
         const val UploadTimeoutMs = 10_000L
+        const val RequestTimeoutMs = 250L
+        const val MaxRetries = 5
 
         fun parseMissionCount(packet: MavlinkPacket, peer: UdpDestination): MissionUploadSession? {
             if (packet.payload.size < 4) return null
@@ -41,6 +70,8 @@ class MissionUploadSession(
             return MissionUploadSession(
                 expectedCount = count,
                 peer = peer,
+                sourceSystemId = packet.systemId,
+                sourceComponentId = packet.componentId,
             )
         }
 
@@ -112,6 +143,12 @@ class MissionUploadSession(
             )
         }
     }
+}
+
+sealed interface MissionUploadRetry {
+    data object None : MissionUploadRetry
+    data object Exhausted : MissionUploadRetry
+    data class Request(val sequence: Int) : MissionUploadRetry
 }
 
 sealed interface MissionUploadResult {

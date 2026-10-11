@@ -5,4 +5,5 @@ enum class ControlAuthority(val displayName: String) {
     CONTROLLER("Controller"),
     GCS_DIRECT("GCS Direct"),
     GCS_MISSION("GCS Mission"),
+    SAFETY_RECOVERY("Fence recovery"),
 }

@@ -94,6 +94,7 @@ fun SettingsScreen(
                 operations.incidents.forEach { incident -> IncidentCard(incident) { recover(incident) } }
             }
             PeerSection()
+            SafetySection(onConfirm = { confirmation = it })
             MissionDiagnostics(expanded = missionExpanded, onExpanded = { missionExpanded = it }, headerModifier = Modifier.bringIntoViewRequester(missionAnchor))
             RuntimeSection(operations, onConfirm = { confirmation = it })
             FailureSection(onConfirm = { confirmation = it })

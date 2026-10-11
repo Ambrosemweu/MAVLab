@@ -58,6 +58,7 @@ internal fun deriveControllerUiState(
     val critical = failures.hasMotorFailure || state.batteryRemainingPercent.toInt() in 0..15
     val blockedReason = when {
         !ready -> "Controls unavailable: simulation state is not live. Check Ops."
+        state.controlAuthority == ControlAuthority.SAFETY_RECOVERY -> "Fence recovery controls flight. Land or disarm; disable the fence in Ops before resuming manual input."
         state.controlAuthority == ControlAuthority.GCS_MISSION -> "GCS mission has control. Local inputs are paused."
         state.controlAuthority == ControlAuthority.GCS_DIRECT -> if (inputMode == ControllerInputMode.PHONE_SENSORS) {
             "GCS direct command is active. Phone input can reclaim authority; use a deliberate flight action."
@@ -71,6 +72,7 @@ internal fun deriveControllerUiState(
     val warning = when {
         !ready -> if (runtimeLifecycle == RuntimeLifecycleState.RUNNING) "State unavailable or stale" else "Runtime ${runtimeLifecycle.name.lowercase()}"
         failures.hasMotorFailure -> "Motor failure · reduced control authority"
+        state.controlAuthority == ControlAuthority.SAFETY_RECOVERY -> "Fence breach · ${state.safety.recovery} · ${state.safety.returnTarget}"
         state.batteryRemainingPercent.toInt() in 0..15 -> "Critical battery · land and disarm"
         identity.identityConflict -> "MAVLink identity conflict · inspect Ops"
         sensorMissing -> "No phone orientation source"
@@ -82,9 +84,10 @@ internal fun deriveControllerUiState(
         freshness == CockpitDataFreshness.DELAYED -> "Simulation updates delayed"
         else -> null
     }
-    val armReady = ready && !external && !sensorMissing && !critical && !identity.identityConflict && onGround
+    val armReady = ready && !external && state.controlAuthority != ControlAuthority.SAFETY_RECOVERY && !sensorMissing && !critical && !identity.identityConflict && onGround
     val primary = when {
         !ready -> ControllerActionSpec(ControllerAction.OPEN_OPS, "Open Ops")
+        state.controlAuthority == ControlAuthority.SAFETY_RECOVERY -> if (state.mode != FlightMode.LAND) ControllerActionSpec(ControllerAction.LAND, "Land now") else ControllerActionSpec(ControllerAction.OPEN_OPS, "Fence settings")
         external && state.armed -> ControllerActionSpec(ControllerAction.TAKE_CONTROL_AND_LAND, "Take control & land")
         external -> ControllerActionSpec(ControllerAction.TAKE_CONTROL, "Take local control")
         !state.armed -> ControllerActionSpec(ControllerAction.ARM, "Arm", armReady)
@@ -113,16 +116,17 @@ internal fun deriveControllerUiState(
         blockedReason = blockedReason,
         warning = warning,
         criticalWarning = critical || !ready,
-        controlsEnabled = ready && !external && !sensorMissing &&
+        controlsEnabled = ready && !external && state.controlAuthority != ControlAuthority.SAFETY_RECOVERY && !sensorMissing &&
             (manualMode || !state.armed || inputMode == ControllerInputMode.DIRECT_RPM) &&
             (inputMode != ControllerInputMode.DIRECT_RPM || state.armed),
         inputSelectionEnabled = ready && !state.armed && !external,
         calibrationEnabled = ready && !state.armed && !external && sensorSource != OrientationSource.Unavailable,
-        flightModesEnabled = ready && !external && inputMode != ControllerInputMode.DIRECT_RPM,
+        flightModesEnabled = ready && !external && state.controlAuthority != ControlAuthority.SAFETY_RECOVERY && inputMode != ControllerInputMode.DIRECT_RPM,
         primaryAction = primary,
         secondaryAction = secondary,
         actionHint = when {
             !ready -> "No flight commands are sent from stale or unavailable state."
+            state.controlAuthority == ControlAuthority.SAFETY_RECOVERY -> "Fence recovery is active. Land/disarm remain available; use Ops to disable enforcement deliberately."
             external -> "Takeover replaces GCS intent. Disarm stops motors immediately."
             state.mode == FlightMode.LAND && state.armed && !onGround -> "Landing active · wait for touchdown, then disarm."
             inputMode == ControllerInputMode.DIRECT_RPM && state.armed -> "All four motors follow one RPM target. Stop motors exits this mode."

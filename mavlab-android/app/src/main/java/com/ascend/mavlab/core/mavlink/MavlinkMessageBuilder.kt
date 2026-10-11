@@ -4,6 +4,7 @@ import com.ascend.mavlab.simulation.engine.DroneState
 import com.ascend.mavlab.simulation.engine.HomePosition
 import com.ascend.mavlab.simulation.mission.MissionCommand
 import com.ascend.mavlab.simulation.mission.MissionItem
+import com.ascend.mavlab.simulation.safety.SafetyItem
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.roundToInt
@@ -14,6 +15,7 @@ class MavlinkMessageBuilder(
     private val compatibilityProfile: ArduPilotCompatibilityProfile = MavLabArduPilotCompatibility.Current,
 ) {
     private var sequence = 0
+    internal val systemIdForTransfers get() = systemId
 
     fun heartbeat(state: DroneState): ByteArray {
         val baseMode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED or
@@ -105,9 +107,9 @@ class MavlinkMessageBuilder(
         // MAVLink SYS_STATUS (#1) wire order: the int8 battery_remaining sorts last,
         // so it must be the final byte (offset 30) — after the six comm-error uint16s.
         val payload = littleEndian(31)
-            .putInt(1)                              // onboard_control_sensors_present
-            .putInt(1)                              // onboard_control_sensors_enabled
-            .putInt(1)                              // onboard_control_sensors_health
+            .putInt(1 or (1 shl 20))                // geofence subsystem is implemented
+            .putInt(1 or if (state.safety.enabled) (1 shl 20) else 0)
+            .putInt(1 or if (!state.safety.breached) (1 shl 20) else 0)
             .putU16(250)                            // load
             .putU16(state.batteryVoltageMv.toInt()) // voltage_battery
             .putShort(state.batteryCurrentCa)       // current_battery
@@ -188,10 +190,14 @@ class MavlinkMessageBuilder(
         return frame(messageId = 148, crcExtra = 178, payload = payload)
     }
 
-    fun commandAck(command: Int, result: Int): ByteArray {
-        val payload = littleEndian(3)
+    fun commandAck(command: Int, result: Int, targetSystem: Int = 0, targetComponent: Int = 0): ByteArray {
+        val payload = littleEndian(10)
             .putU16(command)
             .putU8(result)
+            .putU8(0) // progress (not used for final results)
+            .putInt(0) // result_param2
+            .putU8(targetSystem)
+            .putU8(targetComponent)
             .array()
         return frame(messageId = 77, crcExtra = 143, payload = payload)
     }
@@ -213,11 +219,13 @@ class MavlinkMessageBuilder(
         count: Int,
         targetSystem: Int = MavlinkGroundStationSystemId,
         targetComponent: Int = MavlinkGroundStationComponentId,
+        missionType: Int = 0,
     ): ByteArray {
-        val payload = littleEndian(4)
+        val payload = littleEndian(5)
             .putU16(count)
             .putU8(targetSystem)
             .putU8(targetComponent)
+            .putU8(missionType)
             .array()
         return frame(messageId = 44, crcExtra = 221, payload = payload)
     }
@@ -226,13 +234,32 @@ class MavlinkMessageBuilder(
         sequence: Int,
         targetSystem: Int,
         targetComponent: Int,
+        missionType: Int = 0,
     ): ByteArray {
-        val payload = littleEndian(4)
+        val payload = littleEndian(5)
             .putU16(sequence.coerceAtLeast(0))
             .putU8(targetSystem)
             .putU8(targetComponent)
+            .putU8(missionType)
             .array()
         return frame(messageId = 51, crcExtra = 196, payload = payload)
+    }
+
+    fun safetyItem(item: SafetyItem, type: Int, targetSystem: Int, targetComponent: Int, legacy: Boolean = false): ByteArray {
+        val payload = littleEndian(38).putFloat(item.param1).putFloat(item.param2).putFloat(0f).putFloat(0f)
+        if (legacy) payload.putFloat(item.latitude.toFloat()).putFloat(item.longitude.toFloat())
+        else payload.putInt((item.latitude * 1e7).roundToInt()).putInt((item.longitude * 1e7).roundToInt())
+        payload.putFloat(item.altitude).putU16(item.sequence).putU16(item.command)
+            .putU8(targetSystem).putU8(targetComponent).putU8(item.frame).putU8(0).putU8(0).putU8(type)
+        return frame(if (legacy) 39 else 73, if (legacy) 254 else 38, payload.array())
+    }
+
+    fun fenceStatus(state: DroneState): ByteArray {
+        val s = state.safety
+        val payload = littleEndian(9).putInt(s.breachTimeMs.toInt()).putU16(s.breachCount)
+            .putU8(if (s.breached) 1 else 0).putU8(s.breachType)
+            .putU8(if (s.recovery == "None") 1 else 0).array() // RTL/LAND have no specific FENCE_MITIGATE enum.
+        return frame(162, 189, payload)
     }
 
     fun missionRequest(
@@ -252,11 +279,13 @@ class MavlinkMessageBuilder(
         type: Int,
         targetSystem: Int,
         targetComponent: Int,
+        missionType: Int = 0,
     ): ByteArray {
-        val payload = littleEndian(3)
+        val payload = littleEndian(4)
             .putU8(targetSystem)
             .putU8(targetComponent)
             .putU8(type)
+            .putU8(missionType)
             .array()
         return frame(messageId = 47, crcExtra = 153, payload = payload)
     }
@@ -294,7 +323,7 @@ class MavlinkMessageBuilder(
             .putU16(item.command.mavCmdId)
             .putU8(targetSystem)
             .putU8(targetComponent)
-            .putU8(MAV_FRAME_GLOBAL_RELATIVE_ALT_INT)
+            .putU8(missionFrame(item, integer = true))
             .putU8(if (item.sequence == currentSequence) 1 else 0)
             .putU8(if (item.autocontinue) 1 else 0)
             .array()
@@ -320,7 +349,7 @@ class MavlinkMessageBuilder(
             .putU16(item.command.mavCmdId)
             .putU8(targetSystem)
             .putU8(targetComponent)
-            .putU8(MAV_FRAME_GLOBAL_RELATIVE_ALT)
+            .putU8(missionFrame(item, integer = false))
             .putU8(if (item.sequence == currentSequence) 1 else 0)
             .putU8(if (item.autocontinue) 1 else 0)
             .array()
@@ -335,23 +364,18 @@ class MavlinkMessageBuilder(
         }
     }
 
-    private fun frame(messageId: Int, crcExtra: Int, payload: ByteArray): ByteArray {
-        require(messageId in 0..255) { "MAVLink v1 only supports message IDs 0..255" }
-        val header = ByteArray(6)
-        header[0] = 0xfe.toByte()
-        header[1] = payload.size.toByte()
-        header[2] = nextSequence().toByte()
-        header[3] = systemId.toByte()
-        header[4] = componentId.toByte()
-        header[5] = (messageId and 0xff).toByte()
-
-        val checksum = MavlinkX25.crc(header.copyOfRange(1, header.size), payload, crcExtra)
-        return header + payload + byteArrayOf(
-            (checksum and 0xff).toByte(),
-            ((checksum ushr 8) and 0xff).toByte(),
-        )
+    private fun missionFrame(item: MissionItem, integer: Boolean): Int = when {
+        item.command == MissionCommand.CHANGE_SPEED -> 2 // MAV_FRAME_MISSION (not spatial)
+        item.altitudeIsMsl -> if (integer) 5 else 0
+        else -> if (integer) MAV_FRAME_GLOBAL_RELATIVE_ALT_INT else MAV_FRAME_GLOBAL_RELATIVE_ALT
     }
 
+    private fun frame(messageId: Int, crcExtra: Int, payload: ByteArray): ByteArray {
+        check(MavlinkWire.definitions[messageId]?.crcExtra == crcExtra)
+        return MavlinkWire.frame(messageId, payload, nextSequence(), systemId, componentId)
+    }
+
+    @Synchronized
     private fun nextSequence(): Int {
         val current = sequence
         sequence = (sequence + 1) and 0xff
@@ -365,16 +389,9 @@ class MavlinkMessageBuilder(
     private fun ByteBuffer.putU8(value: Int): ByteBuffer = put((value and 0xff).toByte())
     private fun ByteBuffer.putU16(value: Int): ByteBuffer = putShort((value and 0xffff).toShort())
 
-    private object MavlinkX25 {
-        fun crc(headerWithoutMagic: ByteArray, payload: ByteArray, extra: Int): Int {
-            var crc = 0xffff
-            (headerWithoutMagic + payload + byteArrayOf(extra.toByte())).forEach { byte ->
-                var tmp = (byte.toInt() and 0xff) xor (crc and 0xff)
-                tmp = (tmp xor (tmp shl 4)) and 0xff
-                crc = ((crc ushr 8) xor (tmp shl 8) xor (tmp shl 3) xor (tmp ushr 4)) and 0xffff
-            }
-            return crc
-        }
+    fun extendedSysState(state: DroneState): ByteArray {
+        val landedState = if (state.altitudeAglMeters > 0.15f) 2 else 1
+        return frame(245, 130, byteArrayOf(0, landedState.toByte()))
     }
 
     private companion object {

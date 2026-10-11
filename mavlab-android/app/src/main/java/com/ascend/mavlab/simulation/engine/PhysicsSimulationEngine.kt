@@ -16,6 +16,7 @@ import com.ascend.mavlab.simulation.mission.MissionProgress
 import com.ascend.mavlab.simulation.mission.MissionUploadPhase
 import com.ascend.mavlab.simulation.mission.MissionUploadStatus
 import com.ascend.mavlab.simulation.physics.Vector3
+import com.ascend.mavlab.simulation.safety.*
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
@@ -45,6 +46,178 @@ class PhysicsSimulationEngine(
     val missionProgress: StateFlow<MissionProgress> = missionEngine.progress
     private val mutableMissionUploadStatus = MutableStateFlow(MissionUploadStatus())
     val missionUploadStatus: StateFlow<MissionUploadStatus> = mutableMissionUploadStatus.asStateFlow()
+    private val mutableSafetyPlans = MutableStateFlow(SafetyPlans())
+    val safetyPlans: StateFlow<SafetyPlans> = mutableSafetyPlans.asStateFlow()
+    private var fenceGeometry = FenceGeometry.compile(emptyList())
+    private var geographicOrigin = SimLocation.Nairobi
+    private data class ReturnTarget(val north: Float, val east: Float, val altitude: Float, val label: String)
+    private var returnTarget: ReturnTarget? = null
+    private var returnLabel = "None"
+    private var returnClimbed = false
+    private var missionReturn = false
+    private var fenceRecovering = false
+    private var minimumFenceReached = false
+
+    @Synchronized
+    fun replaceSafetyPlan(type: Int, items: List<SafetyItem>): Boolean {
+        if (state.value.armed) { noteSafetyTransfer("Rejected: disarm before changing safety plans"); return false }
+        try { FenceGeometry.validate(items, type) } catch (e: IllegalArgumentException) {
+            noteSafetyTransfer("Rejected: ${e.message}"); return false
+        }
+        val previous = mutableSafetyPlans.value
+        if (type == 1) fenceGeometry = FenceGeometry.compile(items)
+        mutableSafetyPlans.value = if (type == 1) previous.copy(fence = items.toList(), lastTransfer = "Fence accepted · ${items.size} items")
+            else previous.copy(rally = items.toList(), lastTransfer = "Rally accepted · ${items.size} points")
+        return true
+    }
+
+    @Synchronized
+    fun setSafetyParameter(id: String, value: Float): Boolean {
+        val previous = mutableSafetyPlans.value
+        val updated = previous.config.updated(id, value) ?: return false
+        // Configuration is deliberate and disarmed-only, except disabling the fence to leave recovery.
+        if (state.value.armed && !(id == "FENCE_ENABLE" && value == 0f)) return false
+        mutableSafetyPlans.value = previous.copy(config = updated)
+        if (!updated.enabled) fenceRecovering = false
+        mutableState.value = state.value.copy(safety = state.value.safety.copy(
+            enabled = updated.enabled, breached = false, recovery = if (fenceRecovering) state.value.safety.recovery else "None"),
+            controlAuthority = if (!updated.enabled && state.value.controlAuthority == ControlAuthority.SAFETY_RECOVERY) ControlAuthority.CONTROLLER else state.value.controlAuthority)
+        return true
+    }
+
+    @Synchronized
+    fun clearSafetyPlans(type: Int = 255, clearNavigation: Boolean = false, disableFence: Boolean = false): Boolean {
+        if (state.value.armed || type !in listOf(1, 2, 255)) return false
+        val p = mutableSafetyPlans.value
+        if (type == 1 || type == 255) fenceGeometry = FenceGeometry.compile(emptyList())
+        mutableSafetyPlans.value = p.copy(
+            fence = if (type == 1 || type == 255) emptyList() else p.fence,
+            rally = if (type == 2 || type == 255) emptyList() else p.rally,
+            config = if (disableFence) p.config.copy(enabled = false) else p.config,
+            lastTransfer = "Safety plan $type cleared",
+        )
+        if (clearNavigation) clearMission()
+        if (disableFence) {
+            fenceRecovering = false
+            mutableState.value = state.value.copy(safety = state.value.safety.copy(enabled = false, breached = false, recovery = "None"))
+        }
+        return true
+    }
+
+    @Synchronized
+    fun restoreSafetyPlans(plans: SafetyPlans): Boolean {
+        if (state.value.armed) return false
+        try { FenceGeometry.validate(plans.fence, 1); FenceGeometry.validate(plans.rally, 2) }
+        catch (_: IllegalArgumentException) { return false }
+        if (SafetyPlanCodec.decode(SafetyPlanCodec.encode(plans)) == null) return false
+        fenceGeometry = FenceGeometry.compile(plans.fence)
+        mutableSafetyPlans.value = plans
+        mutableState.value = state.value.copy(safety = SafetyStatus(enabled = plans.config.enabled))
+        return true
+    }
+
+    @Synchronized fun noteSafetyTransfer(message: String) {
+        mutableSafetyPlans.value = mutableSafetyPlans.value.copy(lastTransfer = message)
+    }
+
+    private fun physicalPoint(state: DroneState, north: Float = state.northMeters, east: Float = state.eastMeters) = GeoPoint(
+        geographicOrigin.latitudeDeg + north / METERS_PER_LAT_DEG,
+        geographicOrigin.longitudeDeg + east / (METERS_PER_LAT_DEG * cos(Math.toRadians(geographicOrigin.latitudeDeg)).coerceAtLeast(0.2)),
+    )
+
+    private fun fenceBreach(state: DroneState, north: Float = state.northMeters, east: Float = state.eastMeters,
+                            altitude: Float = state.altitudeAglMeters, margin: Float = 0f, landing: Boolean = false): Int {
+        val c = mutableSafetyPlans.value.config
+        if (!c.enabled) return 0
+        if (c.types and 1 != 0 && altitude - homeAltitudeMeters > c.maxAltitude - margin) return 2
+        if (!landing && state.armed && (minimumFenceReached || margin > 0f) && c.types and 8 != 0 && altitude - homeAltitudeMeters < c.minAltitude + margin) return 1
+        if (c.types and 2 != 0 && kotlin.math.hypot(north - homeNorthMeters, east - homeEastMeters) > c.radius - margin) return 3
+        if (c.types and 4 != 0 && !fenceGeometry.allows(physicalPoint(state, north, east), c.options and 2 != 0, margin)) return 3
+        return 0
+    }
+
+    private fun chooseReturnTarget(state: DroneState): ReturnTarget? {
+        val plans = mutableSafetyPlans.value
+        val c = plans.config
+        fun target(item: SafetyItem, label: String): ReturnTarget? {
+            val north = ((item.latitude - geographicOrigin.latitudeDeg) * METERS_PER_LAT_DEG).toFloat()
+            val east = ((item.longitude - geographicOrigin.longitudeDeg) * METERS_PER_LAT_DEG * cos(Math.toRadians(geographicOrigin.latitudeDeg)).coerceAtLeast(0.2)).toFloat()
+            val altitude = if (item.frame in listOf(0, 5)) item.altitude - geographicOrigin.altitudeMslMeters else homeAltitudeMeters + item.altitude
+            if (altitude <= 0.25f || !altitude.isFinite() || kotlin.math.hypot(north, east) > 50_000f) return null
+            return ReturnTarget(north, east, altitude, label)
+        }
+        fun distance(t: ReturnTarget) = kotlin.math.hypot(t.north - state.northMeters, t.east - state.eastMeters)
+        fun eligible(t: ReturnTarget) = fenceBreach(state, t.north, t.east, t.altitude, c.margin) == 0
+        val home = ReturnTarget(homeNorthMeters, homeEastMeters, homeAltitudeMeters + c.rtlAltitude, "Home")
+        val candidates = plans.rally.mapNotNull { target(it, "Rally ${it.sequence + 1}") }
+            .filter { (c.rallyLimitKm == 0f || distance(it) <= c.rallyLimitKm * 1000f) && eligible(it) }.toMutableList()
+        if (c.rallyIncludeHome && eligible(home)) candidates.add(home)
+        if (candidates.isNotEmpty()) return candidates.minBy { distance(it) }
+        plans.fence.firstOrNull { it.command == 5000 }?.let { target(it, "Fence return") }?.takeIf { eligible(it) }?.let { return it }
+        return home.takeIf { eligible(it) }
+    }
+
+    private fun startReturn(state: DroneState) {
+        motorSpeedOverrideRpm = null
+        if (state.altitudeAglMeters <= 0.25f && kotlin.math.abs(state.verticalSpeedMS) <= 0.2f) {
+            returnTarget = null
+            returnLabel = "Land here · on ground"
+            captureLoiterTarget(state)
+            autopilot.setTargetAltitude(0f)
+            autopilot.land()
+            mutableState.value = mutableState.value.copy(safety = state.safety.copy(returnTarget = returnLabel))
+            return
+        }
+        returnTarget = chooseReturnTarget(state)
+        returnClimbed = false
+        positionController.reset()
+        captureLoiterTarget(state)
+        if (returnTarget == null || !failureInjector.state.value.gpsEnabled) {
+            captureLoiterTarget(state)
+            autopilot.setTargetAltitude(state.altitudeAglMeters)
+            autopilot.land()
+            returnLabel = "Land here · no eligible return"
+        } else {
+            returnLabel = returnTarget!!.label
+        }
+        mutableState.value = mutableState.value.copy(safety = state.safety.copy(returnTarget = returnLabel))
+    }
+
+    private fun enforceFence(state: DroneState): DroneState {
+        val c = mutableSafetyPlans.value.config
+        if (!state.armed) minimumFenceReached = false
+        else if (state.altitudeAglMeters - homeAltitudeMeters >= c.minAltitude) minimumFenceReached = true
+        val type = fenceBreach(state, landing = autopilot.mode == FlightMode.LAND || !state.armed)
+        val previous = state.safety
+        val newBreach = state.armed && type != 0 && (!previous.breached || previous.breachType != type)
+        var status = previous.copy(enabled = c.enabled, breached = type != 0,
+            breachType = if (type != 0) type else previous.breachType,
+            breachCount = if (newBreach) (previous.breachCount + 1).coerceAtMost(65535) else previous.breachCount,
+            breachTimeMs = if (newBreach) state.uptimeMs else previous.breachTimeMs)
+        if (!state.armed || !c.enabled) fenceRecovering = false
+        if (state.armed && c.enabled && type != 0 && c.action != 0 && !fenceRecovering) {
+            fenceRecovering = true
+            missionReturn = false
+            motorSpeedOverrideRpm = null
+            if (c.action == 2 || !failureInjector.state.value.gpsEnabled) {
+                captureLoiterTarget(state); autopilot.setTargetAltitude(state.altitudeAglMeters); autopilot.land()
+                status = status.copy(returnTarget = "Land here")
+                returnLabel = "Land here"
+            } else {
+                autopilot.setMode(FlightMode.RTL, state)
+                mutableState.value = state.copy(safety = status)
+                startReturn(mutableState.value)
+                status = mutableState.value.safety
+            }
+            noteAck("FENCE BREACH $type · ${autopilot.mode.displayName}")
+        }
+        if (fenceRecovering && autopilot.mode !in listOf(FlightMode.RTL, FlightMode.LAND)) {
+            autopilot.setMode(FlightMode.RTL, state); startReturn(state)
+        }
+        status = status.copy(recovery = if (fenceRecovering) "Fence ${autopilot.mode.displayName}" else "None")
+        return state.copy(mode = autopilot.mode, safety = status,
+            controlAuthority = if (fenceRecovering) ControlAuthority.SAFETY_RECOVERY else state.controlAuthority)
+    }
 
     private val scope = CoroutineScope(Dispatchers.Default)
     private var job: Job? = null
@@ -87,7 +260,7 @@ class PhysicsSimulationEngine(
         job = null
     }
 
-    fun resetBattery() {
+    @Synchronized fun resetBattery() {
         batteryUsedWh = 0f
         val current = mutableState.value
         mutableState.value = current.copy(
@@ -100,14 +273,20 @@ class PhysicsSimulationEngine(
         )
     }
 
-    fun setMotorSpeedOverrideRpm(rpm: Float?) {
+    @Synchronized fun setMotorSpeedOverrideRpm(rpm: Float?) {
+        if (fenceRecovering && rpm != null) return
         motorSpeedOverrideRpm = rpm
     }
 
+    @Synchronized
     fun setHomeLocation(location: SimLocation): Boolean {
         val safeLocation = location.sanitized()
         val current = mutableState.value
         if (current.armed) return false
+        clearSafetyPlans(clearNavigation = true, disableFence = true)
+        returnLabel = "None"
+        returnTarget = null
+        geographicOrigin = safeLocation
         homeNorthMeters = 0f
         homeEastMeters = 0f
         homeAltitudeMeters = 0f
@@ -134,12 +313,13 @@ class PhysicsSimulationEngine(
             yawSpeedRadS = 0f,
             motors = List(4) { MotorTelemetry() },
             lastAck = "SIM LOCATION ${safeLocation.label}",
+            safety = SafetyStatus(),
         )
         positionController.reset()
         return true
     }
 
-    fun setHomeToCurrentPosition(): Boolean {
+    @Synchronized fun setHomeToCurrentPosition(): Boolean {
         val current = mutableState.value
         homeNorthMeters = current.northMeters
         homeEastMeters = current.eastMeters
@@ -147,35 +327,36 @@ class PhysicsSimulationEngine(
         return true
     }
 
-    fun setHomeToCoordinates(latitudeDeg: Double, longitudeDeg: Double): Boolean {
+    @Synchronized fun setHomeToCoordinates(latitudeDeg: Double, longitudeDeg: Double): Boolean {
         if (!latitudeDeg.isFinite() || !longitudeDeg.isFinite()) return false
         if (latitudeDeg !in -90.0..90.0 || longitudeDeg !in -180.0..180.0) return false
-        val current = mutableState.value
-        homeNorthMeters = current.northMeters +
-            ((latitudeDeg - current.latitudeDeg) * METERS_PER_LAT_DEG).toFloat()
-        homeEastMeters = current.eastMeters +
-            ((longitudeDeg - current.longitudeDeg) * lonMetersPerDeg(current)).toFloat()
+        homeNorthMeters = ((latitudeDeg - geographicOrigin.latitudeDeg) * METERS_PER_LAT_DEG).toFloat()
+        homeEastMeters = ((longitudeDeg - geographicOrigin.longitudeDeg) * METERS_PER_LAT_DEG *
+            cos(Math.toRadians(geographicOrigin.latitudeDeg)).coerceAtLeast(0.2)).toFloat()
         homeAltitudeMeters = 0f
         return true
     }
 
     fun homePosition(): HomePosition {
         val current = mutableState.value
+        val point = physicalPoint(current, homeNorthMeters, homeEastMeters)
         return HomePosition(
-            latitudeDeg = current.latitudeDeg +
-                (homeNorthMeters - current.northMeters) / METERS_PER_LAT_DEG,
-            longitudeDeg = current.longitudeDeg +
-                (homeEastMeters - current.eastMeters) / lonMetersPerDeg(current),
-            altitudeMslMeters = current.altitudeMslMeters - current.altitudeAglMeters + homeAltitudeMeters,
+            latitudeDeg = point.latitude,
+            longitudeDeg = point.longitude,
+            altitudeMslMeters = geographicOrigin.altitudeMslMeters + homeAltitudeMeters,
         )
     }
 
-    fun setArmed(
+    @Synchronized fun setArmed(
         armed: Boolean,
         authority: ControlAuthority = ControlAuthority.CONTROLLER,
     ) {
+        if (armed && fenceRecovering) return
+        if (armed && fenceBreach(mutableState.value) != 0) { noteAck("ARM DENIED · outside enabled fence"); return }
+        if (!armed) { fenceRecovering = false; returnTarget = null; missionReturn = false; minimumFenceReached = false }
+        val freshArm = armed && !autopilot.armed
         autopilot.setArmed(armed, mutableState.value)
-        if (armed) {
+        if (freshArm) {
             val current = mutableState.value
             homeNorthMeters = current.northMeters
             homeEastMeters = current.eastMeters
@@ -186,10 +367,11 @@ class PhysicsSimulationEngine(
         mutableState.value = mutableState.value.copy(
             armed = autopilot.armed,
             controlAuthority = authorityAfterArmedChange(armed = autopilot.armed, authority = authority),
+            safety = state.value.safety.copy(recovery = if (fenceRecovering) state.value.safety.recovery else "None"),
         )
     }
 
-    fun armForLocalInput(input: PilotInput) {
+    @Synchronized fun armForLocalInput(input: PilotInput) {
         // A fresh local sensor flight must not inherit a navigation controller
         // or a uniform-RPM override that would mask the pilot's attitude input.
         val manualMode = if (autopilot.mode == FlightMode.ALT_HOLD) {
@@ -203,11 +385,15 @@ class PhysicsSimulationEngine(
         setArmed(true, ControlAuthority.CONTROLLER)
     }
 
-    fun setMode(
+    @Synchronized fun setMode(
         mode: FlightMode,
         authority: ControlAuthority = ControlAuthority.CONTROLLER,
     ) {
         val current = mutableState.value
+        if (fenceRecovering && mode !in listOf(FlightMode.RTL, FlightMode.LAND)) return
+        returnTarget = null
+        if (mode !in listOf(FlightMode.RTL, FlightMode.LAND)) returnLabel = "None"
+        if (mode != FlightMode.RTL) missionReturn = false
         if (mode == FlightMode.LOITER) {
             captureLoiterTarget(current)
         }
@@ -227,13 +413,15 @@ class PhysicsSimulationEngine(
             mode = mode,
             controlAuthority = resolvedAuthority,
         )
+        if (mode == FlightMode.RTL && current.armed) startReturn(mutableState.value)
     }
 
-    fun takeoff(
+    @Synchronized fun takeoff(
         targetAltitudeM: Float,
         authority: ControlAuthority = ControlAuthority.CONTROLLER,
-    ) {
+    ): Boolean {
         val current = mutableState.value
+        if (fenceRecovering || (!current.armed && fenceBreach(current) != 0)) { noteAck("TAKEOFF DENIED · fence"); return false }
         guidedNorthMeters = current.northMeters
         guidedEastMeters = current.eastMeters
         guidedAltitudeMeters = targetAltitudeM
@@ -250,20 +438,23 @@ class PhysicsSimulationEngine(
             mode = autopilot.mode,
             controlAuthority = authority,
         )
+        return autopilot.armed
     }
 
-    fun land(authority: ControlAuthority = ControlAuthority.CONTROLLER) {
+    @Synchronized fun land(authority: ControlAuthority = ControlAuthority.CONTROLLER) {
         val current = mutableState.value
         captureLoiterTarget(current)
         positionController.reset()
+        autopilot.setTargetAltitude(current.altitudeAglMeters)
         autopilot.land()
+        returnLabel = "Land here"
         mutableState.value = current.copy(
             mode = FlightMode.LAND,
-            controlAuthority = authority,
+            controlAuthority = if (fenceRecovering) ControlAuthority.SAFETY_RECOVERY else authority,
         )
     }
 
-    fun setPilotInput(input: PilotInput) {
+    @Synchronized fun setPilotInput(input: PilotInput) {
         pilotInput = input.copy(
             roll = input.roll.coerceIn(-1f, 1f),
             pitch = input.pitch.coerceIn(-1f, 1f),
@@ -271,7 +462,7 @@ class PhysicsSimulationEngine(
             yaw = input.yaw.coerceIn(-1f, 1f),
         )
         val current = mutableState.value
-        if (current.armed && current.controlAuthority != ControlAuthority.GCS_MISSION) {
+        if (current.armed && current.controlAuthority != ControlAuthority.GCS_MISSION && current.mode !in listOf(FlightMode.RTL, FlightMode.LAND) && !fenceRecovering) {
             mutableState.value = current.copy(controlAuthority = ControlAuthority.CONTROLLER)
         }
     }
@@ -293,13 +484,14 @@ class PhysicsSimulationEngine(
         }
     }
 
-    fun setGuidedTarget(
+    @Synchronized fun setGuidedTarget(
         latitudeDeg: Double,
         longitudeDeg: Double,
         altitudeAglMeters: Float,
         authority: ControlAuthority = ControlAuthority.GCS_DIRECT,
     ) {
         val current = mutableState.value
+        if (fenceRecovering) return
         val lat = if (latitudeDeg == 0.0 && longitudeDeg == 0.0) current.latitudeDeg else latitudeDeg
         val lon = if (latitudeDeg == 0.0 && longitudeDeg == 0.0) current.longitudeDeg else longitudeDeg
         guidedNorthMeters = current.northMeters + ((lat - current.latitudeDeg) * METERS_PER_LAT_DEG).toFloat()
@@ -314,13 +506,14 @@ class PhysicsSimulationEngine(
         noteAck("GUIDED TARGET")
     }
 
-    fun setGuidedOffset(
+    @Synchronized fun setGuidedOffset(
         northMeters: Float,
         eastMeters: Float,
         altitudeAglMeters: Float,
         authority: ControlAuthority = ControlAuthority.CONTROLLER,
     ) {
         val current = mutableState.value
+        if (fenceRecovering) return
         guidedNorthMeters = current.northMeters + northMeters
         guidedEastMeters = current.eastMeters + eastMeters
         guidedAltitudeMeters = altitudeAglMeters.coerceAtLeast(0f)
@@ -333,7 +526,7 @@ class PhysicsSimulationEngine(
         noteAck("GUIDED OFFSET")
     }
 
-    fun loadMission(items: List<MissionItem>, origin: MissionOrigin = MissionOrigin.INTERNAL_FIXTURE) {
+    @Synchronized fun loadMission(items: List<MissionItem>, origin: MissionOrigin = MissionOrigin.INTERNAL_FIXTURE) {
         val current = mutableState.value
         val sorted = items.sortedBy { it.sequence }
         val homeMarker = sorted.takeIf { isQgcHomeMarker(it) }?.firstOrNull()
@@ -442,13 +635,13 @@ class PhysicsSimulationEngine(
         )
     }
 
-    fun clearMission() {
+    @Synchronized fun clearMission() {
         missionEngine.clear()
         mutableMissionUploadStatus.value = MissionUploadStatus()
         noteAck("MISSION CLEAR")
     }
 
-    fun setMissionCurrent(sequence: Int): Boolean {
+    @Synchronized fun setMissionCurrent(sequence: Int): Boolean {
         val updated = missionEngine.setCurrent(sequence)
         if (updated) {
             missionEngine.progress.value.activeTarget?.let { autopilot.setTargetAltitude(it.altitudeAglMeters) }
@@ -476,20 +669,21 @@ class PhysicsSimulationEngine(
         return landingPilotInput(state, dt)
     }
 
-    fun noteInbound(message: String) {
+    @Synchronized fun noteInbound(message: String) {
         mutableState.value = mutableState.value.copy(lastInboundMessage = message)
     }
 
-    fun noteAck(message: String) {
+    @Synchronized fun noteAck(message: String) {
         mutableState.value = mutableState.value.copy(lastAck = message)
     }
 
+    @Synchronized
     private fun tick(fixedDtSeconds: Float? = null) {
         val nowNs = System.nanoTime()
         val dt = fixedDtSeconds ?: ((nowNs - lastTickNs) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
         lastTickNs = nowNs
 
-        val current = applyFailsafes(mutableState.value)
+        val current = enforceFence(applyFailsafes(mutableState.value))
         if (current.batteryRemainingPercent.toInt() <= 0 && autopilot.armed) {
             autopilot.setArmed(false, current)
         }
@@ -526,7 +720,13 @@ class PhysicsSimulationEngine(
             uptimeMs = (nowMs - startedAtMs).coerceAtLeast(0L).toUInt(),
             throttlePercent = autopilot.throttlePercent(),
             motors = motorTelemetry,
+            safety = current.safety.copy(returnTarget = returnLabel,
+                recovery = if (fenceRecovering && autopilot.armed) "Fence ${autopilot.mode.displayName}" else "None"),
         )
+        if (!simulatedState.armed) {
+            fenceRecovering = false
+            if (missionReturn) { missionEngine.finishReturn(); missionReturn = false }
+        }
         mutableState.value = applySensorTelemetry(
             simulatedState.copy(controlAuthority = resolvedAuthorityAfterTick(simulatedState)),
             failures,
@@ -585,6 +785,13 @@ class PhysicsSimulationEngine(
                 )
             }
             autopilot.mode == FlightMode.AUTO -> {
+                if (missionEngine.progress.value.activeTarget?.command == MissionCommand.RTL) {
+                    missionReturn = true
+                    missionEngine.beginReturn()
+                    autopilot.setMode(FlightMode.RTL, state)
+                    startReturn(state)
+                    return returnPilotInput(state, dt)
+                }
                 val progress = missionEngine.update(state)
                 val target = progress.activeTarget
                 if (target == null) {
@@ -605,24 +812,27 @@ class PhysicsSimulationEngine(
                 }
             }
             autopilot.mode == FlightMode.LAND -> landingPilotInput(state, dt)
-            autopilot.mode == FlightMode.RTL -> {
-                val rtlAltitudeMeters = if (state.altitudeAglMeters > AirborneAltitudeThresholdMeters) {
-                    max(homeAltitudeMeters, MinimumAirborneReturnAltitudeMeters)
-                } else {
-                    homeAltitudeMeters
-                }
-                autopilot.setTargetAltitude(rtlAltitudeMeters)
-                positionController.computePilotInput(
-                    state = state,
-                    targetNorthMeters = homeNorthMeters,
-                    targetEastMeters = homeEastMeters,
-                    targetAltitudeMeters = autopilot.targetAltitudeM,
-                    dt = dt,
-                    maxHorizontalSpeedMS = gcsSpeedOverride ?: wpNavSpeedLimitMps,
-                )
-            }
+            autopilot.mode == FlightMode.RTL -> returnPilotInput(state, dt)
             else -> pilotInput
         }
+    }
+
+    private fun returnPilotInput(state: DroneState, dt: Float): PilotInput {
+        if (returnTarget == null) startReturn(state)
+        val target = returnTarget
+        if (autopilot.mode == FlightMode.LAND || target == null) return landingPilotInput(state, dt)
+        if (state.altitudeAglMeters >= target.altitude - 0.5f) returnClimbed = true
+        if (returnClimbed && kotlin.math.hypot(state.northMeters - target.north, state.eastMeters - target.east) <= 1.5f && state.groundSpeedMS < 0.5f) {
+            captureLoiterTarget(state)
+            autopilot.setTargetAltitude(state.altitudeAglMeters)
+            autopilot.land()
+            return landingPilotInput(state, dt)
+        }
+        autopilot.setTargetAltitude(target.altitude)
+        return positionController.computePilotInput(state,
+            if (returnClimbed) target.north else loiterNorthMeters,
+            if (returnClimbed) target.east else loiterEastMeters,
+            target.altitude, dt, maxHorizontalSpeedMS = gcsSpeedOverride ?: wpNavSpeedLimitMps)
     }
 
     private fun landingPilotInput(state: DroneState, dt: Float): PilotInput {
@@ -638,6 +848,11 @@ class PhysicsSimulationEngine(
 
     private fun applyFailsafes(state: DroneState): DroneState {
         val failures = failureInjector.state.value
+        if (!failures.gpsEnabled && autopilot.mode == FlightMode.RTL) {
+            captureLoiterTarget(state); autopilot.setTargetAltitude(state.altitudeAglMeters); autopilot.land()
+            returnLabel = "Land here · GPS lost"
+            return state.copy(mode = FlightMode.LAND, lastAck = "RTL GPS LOST · LAND")
+        }
         if (!failures.gpsEnabled &&
             (autopilot.mode == FlightMode.LOITER || autopilot.mode == FlightMode.GUIDED || autopilot.mode == FlightMode.AUTO)
         ) {
@@ -645,10 +860,11 @@ class PhysicsSimulationEngine(
             noteAck("GPS FAILSAFE")
             return state.copy(mode = FlightMode.ALT_HOLD)
         }
-        if (state.batteryRemainingPercent.toInt() <= 20 && autopilot.armed && autopilot.mode != FlightMode.RTL) {
+        if (state.batteryRemainingPercent.toInt() <= 20 && autopilot.armed && autopilot.mode !in listOf(FlightMode.RTL, FlightMode.LAND)) {
             autopilot.setMode(FlightMode.RTL, state)
+            startReturn(state)
             noteAck("BATTERY RTL")
-            return state.copy(mode = FlightMode.RTL)
+            return mutableState.value.copy(mode = autopilot.mode)
         }
         return state
     }

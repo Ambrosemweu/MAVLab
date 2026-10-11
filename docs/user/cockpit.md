@@ -13,7 +13,7 @@ The compact header names the current phase, such as `READY · DISARMED`, `IN FLI
 
 The truth strip keeps three different concepts separate:
 
-- **Control** — `Idle`, `Controller`, `GCS Direct`, or `GCS Mission`.
+- **Control** — `Idle`, `Controller`, `GCS Direct`, `GCS Mission`, or automatic `Fence recovery`.
 - **Mode** — the simulated autopilot mode.
 - **Vehicle** — disarmed, armed, landing, or landed while still armed.
 
@@ -30,6 +30,8 @@ With Phone Sensors selected, a new local arm restores manual sensor control. Loc
 If GCS Direct or GCS Mission has authority, `Take control & land` requires confirmation. Confirming it deliberately changes authority to Controller and commands LAND. Dismissing the dialog preserves external control.
 
 Connection and authority remain separate. `QGC connected` means a validated peer is present; it does not by itself mean QGC controls the simulated vehicle.
+
+Fence recovery is engine authority, not a GCS takeover. It identifies the selected return destination; Land and Disarm remain available. Disable fencing in Ops and deliberately select a manual mode in Control to resume steering. Disabling alone leaves RTL/LAND intent intact. See [flight boundaries](flight-boundaries.md).
 
 ## Delayed and stale state
 

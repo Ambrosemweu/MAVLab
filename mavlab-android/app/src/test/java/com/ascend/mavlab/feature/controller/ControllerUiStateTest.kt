@@ -14,6 +14,17 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ControllerUiStateTest {
+    @Test fun fenceRecoveryIsNotAFalseGcsTakeoverAndDisablesMotorManipulation() {
+        val state = DroneState(armed = true, mode = FlightMode.RTL, altitudeAglMeters = 5f,
+            controlAuthority = ControlAuthority.SAFETY_RECOVERY,
+            safety = com.ascend.mavlab.simulation.safety.SafetyStatus(true, true, 3, 1, 0u, "Fence RTL", "Home"))
+        val ui = derive(state, mode = ControllerInputMode.DIRECT_RPM)
+        assertFalse(ui.controlsEnabled)
+        assertFalse(ui.flightModesEnabled)
+        assertEquals(ControllerAction.LAND, ui.primaryAction.action)
+        assertEquals(ControllerAction.DISARM, ui.secondaryAction.action)
+        assertTrue(ui.blockedReason!!.contains("Fence recovery"))
+    }
     private fun derive(
         state: DroneState = DroneState(),
         mode: ControllerInputMode = ControllerInputMode.PHONE_SENSORS,

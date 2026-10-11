@@ -1,6 +1,6 @@
 # Onboarding
 
-Working-tree UI/UX feature-branch behavior; this is not a published release claim.
+Applies to v1.6.0. Device/build-specific acceptance and remaining qualification are recorded separately.
 
 MAVLab's nine-step introduction explains the simulated vehicle, shared state, four surfaces, optional QGroundControl connection, phone calibration, first flight, received missions, failure exercises and recording/review. It uses the existing dark navy, blue-accented visual style.
 

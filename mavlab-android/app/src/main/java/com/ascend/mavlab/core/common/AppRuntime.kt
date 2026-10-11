@@ -49,6 +49,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -98,6 +100,14 @@ object AppRuntime {
     val failures: StateFlow<FailureState> = simLoop.failures
     val missionProgress: StateFlow<MissionProgress> = simLoop.missionProgress
     val missionUploadStatus: StateFlow<MissionUploadStatus> = simLoop.missionUploadStatus
+    val safetyPlans = simLoop.safetyPlans
+    private var safetyPersistenceJob: Job? = null
+    private var restoredSafetyPlans = false
+
+    fun setFenceEnabled(enabled: Boolean) = simLoop.setSafetyParameter("FENCE_ENABLE", if (enabled) 1f else 0f)
+    fun clearSafetyPlans(): Boolean {
+        return simLoop.clearSafetyPlans(disableFence = true)
+    }
     val recordingStatus: StateFlow<FlightRecordingStatus> = mutableRecordingStatus.asStateFlow()
     val operations: StateFlow<OperationsState> = mutableOperations.asStateFlow()
     val simLocation: StateFlow<SimLocation> = mutableSimLocation.asStateFlow()
@@ -135,6 +145,16 @@ object AppRuntime {
             refreshSessionHistory()
             restoreSimLocation(appContext)
             restorePersistedMission(appContext)
+            if (!restoredSafetyPlans) {
+                SafetyPlanPersistence.load(appContext)?.let { simLoop.restoreSafetyPlans(it) }
+                restoredSafetyPlans = true
+            }
+            if (safetyPersistenceJob == null) {
+                safetyPersistenceJob = scope.launch(Dispatchers.IO) {
+                    safetyPlans.map { it.copy(lastTransfer = "") }.distinctUntilChanged()
+                        .collect { SafetyPlanPersistence.save(appContext, it) }
+                }
+            }
             if (mavlinkServer == null) {
                 val id = stableSystemId(appContext)
                 mutableSystemId.value = id
@@ -431,7 +451,7 @@ object AppRuntime {
     private fun applySelectedControllerInput() {
         when (mutableControllerInputState.value.inputMode) {
             ControllerInputMode.PHONE_SENSORS -> refreshPhoneSensorPilotInput()
-            ControllerInputMode.CUSTOM_INPUT -> if (state.value.controlAuthority != ControlAuthority.GCS_MISSION) {
+            ControllerInputMode.CUSTOM_INPUT -> if (state.value.controlAuthority !in listOf(ControlAuthority.GCS_MISSION, ControlAuthority.SAFETY_RECOVERY)) {
                 simLoop.setPilotInput(mutableControllerInputState.value.toPilotInput())
             }
             ControllerInputMode.DIRECT_RPM -> syncControllerMotorOverride()
@@ -483,7 +503,6 @@ object AppRuntime {
     fun setSimLocation(location: SimLocation): Boolean {
         if (state.value.armed) return false
         val safeLocation = location.sanitized()
-        simLoop.clearMission()
         val applied = simLoop.setHomeLocation(safeLocation)
         if (!applied) return false
         mutableSimLocation.value = safeLocation
@@ -669,9 +688,10 @@ object AppRuntime {
             return false
         }
         simLoop.setArmed(true, ControlAuthority.GCS_MISSION)
+        if (!state.value.armed) return false
         simLoop.setMode(FlightMode.AUTO, ControlAuthority.GCS_MISSION)
         syncControllerMotorOverride()
-        return true
+        return state.value.mode == FlightMode.AUTO
     }
 
     private fun localMissionPolicy(): MissionActionPolicy {

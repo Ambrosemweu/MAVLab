@@ -2,8 +2,8 @@
 
 Audience: Maintainers and contributors
 Status: Current architecture
-Applies to: v1.5.3
-Last verified: 2026-09-01
+Applies to: v1.6.0 implementation; artifact qualification remains separately identified
+Last reviewed: 2026-10-12
 
 MAVLab is a single-module Android application whose simulation, control, visualization, recording, and MAVLink endpoint run on the phone.
 
@@ -41,19 +41,19 @@ Owns the Android foreground-service lifecycle, runtime startup/shutdown, wake/Wi
 
 ### AppRuntime
 
-`AppRuntime` is a process-wide singleton and practical composition root. It coordinates the simulation engine, MAVLink server, phone sensors, controller state, sound, mission persistence, simulator location, and flight recording/export.
+`AppRuntime` is a process-wide singleton and practical composition root. It coordinates the simulation engine, MAVLink server, phone sensors, controller state, sound, navigation and safety-plan persistence, simulator location, and flight recording/export.
 
 It exposes read-only flows to Compose, but it is not merely a thin adapter: it also owns orchestration and persistence. Documentation should describe the current boundary honestly rather than pretending a future refactor already exists.
 
 ### PhysicsSimulationEngine
 
-The engine owns simulation progression and composes the physics model, autopilot, position controller, mission engine, failure injector, and battery/flight state. See [simulation-model.md](simulation-model.md).
+The engine owns simulation progression and composes the physics model, autopilot, position controller, mission engine, failure injector, battery/flight state and compiled safety geometry. Its atomic disarmed plan/origin changes and latched `SAFETY_RECOVERY` control ensure every surface observes the same breach/return/landing state. See [simulation-model.md](simulation-model.md) and [ADR-0013](decisions/0013-simulated-fence-and-rally.md).
 
 ### MavlinkUdpServer
 
 The server presents MAVLab to QGroundControl as an ArduPilot-like simulated copter. It translates inbound messages into engine commands and sends state-derived telemetry to peers.
 
-It currently depends directly on `PhysicsSimulationEngine`; the protocol/physics seam is therefore more concrete and tightly coupled than the small `SimulationEngine` interface suggests.
+It emits unsigned MAVLink 2 and validates the supported inbound MAVLink 1/2 subset. Navigation and safety transfers have separate ownership/retry state; `SafetyMissionTransfer` commits only validated complete typed plans to the engine. The server depends directly on `PhysicsSimulationEngine`; the protocol/physics seam is more concrete and tightly coupled than the small `SimulationEngine` interface suggests.
 
 ## State model
 
@@ -70,7 +70,7 @@ Compose surfaces observe these states. They must not maintain a separate fake si
 | SIM | Where are the vehicle and received route in space? | `feature/drone3d` |
 | Ops | Is the runtime healthy and configurable? | `feature/settings`, failures, logs |
 
-Mission is contextual across these four surfaces; reusable mission presentation remains under `feature/mission`, without a standalone destination. The UI/UX branch navigation supersedes the released v1.5.3 layout. See [ADR-0007](decisions/0007-contextual-missions.md).
+Mission is contextual across these four surfaces; reusable mission presentation remains under `feature/mission`, without a standalone destination. The v1.6.0 navigation supersedes the v1.5.3 layout. See [ADR-0007](decisions/0007-contextual-missions.md).
 
 `CockpitScreen` now matches the product label. Remaining implementation names such as `SettingsScreen` may still lag product labels; documentation uses product labels and links current source names.
 

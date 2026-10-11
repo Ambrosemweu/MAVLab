@@ -115,6 +115,52 @@ class MissionUploadSessionTest {
     }
 
     @Test
+    fun missingItemIsRetriedFiveTimesThenTimesOut() {
+        val session = MissionUploadSession(2, UdpDestination("127.0.0.1"), startedAtMs = 0)
+        assertIs<MissionUploadRetry.None>(session.pollRetry(249))
+        for (attempt in 1..5) {
+            assertEquals(0, assertIs<MissionUploadRetry.Request>(session.pollRetry(attempt * 250L)).sequence)
+        }
+        assertIs<MissionUploadRetry.Exhausted>(session.pollRetry(1500))
+    }
+
+    @Test
+    fun progressResetsRetriesAndTimeoutRatherThanExpiringWholeTransfer() {
+        val session = MissionUploadSession(2, UdpDestination("127.0.0.1"), startedAtMs = 0)
+        val item = assertNotNull(MissionUploadSession.parseMissionItemInt(missionItemIntPacket(0)))
+        repeat(5) { session.pollRetry((it + 1) * 250L) }
+        session.receive(item, nowMs = 1300)
+        assertIs<MissionUploadRetry.None>(session.pollRetry(1549))
+        assertEquals(1, assertIs<MissionUploadRetry.Request>(session.pollRetry(1550)).sequence)
+        assertEquals(false, session.timedOut(10_500))
+        assertEquals(true, session.timedOut(11_301))
+    }
+
+    @Test
+    fun gapsAndDuplicatesRequestExpectedItemWithoutOverwritingIt() {
+        val session = MissionUploadSession(3, UdpDestination("127.0.0.1"), startedAtMs = 0)
+        val first = assertNotNull(MissionUploadSession.parseMissionItemInt(missionItemIntPacket(0)))
+        val third = assertNotNull(MissionUploadSession.parseMissionItemInt(missionItemIntPacket(2)))
+        assertEquals(0, assertIs<MissionUploadResult.RequestNext>(session.receive(third, 0)).sequence)
+        assertEquals(0, session.receivedCount)
+        session.receive(first, 10)
+        val alteredFirst = first.copy(altitudeAglMeters = 99f)
+        assertEquals(1, assertIs<MissionUploadResult.RequestNext>(session.receive(alteredFirst, 20)).sequence)
+        assertTrue(session.matchesReceived(first))
+        assertEquals(1, session.receivedCount)
+    }
+
+    @Test
+    fun uploaderOwnershipIncludesEndpointAndSystemAndComponent() {
+        val peer = UdpDestination("127.0.0.1", 14599)
+        val packet = missionItemIntPacket(0)
+        val session = MissionUploadSession(1, peer)
+        assertTrue(session.owns(packet, peer))
+        assertEquals(false, session.owns(packet.copy(componentId = 191), peer))
+        assertEquals(false, session.owns(packet, peer.copy(port = 14600)))
+    }
+
+    @Test
     fun unknownCommandsAndFramesAreRejectedWithExactEvidence() {
         val unknown = missionItemIntPacket(sequence = 2, commandId = 999)
         assertNull(MissionUploadSession.parseMissionItemInt(unknown))

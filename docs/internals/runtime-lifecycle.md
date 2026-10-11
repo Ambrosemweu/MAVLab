@@ -1,7 +1,7 @@
 # Runtime Lifecycle Contract
 
 Audience: Maintainers and Android contributors
-Status: Current updated v1.5.3 contract
+Status: v1.6.0 contract; v1.5.3 is the prior baseline
 Last verified: 2026-09-02
 
 This document explains when MAVLab keeps the on-phone runtime alive and when it stops.
@@ -94,3 +94,7 @@ Four-tab navigation and contextual mission views create no additional runtime ow
 ## Ops observation and recording review
 
 Ops history is derived by AppRuntime on the existing 200 ms recording monitor, independent of selected tab. It is bounded and process-local; it creates no runtime owner or background retention condition. Recording defaults to off. Ops can persist an opt-in to automatic arm capture while disarmed. Begin and Stop/save serialize on IO with sampling; an explicit armed Stop/save suppresses opted-in capture until the next arm or explicit Begin. Runtime restart preserves the saved opt-in value and never enables recording implicitly. The existing service Stop/Start intents are exposed with confirmation and accurate frozen-state language. Foreground sensor eligibility, retention timing and lock ownership are unchanged. See [ADR-0008](decisions/0008-ops-health-and-recording.md).
+
+## Safety-plan lifecycle review (working tree)
+
+Accepted fence/rally/configuration snapshots restore after the persisted simulation origin and navigation mission, without restoring armed flight or recovery authority. AppRuntime observes only distinct persisted safety content on IO; transfer-progress text does not cause repeated snapshot writes. This observer is process-local and idle when content is unchanged, not a new service or retention condition. An explicit endpoint stop discards transfer caches while retaining accepted plans. Origin changes atomically remove old-location plans through the engine; Ops clear does not remove navigation data. Armed/recovery flight continues under the existing armed-flight retention policy, and background phone input remains suspended. Engine safety operations/ticks share a monitor so plan commit, clear and origin change cannot race with arming. See [ADR-0013](decisions/0013-simulated-fence-and-rally.md).

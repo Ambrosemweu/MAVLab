@@ -14,6 +14,7 @@ data class MissionActionPolicy(val startBlockedReason: String?, val canClear: Bo
 fun missionActionPolicy(state: DroneState, mission: MissionProgress, upload: MissionUploadStatus, failures: FailureState, live: Boolean): MissionActionPolicy {
     val reason = when {
         !live -> "Live simulation state required"
+        state.controlAuthority == ControlAuthority.SAFETY_RECOVERY -> "Fence recovery active; resolve it in Ops before starting AUTO"
         upload.phase == MissionUploadPhase.UPLOADING -> "Mission upload in progress"
         upload.phase == MissionUploadPhase.REJECTED -> "Upload rejected; inspect Ops and upload again"
         !mission.received -> "Upload a mission from QGC to verify its source"

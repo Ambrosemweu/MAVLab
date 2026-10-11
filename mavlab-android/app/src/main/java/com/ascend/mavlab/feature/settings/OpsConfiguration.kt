@@ -57,7 +57,7 @@ internal fun SimLocationCard(
 
     pendingLocation?.let { location ->
         AlertDialog(onDismissRequest = { pendingLocation = null }, title = { Text("Change simulation origin?") },
-            text = { Text("Sets the GPS origin to ${location.label} and clears the stored mission. The vehicle must remain disarmed.") },
+            text = { Text("Sets the GPS origin to ${location.label}, clears navigation/fence/rally plans and disables fencing. The vehicle must remain disarmed.") },
             confirmButton = { TextButton(onClick = {
                 pendingLocation = null
                 feedback = if (AppRuntime.setSimLocation(location)) "Simulation origin updated" else "Origin unchanged: disarm before changing it."

@@ -1,8 +1,8 @@
 # MAVLink and QGroundControl Contract
 
 Audience: Protocol contributors and release validators
-Status: Current v1.5.3 contract
-Last verified: 2026-09-01
+Status: v1.6.0 implementation contract; not a blanket live-QGC qualification
+Baseline verified: 2026-09-01
 
 This document maps what MAVLab claims at the QGroundControl boundary.
 
@@ -27,6 +27,16 @@ MAVLab reports a pinned ArduCopter 4.6.3-compatible development identity and cus
 - After detection, telemetry goes to active peers.
 
 Documents claiming bind port `14556` are stale.
+
+## Wire protocol (UI/UX branch, 2026-10-11)
+
+MAVLab v1.6.0 emits unsigned MAVLink 2 frames for discovery, telemetry, parameters, commands and missions. This makes the advertised MAVLINK2 capability truthful; the previous implementation advertised the bit but emitted only MAVLink 1. QGC Daily's v2-only non-heartbeat processing is not compatible with that previous implementation.
+
+The receiver accepts CRC-validated MAVLink 1 and unsigned MAVLink 2 for the explicitly defined common-dialect subset in `MavlinkWire`. It decodes every complete frame in a UDP datagram and restores MAVLink 2 omitted trailing zero bytes before checking fields and targets. Unknown IDs, invalid checksums, incomplete frames, signed messages (no signing keys/authentication implementation) and unknown incompatibility flags are not executed. This is not a claim of full common/ArduPilot dialect or signing support. `COMMAND_ACK` extensions address the actual requesting system/component.
+
+`EXTENDED_SYS_STATE` is emitted and available through REQUEST_MESSAGE. VTOL state is undefined for the quadrotor; landed state follows authoritative engine altitude (on ground at <=0.15 m AGL, in air above that). REQUEST_MESSAGE for unimplemented metadata, standard modes, gimbal and other messages returns UNSUPPORTED rather than pretending to provide them. SET_MESSAGE_INTERVAL remains an **accepted no-op for rate selection**; the fixed telemetry cadence is unchanged.
+
+References: [MAVLink serialization](https://mavlink.io/en/guide/serialization.html), [QGC receive handling](https://github.com/mavlink/qgroundcontrol/blob/master/src/Comms/MAVLinkProtocol.cc). Independent wire fixtures use pymavlink 2.4.50; it is a validation tool, not an application/runtime dependency.
 
 ## Timing and connection
 
@@ -54,6 +64,36 @@ The canonical phone-sensor correction changes local takeoff to ALT_HOLD so local
 ## Mission evidence
 
 Validate upload count/sequence, item decoding, ACK behavior, engine loading, mission start/progress, clear/set-current, reconnect/re-upload, and malformed/unsupported items.
+
+### Upload recovery (UI/UX branch, 2026-10-11)
+
+- Request the first missing item with MISSION_REQUEST_INT (legacy-item uploads retain legacy requests). Retry at 250 ms or the next receive-loop poll, up to five retries per expected item; polling continues even when no packets arrive. Progress resets the retry budget; lack of progress is bounded by ten seconds. Exhaustion publishes the expected sequence and ERROR ACK; the previous engine mission is retained.
+- Upload ownership includes UDP endpoint and sender system/component. An unrelated sender cannot feed or replace an active transaction. Duplicates/gaps request the expected item without overwriting received items.
+- Only a complete valid upload loads the engine. A matching retransmitted item receives the final ACCEPTED ACK for up to ten seconds after completion, without loading/resetting the mission again. Clear, new upload and endpoint stop invalidate this bounded completion cache. Endpoint stop rejects an incomplete upload visibly.
+- Mission types 0 (navigation), 1 (fence) and 2 (rally) have separate stores. Other types receive UNSUPPORTED with their type echoed. Typed clear removes only its store; CLEAR_ALL type ALL (255) clears all three, while disarmed. See the safety-plan contract below.
+- Item download preserves geographic altitude frames and uses MISSION frame for CHANGE_SPEED. Recording policy remains opt-in. The subsequent safety-plan implementation changes RTL execution as described below.
+
+## Simulated fence and rally contract (working tree)
+
+Implemented in v1.6.0. The heading is retained for compatibility with historical evidence links.
+
+This is implemented simulation behavior, not ArduPilot firmware equivalence. `MISSION_FENCE` and `MISSION_RALLY` capability bits advertise the bounded typed mission service; unsupported command/coordinate semantics remain rejected.
+
+- Each safety store accepts at most 100 items. Uploads use ordered `MISSION_REQUEST_INT`, targeted typed ACKs, endpoint/system/component ownership, 250 ms requests with five retries, ten-second progress timeout and a bounded final-ACK replay cache. INT and legacy float geographic items are decoded; current/autocontinue flags are accepted metadata with no safety-plan execution meaning (QGC marks its first safety item current). A complete validated list replaces the previous store atomically. Failed, malformed, interrupted or timed-out replacements retain the previous accepted list. Download snapshots are bounded by type and owner and expire after ten seconds of inactivity.
+- Shapes: commands 5001/5002 are contiguous inclusion/exclusion polygon vertices (at least three, consistent vertex count/group, no repeated vertices, collinear-only or self-intersecting geometry). Commands 5003/5004 are inclusion/exclusion circles. Command 5000 is an optional single fence-return point. Rally items use command 5100. Geographic frames 0/5 (MSL) and 3/6 (home-relative) are implemented. Terrain/local/body frames, nonzero reserved parameters and other commands are rejected. Geographic coordinates are bounded to +/-85 degrees latitude; circle radii and local polygon spans are bounded to 50 km. No global/dateline geometry claim is made.
+- Exclusions always win. Inclusion regions intersect within a group and unite across groups. `FENCE_OPTIONS=2` instead unites all inclusion regions; 0 is the default. Other options are rejected. Polygon/circle geometry compiles on accepted upload, not in the physics tick; checks use physical local position projected from the stable simulation origin, not injected GPS noise.
+- `FENCE_ENABLE` defaults to 0. Uploading shapes never enables enforcement. `FENCE_TYPE` bits 1/2/4/8 select maximum home-relative altitude, home circle, uploaded regions, and minimum home-relative altitude. Minimum monitoring begins after the simulated vehicle first reaches the configured floor and is suspended for landing/disarmed states, allowing takeoff and touchdown.
+- `FENCE_ACTION=0` reports without changing flight intent; 1 takes RTL or local LAND if GPS/eligible return is unavailable; 2 lands locally. Values 3+ (SmartRTL/BRAKE variants) are refused. `FENCE_RADIUS`, `FENCE_ALT_MAX`, `FENCE_ALT_MIN` and `FENCE_MARGIN` are enforced; margin is clearance for selecting return endpoints, not a claim of predictive fence braking. Invalid/nonfinite values retain and return the actual current value.
+- Configuration and safety-plan replacement/clear are disarmed-only, except `FENCE_ENABLE=0` can disable enforcement while armed. `DO_FENCE_ENABLE` (207) implements global enable/disable with param2=0; selective-type and disable-floor-only forms are denied. Ordinary arm/takeoff/mission-start requests outside an enabled horizontal/maximum-altitude boundary are denied; no successful command ACK is fabricated.
+- An actionable breach produces `SAFETY_RECOVERY` authority, clears the direct-RPM override, pauses manual/mission intent, and keeps its RTL/LAND recovery latched after re-entry until landing/disarm. Control and Cockpit identify recovery; Ops identifies breach count/type and destination. Manual input cannot silently reclaim recovery. Disabling the fence releases the recovery latch but leaves the current RTL/LAND intent intact; deliberately choose a manual mode or disarm to leave it. LAND and DISARM remain available.
+- `RTL_ALT` (centimetres on the parameter boundary), `RALLY_LIMIT_KM` (0 disables distance limiting), and `RALLY_INCL_HOME` affect selection. Choose the nearest eligible rally/home candidate, with home included when configured; if no rally qualifies, try the fence return point then home. Candidate altitudes are converted to flat-world AGL once, must be above 0.25 m, within 50 km of simulation origin and within enabled fence limits including margin. If none qualifies, land in place. RTL holds position while climbing to the return altitude, travels to the selected endpoint, then LANDs and auto-disarms on touchdown. RTL on the ground lands/disarms without launching. GPS loss in RTL also triggers local LAND. A mission RTL is terminal and records completion/reached sequence only after landing, not just when a home waypoint is reached.
+- Return travel is straight-line position control, **not** terrain/building/obstacle avoidance or a guarantee that a path through nonconvex/exclusion geometry remains inside the fence. Uploaded points are alternative simulated return destinations, not certified real-world landing sites. Plan usable return paths explicitly.
+- `FENCE_STATUS` (162) reports authoritative breach status, bounded breach count, last type/time; it is emitted while fencing is enabled and available through REQUEST_MESSAGE. Mitigation is NONE for no action, UNKNOWN for RTL/LAND because the protocol has no matching enum; MAVLab never claims velocity limiting. SYS_STATUS geofence present/enabled/health bits reflect subsystem availability, enablement and breach state.
+- Fence/rally/configuration persist in the separate version-1 `mavlab_safety` snapshot. Restore validates its version, limits and geometry; corrupt/future snapshots are not executed. Flights/authority are never restored as armed. Changing the simulation origin through Ops clears safety and navigation plans and disables fencing. Explicit runtime stop preserves accepted plans but discards transfer sessions. Recording remains opt-in; no new background-retention policy is introduced.
+
+References: [typed mission protocol](https://mavlink.io/en/services/mission.html), [command/frame/fence definitions](https://mavlink.io/en/messages/common.html), [QGC fence item construction](https://github.com/mavlink/qgroundcontrol/blob/master/src/MissionManager/GeoFenceManager.cc), [QGC rally manager](https://github.com/mavlink/qgroundcontrol/blob/master/src/MissionManager/RallyPointManager.cc), [ArduPilot fence concepts](https://ardupilot.org/copter/docs/common-geofencing-landing-page.html), [rally concepts](https://ardupilot.org/copter/docs/common-rally-points.html).
+
+Focused unit and isolated Android loopback checks are separate from live QGC acceptance. See dated results under `docs/validation/results/` for the actual tested build and any outstanding checks.
 
 ## Scope
 

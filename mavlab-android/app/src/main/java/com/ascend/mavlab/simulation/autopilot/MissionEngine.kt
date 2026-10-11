@@ -51,6 +51,17 @@ class MissionEngine {
         load(previous.items, previous.origin)
     }
 
+    fun beginReturn() {
+        mutableProgress.value = mutableProgress.value.copy(executionStarted = true)
+    }
+
+    fun finishReturn() {
+        val p = mutableProgress.value
+        if (p.activeTarget?.command != MissionCommand.RTL) return
+        mutableProgress.value = p.copy(complete = true, activeTarget = null,
+            lastReachedSequence = p.activeTarget.sequence, executionStarted = true)
+    }
+
     fun update(state: DroneState): MissionProgress {
         val progress = mutableProgress.value.copy(executionStarted = true)
         mutableProgress.value = progress
