@@ -6,7 +6,7 @@ Source: Controller requirements in the MAVLab UIUX Upgrade Consolidated Specific
 
 ## Decision
 
-Controller has a persistent operational header, a scrolling primary input/setup area and a persistent flight-action dock. Landscape uses a compact header and places the dock beside the controls. Authority, input selection, mode, armed state, battery and navigation/link health derive from shared state. A GCS peer is not an authority selector.
+Controller has a persistent operational header, a scrolling primary input/setup area and a persistent flight-action dock. Landscape uses a compact header and places the dock beside the controls when font scale is at most 1.15 and the content viewport is at least 240 dp tall. Larger text or shorter content viewports retain a full-width bottom action row. Portrait status fields flow at their natural widths instead of forcing narrow equal columns. Authority, input selection, mode, armed state, battery and navigation/link health derive from shared state. A GCS peer is not an authority selector.
 
 Input selection and calibration require disarmed live state and local authority. Direct RPM additionally requires an explicit confirmation and starts at zero. Airborne disarm and external takeover require confirmation. Normal local landing remains a single action. Stale/unavailable state uses the Cockpit freshness thresholds and disables flight commands rather than implying that default values are live.
 
@@ -20,7 +20,7 @@ The sensor acceptance invariant and mapping from ADR-0005 are unchanged. In part
 
 AppRuntime and navigation changes require explicit review. User guidance describes locks, flight/reverse actions, calibration, input units and external authority limits. The runtime lifecycle contract identifies shared input ownership; service retention, background sensor suspension and process restoration are unchanged. The control-authority and simulation documents describe custom manual-mode recovery and global advanced-input application. MAVLink command parsing, ACK behavior, identity and advertised capabilities are unchanged.
 
-The shell continues composing only the selected tab. No horizontal pager is introduced, so slider gestures cannot switch tabs. Expanded learning, failure and sound tools do not start new simulation or sensor owners.
+The initial Controller implementation composed only the selected tab. The subsequent guarded pager is documented in [ADR-0009](0009-display-and-navigation.md); slider gestures still cannot switch tabs. Expanded learning, failure and sound tools do not start new simulation or sensor owners.
 
 ## Verification
 

@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -132,9 +133,10 @@ fun ControllerScreen(
     }
 
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            val landscape = maxWidth > maxHeight
-            val controls: @Composable (Modifier) -> Unit = { bodyModifier ->
+        ControllerContentLayout(
+            status = { landscape -> ControllerStatus(state, ui, inputs.inputMode, identity.gcsConnected, failures.activeCount, landscape) },
+            actions = { dockModifier, stacked -> ControllerActionDock(ui, takeoffHeight, execute, dockModifier, stacked) },
+        ) { bodyModifier ->
                 Column(
                     bodyModifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -215,19 +217,6 @@ fun ControllerScreen(
                     )
                 }
             }
-            Column(Modifier.fillMaxSize()) {
-                ControllerStatus(state, ui, inputs.inputMode, identity.gcsConnected, failures.activeCount, landscape)
-                if (landscape) {
-                    Row(Modifier.weight(1f).fillMaxWidth()) {
-                        controls(Modifier.weight(1f))
-                        ControllerActionDock(ui, takeoffHeight, execute, Modifier.width(240.dp).align(Alignment.Bottom), stacked = true)
-                    }
-                } else {
-                    controls(Modifier.weight(1f).fillMaxWidth())
-                    ControllerActionDock(ui, takeoffHeight, execute)
-                }
-            }
-        }
     }
     if (confirmDirectRpm) {
         AlertDialog(
@@ -275,9 +264,35 @@ fun ControllerScreen(
     }
 }
 
+/** Keep actions outside the scrolling controls, without squeezing stacked actions at large text. */
+@Composable
+internal fun ControllerContentLayout(
+    modifier: Modifier = Modifier,
+    status: @Composable (Boolean) -> Unit,
+    actions: @Composable (Modifier, Boolean) -> Unit,
+    controls: @Composable (Modifier) -> Unit,
+) {
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val landscape = maxWidth > maxHeight
+        val sideDock = landscape && LocalDensity.current.fontScale <= 1.15f && maxHeight >= 240.dp
+        Column(Modifier.fillMaxSize()) {
+            status(landscape)
+            if (sideDock) {
+                Row(Modifier.weight(1f).fillMaxWidth()) {
+                    controls(Modifier.weight(1f))
+                    actions(Modifier.width(240.dp).align(Alignment.Bottom), true)
+                }
+            } else {
+                controls(Modifier.weight(1f).fillMaxWidth())
+                actions(Modifier.fillMaxWidth(), false)
+            }
+        }
+    }
+}
+
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
-private fun ControllerStatus(state: DroneState, ui: ControllerUiState, inputMode: ControllerInputMode, gcsConnected: Boolean, warningCount: Int, compact: Boolean) {
+internal fun ControllerStatus(state: DroneState, ui: ControllerUiState, inputMode: ControllerInputMode, gcsConnected: Boolean, warningCount: Int, compact: Boolean) {
     Column(Modifier.fillMaxWidth().screenSwipeArea().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (compact) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -292,10 +307,10 @@ private fun ControllerStatus(state: DroneState, ui: ControllerUiState, inputMode
                 Text(if (ui.freshness == CockpitDataFreshness.UNAVAILABLE || ui.freshness == CockpitDataFreshness.STALE) "STATE NOT LIVE" else "Battery ${state.batteryRemainingPercent}%", style = MaterialTheme.typography.labelLarge)
             }
             Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(14.dp)) {
-                Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatusValue("AUTHORITY", if (ui.freshness == CockpitDataFreshness.UNAVAILABLE) "Unavailable" else state.controlAuthority.displayName, Modifier.weight(1.2f))
-                    StatusValue("FLIGHT MODE", state.mode.displayName, Modifier.weight(1f))
-                    StatusValue("VEHICLE", if (state.armed) "Armed" else "Disarmed", Modifier.weight(1f))
+                FlowRow(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatusValue("AUTHORITY", if (ui.freshness == CockpitDataFreshness.UNAVAILABLE) "Unavailable" else state.controlAuthority.displayName)
+                    StatusValue("FLIGHT MODE", state.mode.displayName)
+                    StatusValue("VEHICLE", if (state.armed) "Armed" else "Disarmed")
                 }
             }
         }
@@ -399,7 +414,7 @@ private fun ControllerInputCard(
 }
 
 @Composable
-private fun ControllerActionDock(
+internal fun ControllerActionDock(
     ui: ControllerUiState,
     height: Float,
     execute: (ControllerAction) -> Unit,
