@@ -22,6 +22,7 @@ import com.ascend.mavlab.feature.dashboard.resolveCockpitFreshness
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -45,18 +46,20 @@ import com.ascend.mavlab.simulation.engine.FlightMode
 import com.ascend.mavlab.simulation.failures.FailureState
 import com.ascend.mavlab.simulation.mission.MissionProgress
 import io.github.sceneview.SceneView
-import io.github.sceneview.SceneScope
+import io.github.sceneview.createEnvironment
 import io.github.sceneview.math.Position
 import io.github.sceneview.node.ModelNode
 import io.github.sceneview.rememberCameraManipulator
+import io.github.sceneview.rememberCameraNode
 import io.github.sceneview.rememberEngine
 import io.github.sceneview.rememberEnvironment
+import io.github.sceneview.rememberEnvironmentLoader
+import io.github.sceneview.rememberMainLightNode
 import io.github.sceneview.rememberModelInstance
 import io.github.sceneview.rememberModelLoader
-import kotlin.math.abs
+import io.github.sceneview.node.LightNode
 import kotlin.math.cos
 import kotlin.math.max
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 @Composable
@@ -142,15 +145,52 @@ private fun DroneScene(
     val engine = rememberEngine()
     val modelLoader = rememberModelLoader(engine)
     val latestState = rememberUpdatedState(state)
+    val camera = rememberCameraNode(engine)
+    val environmentLoader = rememberEnvironmentLoader(engine)
+    // The engine-only environment has no IBL. Load the SDK's bundled neutral
+    // probe instead: diffuse fill and material reflections, with a black skybox.
+    val environment = rememberEnvironment(environmentLoader) {
+        createEnvironment(environmentLoader).also {
+            it.indirectLight?.intensity = SimInspectionLighting.EnvironmentIntensity
+        }
+    }
+    val keyLight = rememberMainLightNode(engine) {
+        intensity = SimInspectionLighting.KeyIlluminanceLux
+        lightDirection = Position(-0.4f, -0.75f, -0.5f)
+        isShadowCaster = true
+    }
+    val cameraFill = remember(engine) {
+        LightNode(engine, LightManager.Type.POINT) {
+            intensity(1f)
+            castShadows(false)
+        }
+    }
+    DisposableEffect(cameraFill) { onDispose { cameraFill.destroy() } }
 
     SceneView(
         modifier = modifier,
         engine = engine,
         modelLoader = modelLoader,
-        environment = rememberEnvironment(engine),
+        environment = environment,
+        cameraNode = camera,
+        mainLightNode = keyLight,
+        fillLightNode = cameraFill,
         cameraManipulator = rememberCameraManipulator(),
+        onFrame = {
+            // SceneView updates the orbit camera before this callback. Follow
+            // it without Compose state, and compensate point-light falloff so
+            // zooming does not turn the inspection fill into a flashlight.
+            val eye = camera.worldPosition
+            val body = modelController.bodyPosition(latestState.value)
+            val dx = eye.x - body.x
+            val dy = eye.y - body.y
+            val dz = eye.z - body.z
+            val distanceSquared = dx * dx + dy * dy + dz * dz
+            cameraFill.lightPosition = eye
+            cameraFill.intensity = SimInspectionLighting.fillLumens(distanceSquared)
+            cameraFill.falloff = SimInspectionLighting.fillRange(distanceSquared)
+        },
     ) {
-        FlightLighting(state)
         rememberModelInstance(modelLoader, DroneAssetPath)?.let { modelInstance ->
             ModelNode(
                 modelInstance = modelInstance,
@@ -392,32 +432,6 @@ private val SimWarningColor = Color(0xFFFFC857)
 private val SimCriticalColor = Color(0xFFFF5B5B)
 private val SimFailureColor = Color(0xFFFF8A3D)
 
-@Composable
-private fun SceneScope.FlightLighting(state: DroneState) {
-    val yaw = state.yawRadians
-    val rollBrightness = (abs(state.rollRadians) / MaxRollForLighting).coerceIn(0f, 1f)
-    val sunDirection = Position(
-        x = (-sin(yaw) * 0.45f).coerceIn(-1f, 1f),
-        y = -0.82f,
-        z = (-cos(yaw) * 0.45f).coerceIn(-1f, 1f),
-    )
-    LightNode(
-        type = LightManager.Type.DIRECTIONAL,
-        intensity = 95_000f + rollBrightness * 25_000f,
-        direction = sunDirection,
-        apply = { castShadows(true) },
-    )
-    LightNode(
-        type = LightManager.Type.POINT,
-        intensity = 4_500f,
-        position = Position(x = 0f, y = 1.8f, z = 2.4f),
-        apply = {
-            falloff(7f)
-            castShadows(false)
-        },
-    )
-}
-
 private fun gpsLabel(state: DroneState): String {
     return if (state.gpsFixType.toInt() >= 3) "3D fix" else "No fix"
 }
@@ -510,7 +524,6 @@ private fun trailLabel(mission: MissionProgress): String {
 
 private const val DroneAssetPath = "models/drone.glb"
 private const val PropellerAnimationName = "propellers_spin"
-private const val MaxRollForLighting = 0.8f
 private const val MetersPerLatDeg = 111_320.0
 private const val MaxTrailPoints = 120
 private const val MinimumTrailSpacingMeters = 0.35f

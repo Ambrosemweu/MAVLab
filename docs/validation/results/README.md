@@ -12,3 +12,8 @@ Store immutable, build-specific MAVLab validation records here. Do not overwrite
 - [Controller upgrade checkpoint, build and deferred device checks — 2026-10-10](controller-upgrade-working-tree-2026-10-10.md)
 - [Contextual missions, final build and physical-phone checks — 2026-10-10](mission-consolidation-phone-2026-10-10.md)
 - [Ops upgrade and opt-in recording, partial phone checkpoint — 2026-10-10](ops-upgrade-phone-checkpoint-2026-10-10.md)
+- [Full-screen display and compact navigation, working tree — 2026-10-10](2026-10-10-display-navigation/README.md)
+- [Swipe responsiveness follow-up, working tree — 2026-10-10](2026-10-10-swipe-responsiveness/README.md)
+- [Fluid swipe motion, working tree — 2026-10-10](2026-10-10-fluid-swipe/README.md)
+- [Continuous page transitions, working tree — 2026-10-11](2026-10-11-continuous-pager/README.md)
+- [SIM inspection lighting, working tree — 2026-10-11](2026-10-11-sim-lighting/README.md)

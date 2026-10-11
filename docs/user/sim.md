@@ -2,6 +2,8 @@
 
 The 3D vehicle observes the same authoritative attitude, position and motor state as Cockpit. Switching views does not interrupt foreground Phone Sensors input.
 
+The working-tree 3D view uses neutral environment lighting, a stable main light and a gentle camera-following fill. Orbiting to the rear, sides or underside keeps visible surfaces illuminated; zooming adjusts fill power to maintain a similar brightness. Highlights and shadows still show the model's shape and materials. This is inspection lighting, not a simulated sun, and it does not change attitude, physics or control authority. The lighting probe is bundled for offline use; no new appearance setting is needed.
+
 After a received mission is loaded, **View received route** opens a north-up spatial view. Control's **View route in SIM** opens it directly. **3D vehicle** returns to the model. There is no route control when no received mission exists.
 
 The route preserves all received navigation coordinates and their order. Numbered nodes use received item sequence plus one; co-located nodes share a label (for example home and takeoff); speed commands count as items but have no spatial marker. Earlier items are green, the current planned target and leg are amber, remaining paths are blue, the actual vehicle is orange, and its observed trail is purple. Earlier items include the skipped QGC home marker; color alone does not establish execution. Hollow nodes denote partial command behavior described in Ops.
