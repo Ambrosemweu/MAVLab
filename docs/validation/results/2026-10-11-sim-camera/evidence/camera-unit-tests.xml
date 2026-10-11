@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.ascend.mavlab.feature.drone3d.SimInspectionCameraTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-11T12:31:49" hostname="Ascend" time="0.005">
+  <properties/>
+  <testcase name="initialViewIsElevatedFrontRightThreeQuarter" classname="com.ascend.mavlab.feature.drone3d.SimInspectionCameraTest" time="0.002"/>
+  <testcase name="referenceHeadingAndTranslatedVehicleRetainTheSameFraming" classname="com.ascend.mavlab.feature.drone3d.SimInspectionCameraTest" time="0.001"/>
+  <testcase name="equivalentWrappedHeadingsHaveTheSameHomeEye" classname="com.ascend.mavlab.feature.drone3d.SimInspectionCameraTest" time="0.0"/>
+  <testcase name="quarterTurnHeadingRotatesEyeWithTheModelYaw" classname="com.ascend.mavlab.feature.drone3d.SimInspectionCameraTest" time="0.0"/>
+  <testcase name="invalidHeadingCannotPoisonTheCameraHome" classname="com.ascend.mavlab.feature.drone3d.SimInspectionCameraTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

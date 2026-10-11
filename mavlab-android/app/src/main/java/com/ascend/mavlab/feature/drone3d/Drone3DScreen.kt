@@ -145,7 +145,23 @@ private fun DroneScene(
     val engine = rememberEngine()
     val modelLoader = rememberModelLoader(engine)
     val latestState = rememberUpdatedState(state)
-    val camera = rememberCameraNode(engine)
+    // Snapshot once per renderer lifetime. Telemetry must not reset a user's
+    // orbit or make the camera chase yaw; the model still observes live state.
+    val homeTarget = remember(engine) { modelController.bodyPosition(state) }
+    val homeEye = remember(engine) {
+        val eye = SimInspectionCamera.homeEye(
+            SimCameraPoint(homeTarget.x, homeTarget.y, homeTarget.z), state.yawRadians,
+        )
+        Position(eye.x, eye.y, eye.z)
+    }
+    val camera = rememberCameraNode(engine) {
+        position = homeEye
+        lookAt(homeTarget)
+    }
+    val cameraManipulator = rememberCameraManipulator(
+        orbitHomePosition = homeEye,
+        targetPosition = homeTarget,
+    )
     val environmentLoader = rememberEnvironmentLoader(engine)
     // The engine-only environment has no IBL. Load the SDK's bundled neutral
     // probe instead: diffuse fill and material reflections, with a black skybox.
@@ -175,7 +191,11 @@ private fun DroneScene(
         cameraNode = camera,
         mainLightNode = keyLight,
         fillLightNode = cameraFill,
-        cameraManipulator = rememberCameraManipulator(),
+        cameraManipulator = cameraManipulator,
+        // Explicit engine-derived placement and camera framing must not be
+        // canceled by SDK automatic parent centering or camera fitting.
+        autoCenterContent = false,
+        autoFitContent = false,
         onFrame = {
             // SceneView updates the orbit camera before this callback. Follow
             // it without Compose state, and compensate point-light falloff so

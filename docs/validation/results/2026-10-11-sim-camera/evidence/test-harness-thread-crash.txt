@@ -1,0 +1,74 @@
+--------- beginning of crash
+10-11 15:34:22.756 29504 29831 F libc    : Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 29831 (DefaultDispatch), pid 29504 (m.ascend.mavlab)
+10-11 15:34:23.757 29836 29836 F DEBUG   : *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+10-11 15:34:23.757 29836 29836 F DEBUG   : Build fingerprint: 'samsung/beyond0qltesq/beyond0q:12/SP1A.210812.016/G970USQU9IXE3:user/release-keys'
+10-11 15:34:23.757 29836 29836 F DEBUG   : Revision: '17'
+10-11 15:34:23.757 29836 29836 F DEBUG   : ABI: 'arm64'
+10-11 15:34:23.757 29836 29836 F DEBUG   : Processor: '4'
+10-11 15:34:23.757 29836 29836 F DEBUG   : Timestamp: 2026-10-11 15:34:22.922748715+0300
+10-11 15:34:23.757 29836 29836 F DEBUG   : Process uptime: 20s
+10-11 15:34:23.757 29836 29836 F DEBUG   : Cmdline: com.ascend.mavlab
+10-11 15:34:23.757 29836 29836 F DEBUG   : pid: 29504, tid: 29831, name: DefaultDispatch  >>> com.ascend.mavlab <<<
+10-11 15:34:23.757 29836 29836 F DEBUG   : uid: 11015
+10-11 15:34:23.757 29836 29836 F DEBUG   : signal 6 (SIGABRT), code -1 (SI_QUEUE), fault addr --------
+10-11 15:34:23.757 29836 29836 F DEBUG   : Abort message: 'terminating due to uncaught exception of type utils::PreconditionPanic: Precondition
+10-11 15:34:23.757 29836 29836 F DEBUG   : in getState:347
+10-11 15:34:23.757 29836 29836 F DEBUG   : reason: This thread has not been adopted.'
+10-11 15:34:23.757 29836 29836 F DEBUG   :     x0  0000000000000000  x1  0000000000007487  x2  0000000000000006  x3  0000007303f20220
+10-11 15:34:23.757 29836 29836 F DEBUG   :     x4  646277641f736766  x5  646277641f736766  x6  646277641f736766  x7  7f7f7f7f7f7f7f7f
+10-11 15:34:23.757 29836 29836 F DEBUG   :     x8  00000000000000f0  x9  0aef1e03e57524ee  x10 0000000000000000  x11 ffffff80fffffbdf
+10-11 15:34:23.757 29836 29836 F DEBUG   :     x12 0000000000000001  x13 000000006acb824e  x14 002c80a6d3f41452  x15 000092ecb629b9f2
+10-11 15:34:23.757 29836 29836 F DEBUG   :     x16 0000007674f3d060  x17 0000007674f19980  x18 00000072df64e000  x19 0000000000007340
+10-11 15:34:23.758 29836 29836 F DEBUG   :     x20 0000000000007487  x21 00000000ffffffff  x22 0000007303f20350  x23 0000007303f20390
+10-11 15:34:23.758 29836 29836 F DEBUG   :     x24 0000007303f20440  x25 9ddfea08eb382d69  x26 b4000074a04fe970  x27 b4000074304f16f0
+10-11 15:34:23.758 29836 29836 F DEBUG   :     x28 b40000750056ba58  x29 0000007303f202a0
+10-11 15:34:23.758 29836 29836 F DEBUG   :     lr  0000007674ec9af4  sp  0000007303f20200  pc  0000007674ec9b20  pst 0000000000000000
+10-11 15:34:23.758 29836 29836 F DEBUG   : backtrace:
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #00 pc 0000000000051b20  /apex/com.android.runtime/lib64/bionic/libc.so (abort+168) (BuildId: 73e145ce4e1dfca57a8eaf6d29c1d3fe)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #01 pc 00000000002b0ffc  /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk!libfilament-jni.so (BuildId: 13374fce592a932c2bb0a6f76041ef561821ae56)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #02 pc 00000000002b0a0c  /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk!libfilament-jni.so (BuildId: 13374fce592a932c2bb0a6f76041ef561821ae56)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #03 pc 00000000002b08e0  /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk!libfilament-jni.so (BuildId: 13374fce592a932c2bb0a6f76041ef561821ae56)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #04 pc 00000000002b0880  /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk!libfilament-jni.so (std::terminate()+56) (BuildId: 13374fce592a932c2bb0a6f76041ef561821ae56)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #05 pc 00000000001522c8  /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk!libgltfio-jni.so (BuildId: e1094578ffca5ecfffd89c72334f36ce2674eaee)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #06 pc 000000000020b480  /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk!libgltfio-jni.so (BuildId: e1094578ffca5ecfffd89c72334f36ce2674eaee)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #07 pc 000000000017c3b8  /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk!libgltfio-jni.so (filament::gltfio::ResourceLoader::Impl::computeTangents(filament::gltfio::FFilamentAsset*)+1592) (BuildId: e1094578ffca5ecfffd89c72334f36ce2674eaee)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #08 pc 000000000017b5f4  /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk!libgltfio-jni.so (filament::gltfio::ResourceLoader::loadResources(filament::gltfio::FFilamentAsset*, bool)+2548) (BuildId: e1094578ffca5ecfffd89c72334f36ce2674eaee)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #09 pc 0000000000154920  /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk!libgltfio-jni.so (Java_com_google_android_filament_gltfio_ResourceLoader_nAsyncBeginLoad+12) (BuildId: e1094578ffca5ecfffd89c72334f36ce2674eaee)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #10 pc 0000000000222244  /apex/com.android.art/lib64/libart.so (art_quick_generic_jni_trampoline+148) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #11 pc 0000000000218be8  /apex/com.android.art/lib64/libart.so (art_quick_invoke_static_stub+568) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #12 pc 000000000028600c  /apex/com.android.art/lib64/libart.so (art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)+220) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #13 pc 00000000003ea4c8  /apex/com.android.art/lib64/libart.so (art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, art::ShadowFrame*, unsigned short, art::JValue*)+404) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #14 pc 00000000003e5064  /apex/com.android.art/lib64/libart.so (bool art::interpreter::DoCall<false, false>(art::ArtMethod*, art::Thread*, art::ShadowFrame&, art::Instruction const*, unsigned short, art::JValue*)+828) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #15 pc 000000000076b740  /apex/com.android.art/lib64/libart.so (MterpInvokeStatic+984) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #16 pc 0000000000203994  /apex/com.android.art/lib64/libart.so (mterp_op_invoke_static+20) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #17 pc 00000000010b3224  [anon:dalvik-classes.dex extracted in memory from /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk] (com.google.android.filament.gltfio.ResourceLoader.asyncBeginLoad+12)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #18 pc 00000000003dce0c  /apex/com.android.art/lib64/libart.so (art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, art::ShadowFrame&, art::JValue, bool, bool)+312) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #19 pc 00000000003e4584  /apex/com.android.art/lib64/libart.so (art::interpreter::ArtInterpreterToInterpreterBridge(art::Thread*, art::CodeItemDataAccessor const&, art::ShadowFrame*, art::JValue*)+208) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #20 pc 00000000003e5040  /apex/com.android.art/lib64/libart.so (bool art::interpreter::DoCall<false, false>(art::ArtMethod*, art::Thread*, art::ShadowFrame&, art::Instruction const*, unsigned short, art::JValue*)+792) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #21 pc 0000000000760518  /apex/com.android.art/lib64/libart.so (MterpInvokeVirtual+1172) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #22 pc 0000000000203814  /apex/com.android.art/lib64/libart.so (mterp_op_invoke_virtual+20) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #23 pc 0000000000116d86  [anon:dalvik-classes16.dex extracted in memory from /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk!classes16.dex] (io.github.sceneview.loaders.ModelLoader.loadResources+74)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #24 pc 00000000003dce0c  /apex/com.android.art/lib64/libart.so (art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, art::ShadowFrame&, art::JValue, bool, bool)+312) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #25 pc 00000000003e4584  /apex/com.android.art/lib64/libart.so (art::interpreter::ArtInterpreterToInterpreterBridge(art::Thread*, art::CodeItemDataAccessor const&, art::ShadowFrame*, art::JValue*)+208) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #26 pc 00000000003e5040  /apex/com.android.art/lib64/libart.so (bool art::interpreter::DoCall<false, false>(art::ArtMethod*, art::Thread*, art::ShadowFrame&, art::Instruction const*, unsigned short, art::JValue*)+792) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #27 pc 00000000007699ac  /apex/com.android.art/lib64/libart.so (MterpInvokeDirect+1040) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #28 pc 0000000000203914  /apex/com.android.art/lib64/libart.so (mterp_op_invoke_direct+20) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #29 pc 0000000000115674  [anon:dalvik-classes16.dex extracted in memory from /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk!classes16.dex] (io.github.sceneview.loaders.ModelLoader.createModel+64)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #30 pc 00000000003dce0c  /apex/com.android.art/lib64/libart.so (art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, art::ShadowFrame&, art::JValue, bool, bool)+312) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #31 pc 00000000003e4584  /apex/com.android.art/lib64/libart.so (art::interpreter::ArtInterpreterToInterpreterBridge(art::Thread*, art::CodeItemDataAccessor const&, art::ShadowFrame*, art::JValue*)+208) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #32 pc 00000000003e5040  /apex/com.android.art/lib64/libart.so (bool art::interpreter::DoCall<false, false>(art::ArtMethod*, art::Thread*, art::ShadowFrame&, art::Instruction const*, unsigned short, art::JValue*)+792) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #33 pc 0000000000760518  /apex/com.android.art/lib64/libart.so (MterpInvokeVirtual+1172) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #34 pc 0000000000203814  /apex/com.android.art/lib64/libart.so (mterp_op_invoke_virtual+20) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #35 pc 000000000011585a  [anon:dalvik-classes16.dex extracted in memory from /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk!classes16.dex] (io.github.sceneview.loaders.ModelLoader.createModelInstance+22)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #36 pc 00000000003dce0c  /apex/com.android.art/lib64/libart.so (art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, art::ShadowFrame&, art::JValue, bool, bool)+312) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #37 pc 00000000003e4584  /apex/com.android.art/lib64/libart.so (art::interpreter::ArtInterpreterToInterpreterBridge(art::Thread*, art::CodeItemDataAccessor const&, art::ShadowFrame*, art::JValue*)+208) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #38 pc 00000000003e5040  /apex/com.android.art/lib64/libart.so (bool art::interpreter::DoCall<false, false>(art::ArtMethod*, art::Thread*, art::ShadowFrame&, art::Instruction const*, unsigned short, art::JValue*)+792) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #39 pc 0000000000760518  /apex/com.android.art/lib64/libart.so (MterpInvokeVirtual+1172) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #40 pc 0000000000203814  /apex/com.android.art/lib64/libart.so (mterp_op_invoke_virtual+20) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #41 pc 000000000011576a  [anon:dalvik-classes16.dex extracted in memory from /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk!classes16.dex] (io.github.sceneview.loaders.ModelLoader.createModelInstance$default+18)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #42 pc 00000000003dce0c  /apex/com.android.art/lib64/libart.so (art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, art::ShadowFrame&, art::JValue, bool, bool)+312) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #43 pc 000000000074ed04  /apex/com.android.art/lib64/libart.so (artQuickToInterpreterBridge+780) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #44 pc 0000000000222378  /apex/com.android.art/lib64/libart.so (art_quick_to_interpreter_bridge+88) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #45 pc 0000000000211608  /apex/com.android.art/lib64/libart.so (nterp_helper+152) (BuildId: 4752fd49b3f5a76fd788c235cf2fb143)
+10-11 15:34:23.758 29836 29836 F DEBUG   :       #46 pc 00000000000c89c8  [anon:dalvik-classes16.dex extracted in memory from /data/app/~~w05SUqYl48rDVnsw2wqNEA==/com.ascend.mavlab-6CplAUzdA-BuRsktPMDeRQ==/base.apk!classes16.dex] (io.github.sceneview.SceneKt$rememberModelInstance$1$1.invokeSuspend+160)
+10-11 15:34:23.759 29836 29836 F DEBUG   :       #47 pc 000000000200cb60  /memfd:jit-cache (deleted)
