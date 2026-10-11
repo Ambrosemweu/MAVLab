@@ -1,6 +1,7 @@
 package com.ascend.mavlab.feature.drone3d
 
 import androidx.compose.foundation.Canvas
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.google.android.filament.LightManager
 import com.ascend.mavlab.core.common.AppRuntime
+import com.ascend.mavlab.core.ui.navigation.screenSwipeArea
 import com.ascend.mavlab.simulation.engine.DroneState
 import com.ascend.mavlab.simulation.engine.FlightMode
 import com.ascend.mavlab.simulation.failures.FailureState
@@ -58,7 +60,13 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 @Composable
-fun Drone3DScreen(modifier: Modifier = Modifier, routeInitiallyOpen: Boolean = false) {
+fun Drone3DScreen(
+    modifier: Modifier = Modifier,
+    routeInitiallyOpen: Boolean = false,
+    onRouteShown: () -> Unit = {},
+    allowRendererStart: Boolean = true,
+    rendererVisible: Boolean = true,
+) {
     val state by AppRuntime.state.collectAsStateWithLifecycle()
     val failures by AppRuntime.failures.collectAsStateWithLifecycle()
     val mission by AppRuntime.missionProgress.collectAsStateWithLifecycle()
@@ -66,6 +74,10 @@ fun Drone3DScreen(modifier: Modifier = Modifier, routeInitiallyOpen: Boolean = f
     val updatedAt by AppRuntime.stateUpdatedAtElapsedRealtimeMs.collectAsStateWithLifecycle()
     var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
     var routeOpen by rememberSaveable { mutableStateOf(routeInitiallyOpen) }
+    LaunchedEffect(routeInitiallyOpen) {
+        if (routeInitiallyOpen) { routeOpen = true; onRouteShown() }
+    }
+    BackHandler(enabled = routeOpen && mission.received) { routeOpen = false }
     LaunchedEffect(Unit) {
         while (isActive) { now = SystemClock.elapsedRealtime(); delay(1_000L) }
     }
@@ -73,6 +85,13 @@ fun Drone3DScreen(modifier: Modifier = Modifier, routeInitiallyOpen: Boolean = f
     val positionLive = freshness in setOf(CockpitDataFreshness.LIVE, CockpitDataFreshness.DELAYED) &&
         failures.gpsEnabled && state.gpsFixType.toInt() >= 3 && state.northMeters.isFinite() && state.eastMeters.isFinite()
     val modelController = remember { DroneModelController() }
+    // A neighbouring pager preview must not cold-start Filament during a drag.
+    // Once started, retain it through departure, but release it when fully offscreen.
+    var rendererStarted by remember { mutableStateOf(false) }
+    LaunchedEffect(allowRendererStart, rendererVisible) {
+        if (!rendererVisible) rendererStarted = false
+        else if (allowRendererStart) rendererStarted = true
+    }
     val trail = remember(mission.items) { mutableStateListOf<SimPathPoint>() }
 
     LaunchedEffect(state.northMeters, state.eastMeters, state.altitudeAglMeters, positionLive) {
@@ -86,7 +105,7 @@ fun Drone3DScreen(modifier: Modifier = Modifier, routeInitiallyOpen: Boolean = f
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        DroneScene(
+        if (rendererStarted) DroneScene(
             state = state,
             modelController = modelController,
             modifier = Modifier.fillMaxSize(),
@@ -168,7 +187,8 @@ private fun SimHud(
         Row(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .screenSwipeArea(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             HudText("SIM  Physical behavior", strong = true, color = aircraftColor)

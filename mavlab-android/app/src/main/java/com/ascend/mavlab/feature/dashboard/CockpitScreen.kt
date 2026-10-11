@@ -2,6 +2,7 @@ package com.ascend.mavlab.feature.dashboard
 
 import android.os.SystemClock
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -31,6 +32,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +42,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ascend.mavlab.core.common.AppRuntime
+import com.ascend.mavlab.core.ui.navigation.screenSwipeArea
+import com.ascend.mavlab.core.ui.navigation.screenSwipeExcluded
 import com.ascend.mavlab.core.mavlink.MavlinkIdentityStatus
 import com.ascend.mavlab.core.ui.components.ChartSeries
 import com.ascend.mavlab.core.ui.components.ChartLineStyle
@@ -82,7 +86,7 @@ fun CockpitScreen(
 
     var nowElapsedMs by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
     var nowEpochMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    var telemetryExpanded by remember { mutableStateOf(false) }
+    var telemetryExpanded by rememberSaveable { mutableStateOf(false) }
     var confirmTakeoverAndLand by remember { mutableStateOf(false) }
     val rollHistory = remember { mutableStateListOf<Float>() }
     val pitchHistory = remember { mutableStateListOf<Float>() }
@@ -146,17 +150,19 @@ fun CockpitScreen(
         }
     }
 
-    Surface(modifier = modifier.fillMaxSize()) {
+    Surface(modifier = modifier.fillMaxSize().screenSwipeArea()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                CockpitHeader(uiState = uiState, recording = recording)
+                Column(Modifier.fillMaxWidth().screenSwipeArea()) {
+                    CockpitHeader(uiState = uiState, recording = recording)
+                }
             }
             item {
-                CockpitTruthStrip(uiState)
+                Column(Modifier.fillMaxWidth().screenSwipeArea()) { CockpitTruthStrip(uiState) }
             }
             uiState.alert?.let { alert ->
                 item { CockpitAlertCard(alert) }
@@ -171,7 +177,7 @@ fun CockpitScreen(
                 )
             }
             item {
-                CockpitVitalRail(state = state)
+                Column(Modifier.fillMaxWidth().screenSwipeArea()) { CockpitVitalRail(state = state) }
             }
             item {
                 CockpitTaskCard(uiState.task, uiState.taskActions, executeAction)
@@ -190,13 +196,14 @@ fun CockpitScreen(
             item {
                 OutlinedButton(
                     onClick = { telemetryExpanded = !telemetryExpanded },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().screenSwipeExcluded(cancelClickOnHorizontalDrag = true),
                 ) {
                     Text(if (telemetryExpanded) "Hide telemetry & details" else "Telemetry & details")
                 }
             }
             if (telemetryExpanded) {
                 item {
+                  Box(Modifier.fillMaxWidth().screenSwipeExcluded()) {
                     RollingChart(
                         title = "Flight telemetry",
                         series = listOf(
@@ -208,6 +215,7 @@ fun CockpitScreen(
                         leftAxis = ChartAxisSpec("Altitude", "m", false, CockpitAmber),
                         rightAxis = ChartAxisSpec("Attitude", "°", true, CockpitText),
                     )
+                  }
                 }
                 item {
                     CockpitDetailCard(
@@ -387,7 +395,7 @@ private fun CockpitHero(
     attitude: CockpitInstrumentAttitude,
 ) {
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().screenSwipeArea(),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.46f),
         ),
@@ -528,7 +536,7 @@ private fun CockpitTaskCard(
     onAction: (CockpitAction) -> Unit,
 ) {
     if (task.compactMission) {
-        ElevatedCard(Modifier.fillMaxWidth()) {
+        ElevatedCard(Modifier.fillMaxWidth().screenSwipeExcluded(cancelClickOnHorizontalDrag = true)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { onAction(CockpitAction.OPEN_MISSION) }, modifier = Modifier.weight(1f)) {
                     Column(Modifier.fillMaxWidth()) {
@@ -549,7 +557,7 @@ private fun CockpitTaskCard(
             verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().screenSwipeArea(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -564,9 +572,9 @@ private fun CockpitTaskCard(
                     trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 )
             }
-            Text(task.detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(task.detail, modifier = Modifier.fillMaxWidth().screenSwipeArea(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (actions.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     actions.forEach { action ->
                         TextButton(onClick = { onAction(action.action) }) {
                             Text(action.label)
@@ -583,6 +591,7 @@ private fun CockpitSystemLine(uiState: CockpitUiState) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .screenSwipeArea()
             .padding(horizontal = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -608,7 +617,7 @@ private fun CockpitActionDock(
 ) {
     if (primary == null && secondary == null) return
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().screenSwipeExcluded(cancelClickOnHorizontalDrag = true),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         primary?.let { action ->

@@ -14,6 +14,7 @@ android {
         targetSdk = 35
         versionCode = 18
         versionName = "1.5.3"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildFeatures {
@@ -52,6 +53,10 @@ dependencies {
     implementation(libs.sceneview)
 
     testImplementation(kotlin("test"))
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test:runner:1.6.2")
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

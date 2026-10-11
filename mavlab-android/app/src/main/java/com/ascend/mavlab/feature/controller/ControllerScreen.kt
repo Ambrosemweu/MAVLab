@@ -1,6 +1,7 @@
 package com.ascend.mavlab.feature.controller
 
 import android.os.SystemClock
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ascend.mavlab.core.common.AppRuntime
+import com.ascend.mavlab.core.ui.navigation.screenSwipeArea
 import com.ascend.mavlab.core.common.ControllerInputMode
 import com.ascend.mavlab.core.common.ControllerInputState
 import com.ascend.mavlab.core.sensors.OrientationData
@@ -67,6 +69,7 @@ fun ControllerScreen(
     missionInitiallyExpanded: Boolean = false,
     onOpenSim: () -> Unit = {},
     onOpenOps: () -> Unit = {},
+    onMissionDetailsShown: () -> Unit = {},
 ) {
     val state by AppRuntime.state.collectAsStateWithLifecycle()
     val failures by AppRuntime.failures.collectAsStateWithLifecycle()
@@ -91,6 +94,9 @@ fun ControllerScreen(
     var confirmDirectRpm by remember { mutableStateOf(false) }
     var confirmation by remember { mutableStateOf<ControllerAction?>(null) }
     var feedback by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(missionInitiallyExpanded) {
+        if (missionInitiallyExpanded) { missionExpanded = true; onMissionDetailsShown() }
+    }
 
     LaunchedEffect(Unit) {
         while (isActive) {
@@ -106,6 +112,7 @@ fun ControllerScreen(
     }
     val inputUi = deriveControllerUiState(state, inputs.inputMode, source, failures, identity, lifecycle, updatedAt, nowElapsed)
     val missionUi = deriveMissionUiState(state, mission, upload, failures, inputUi.freshness == CockpitDataFreshness.LIVE || inputUi.freshness == CockpitDataFreshness.DELAYED)
+    BackHandler(enabled = missionExpanded && missionUi.visible && confirmation == null && !confirmDirectRpm) { missionExpanded = false }
     fun missionActionOrOps(action: ControllerActionSpec) = if (!missionUi.visible && action.action == ControllerAction.OPEN_MISSION) ControllerActionSpec(ControllerAction.OPEN_OPS, "Open Ops") else action
     val ui = inputUi.copy(primaryAction = missionActionOrOps(inputUi.primaryAction), secondaryAction = missionActionOrOps(inputUi.secondaryAction))
     val execute: (ControllerAction) -> Unit = { action ->
@@ -271,7 +278,7 @@ fun ControllerScreen(
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 private fun ControllerStatus(state: DroneState, ui: ControllerUiState, inputMode: ControllerInputMode, gcsConnected: Boolean, warningCount: Int, compact: Boolean) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxWidth().screenSwipeArea().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (compact) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Control", style = MaterialTheme.typography.titleMedium)
@@ -351,7 +358,7 @@ private fun ControllerInputCard(
                         Text(source.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (source != OrientationSource.Unavailable && ui.freshness != CockpitDataFreshness.UNAVAILABLE && ui.freshness != CockpitDataFreshness.STALE) {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Box(Modifier.fillMaxWidth().screenSwipeArea(), contentAlignment = Alignment.Center) {
                             TiltVisualizer(
                                 pilotInput.roll, pilotInput.pitch, config.deadzoneRad / config.maxRollAngleRad,
                                 Modifier.size(160.dp).semantics { contentDescription = "Phone tilt preview. Roll ${angle(orientation.roll)}, pitch ${angle(orientation.pitch)}" },

@@ -79,6 +79,10 @@ Focused test:
 
 Real-device validation records the device, Android version, battery restrictions, QGC build, exact MAVLab build, and observed notification/background behavior.
 
+## Display and navigation review
+
+Compact navigation, edge-to-edge display and the persisted full-screen preference create no additional runtime owner. Swipes operate only on passive status regions. The pager prepares adjacent UI shells, but their UI lifecycle is capped at CREATED: lifecycle-aware collectors and Back handlers remain inactive. SIM's expensive renderer starts only after arrival and is released when fully outside the viewport. SaveableStateHolder preserves presentation state, without inventing vehicle or authority state. Foreground calibrated phone input remains independent of selected surface and display mode. Keyboard/system-bar handling changes window presentation only. Background retention and sensor suspension remain governed by the existing policy. See [ADR-0009](decisions/0009-display-and-navigation.md).
+
 ## Mission consolidation review
 
 Four-tab navigation and contextual mission views create no additional runtime owner. Received source survives process recreation; the stored mission restores as loaded, with fresh execution history and no fabricated upload ACK. Unknown legacy source remains retained but blocked for local AUTO/route display until re-upload. Mission action freshness uses the existing RUNNING and elapsed-realtime state-age contract. Retention, background handoff, locks and phone-sensor suspension are unchanged. See [ADR-0007](decisions/0007-contextual-missions.md).

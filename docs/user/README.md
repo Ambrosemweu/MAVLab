@@ -29,3 +29,5 @@ The following surface guides describe the UI/UX feature branch. Published v1.5.3
 4. **[Ops](ops.md)** — connectivity, upload evidence, failures, logs and setup.
 
 [Mission operation](mission.md) spans these surfaces; it is not a separate destination. Lesson and Labs code remains internal and is not active primary navigation.
+
+See [Navigation and display](navigation-and-display.md) for compact tabs, guarded swiping, and Ops → Display → Full screen.

@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ascend.mavlab.core.common.AppRuntime
+import com.ascend.mavlab.core.ui.navigation.screenSwipeExcluded
 import com.ascend.mavlab.core.common.RuntimeLifecycleState
 import com.ascend.mavlab.simulation.recording.FlightSession
 import kotlinx.coroutines.Dispatchers
@@ -52,10 +53,10 @@ internal fun RecordingSection(expanded: Boolean, onExpanded: (Boolean) -> Unit, 
             Text("Record flights and missions on arm", modifier = Modifier.weight(1f))
             Switch(checked = recording.automaticEnabled, enabled = !armed && !recording.actionInProgress,
                 onCheckedChange = { AppRuntime.setAutomaticRecordingEnabled(it) },
-                modifier = Modifier.semantics { contentDescription = "Automatic flight and mission recording" })
+                modifier = Modifier.screenSwipeExcluded().semantics { contentDescription = "Automatic flight and mission recording" })
         }
         Text(if (armed) "Disarm to change this setting." else if (recording.automaticEnabled) "Enabled in Ops · saved for future sessions." else "Off by default. Begin recording manually, or enable automatic capture here.", style = MaterialTheme.typography.bodySmall)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (recording.active) {
                 Button(enabled = !recording.actionInProgress, onClick = AppRuntime::stopAndSaveRecording) { Text("Stop and save") }
             } else {
@@ -70,7 +71,7 @@ internal fun RecordingSection(expanded: Boolean, onExpanded: (Boolean) -> Unit, 
             SessionRow(session, canShare = !recording.active, onReview = { selectedReport = session }, onShare = { AppRuntime.shareSession(context, session.id) })
         }
         if (current == null) Text("No saved sessions yet. Begin recording for a ground exercise or flight. Arming and starting AUTO do not record unless you enable automatic capture.")
-        TextButton(onClick = { historyExpanded = !historyExpanded }) { Text(if (historyExpanded) "Hide saved recordings" else "Saved recordings (${recording.sessionHistory.size})") }
+        TextButton(modifier = Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), onClick = { historyExpanded = !historyExpanded }) { Text(if (historyExpanded) "Hide saved recordings" else "Saved recordings (${recording.sessionHistory.size})") }
         if (historyExpanded) {
             if (recording.sessionHistory.isEmpty()) Text("No saved session folders found.")
             var limit by rememberSaveable { mutableIntStateOf(10) }
@@ -79,7 +80,7 @@ internal fun RecordingSection(expanded: Boolean, onExpanded: (Boolean) -> Unit, 
                 SessionRow(session, canShare = session.id != recording.currentSession?.id,
                     onReview = { selectedReport = session }, onShare = { AppRuntime.shareSession(context, session.id) })
             }
-            if (recording.sessionHistory.size > limit) TextButton(onClick = { limit += 10 }) { Text("Show 10 more recordings") }
+            if (recording.sessionHistory.size > limit) TextButton(modifier = Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), onClick = { limit += 10 }) { Text("Show 10 more recordings") }
         }
     }
     selectedReport?.let { session ->
@@ -127,7 +128,7 @@ private fun SessionRow(session: FlightSession, canShare: Boolean, onReview: () -
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(session.id, style = MaterialTheme.typography.titleSmall)
         Text("Started ${opsTimestamp(session.startedAtMs)} · ${session.endedAtMs?.let { "Saved · ${opsDuration(it - session.startedAtMs)}" } ?: "Active or unfinished"}", style = MaterialTheme.typography.bodySmall)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (session.endedAtMs != null) OutlinedButton(onClick = onReview) { Text("Review session") }
             OutlinedButton(enabled = canShare, onClick = onShare) { Text("Export session") }
         }

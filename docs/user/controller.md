@@ -29,7 +29,7 @@ Input-mode selection and neutral calibration are locked while armed. Disarm befo
 - Direct RPM requires explicit confirmation while disarmed. It starts at 0 RPM, bypasses the autopilot and commands the same target to all four simulated motors. After arming, adjust the 0–10,000 RPM target and observe actual motor telemetry. **Stop motors** disarms and restores Phone sensors. Changing surfaces retains the command. GCS mission/direct authority suspends the RPM override; a local Land command clears it before landing.
 - Flight-mode settings, control explanations, failure injection and sound experiments are below the main input area. Loiter, RTL and Land retain their navigation semantics; manual attitude controls are shown as limited in those modes.
 
-An active GCS mission blocks local input and mode selection. **Take control & land** requires confirmation, then uses the existing local engine landing command. Direct GCS commands retain existing behavior: subsequent phone input may reclaim Controller authority. The UI reports observed authority and does not promise a persistent GCS-direct lock. There is no horizontal screen pager; dragging a Control slider cannot switch surfaces.
+An active GCS mission blocks local input and mode selection. **Take control & land** requires confirmation, then uses the existing local engine landing command. Direct GCS commands retain existing behavior: subsequent phone input may reclaim Controller authority. The UI reports observed authority and does not promise a persistent GCS-direct lock. Screen-swiping is available only on the passive operational header; dragging a Control slider cannot switch surfaces. See [Navigation and display](navigation-and-display.md).
 
 ## Received missions
 

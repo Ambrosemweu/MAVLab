@@ -28,6 +28,8 @@ Recording has its own active indicator and elapsed time. Saved sessions offer **
 
 ## Runtime and setup
 
+**Display** contains the remembered **Full screen** preference. It hides Android system bars while retaining MAVLab's compact four-tab navigation. Standard display is the initial default. See [Navigation and display](navigation-and-display.md).
+
 **Runtime components** separates engine freshness, phone monitoring, audio and recording. Phone sensors remain globally eligible for foreground local sensor control regardless of selected tab. Mission authority and background sensor suspension remain distinct states.
 
 Confirmed **Stop simulation** stops physics/networking and saves the recording. It freezes vehicle state; it does not land or disarm. **Start simulation** resumes the same process state. Background handoff behavior remains unchanged.

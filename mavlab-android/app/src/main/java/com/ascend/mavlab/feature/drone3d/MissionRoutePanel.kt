@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.ascend.mavlab.simulation.engine.DroneState
+import com.ascend.mavlab.core.ui.navigation.screenSwipeArea
 import com.ascend.mavlab.simulation.mission.MissionProgress
 import kotlin.math.cos
 import kotlin.math.sin
@@ -43,7 +44,7 @@ internal fun MissionRoutePanel(state: DroneState, mission: MissionProgress, trai
             val mapHeight = (maxHeight - 270.dp).coerceAtLeast(220.dp)
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Column(Modifier.weight(1f)) {
+                    Column(Modifier.weight(1f).screenSwipeArea()) {
                         Text("Received mission route", style = MaterialTheme.typography.titleLarge)
                         Text("North up · local metres · ${mission.items.size} items", style = MaterialTheme.typography.bodySmall)
                         Text(if (state.armed && state.mode == com.ascend.mavlab.simulation.engine.FlightMode.AUTO) "AUTO executing" else "${state.mode.displayName} · route is not executing AUTO", style = MaterialTheme.typography.labelSmall)

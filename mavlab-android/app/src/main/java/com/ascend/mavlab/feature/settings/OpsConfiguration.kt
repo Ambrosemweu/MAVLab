@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.KeyboardType
 import com.ascend.mavlab.core.common.AppRuntime
+import com.ascend.mavlab.core.ui.navigation.screenSwipeExcluded
 import com.ascend.mavlab.simulation.engine.DroneState
 import com.ascend.mavlab.simulation.engine.SimLocation
 import com.ascend.mavlab.simulation.mission.MissionProgress
@@ -63,7 +64,7 @@ internal fun SimLocationCard(
             }) { Text("Apply origin") } },
             dismissButton = { TextButton(onClick = { pendingLocation = null }) { Text("Cancel") } })
     }
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth().screenSwipeExcluded()) {
         Column(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -85,7 +86,7 @@ internal fun SimLocationCard(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
                     )
                 }
-                OutlinedButton(onClick = { locationExpanded = !locationExpanded }) {
+                OutlinedButton(modifier = Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), onClick = { locationExpanded = !locationExpanded }) {
                     Icon(
                         imageVector = if (locationExpanded) Icons.Filled.KeyboardArrowUp
                         else Icons.Filled.KeyboardArrowDown,
@@ -121,7 +122,7 @@ internal fun SimLocationCard(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.76f),
                     )
                     FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().screenSwipeExcluded(cancelClickOnHorizontalDrag = true),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
@@ -164,7 +165,7 @@ internal fun SimLocationCard(
                     Button(
                         onClick = { pendingLocation = parsedCustom },
                         enabled = canChange && parsedCustom != null,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().screenSwipeExcluded(cancelClickOnHorizontalDrag = true),
                     ) {
                         Text("Apply custom location")
                     }

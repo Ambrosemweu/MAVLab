@@ -1,0 +1,99 @@
+
+> Configure project :app
+w: file:///home/ambrose/Downloads/Ascend/Drone%20SIM/mavlab-android/app/build.gradle.kts:34:64: 'ApkVariantOutput' is deprecated. Deprecated in Java
+
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:checkDebugAarMetadata
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:processDebugManifestForPackage
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:stripDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :app:processDebugResources
+> Task :app:checkDebugAndroidTestAarMetadata
+> Task :app:generateDebugAndroidTestResValues UP-TO-DATE
+> Task :app:mapDebugAndroidTestSourceSetPaths
+> Task :app:generateDebugAndroidTestResources
+> Task :app:mergeDebugAndroidTestResources
+> Task :app:processDebugAndroidTestManifest
+> Task :app:processDebugAndroidTestResources
+> Task :app:javaPreCompileDebugAndroidTest
+> Task :app:mergeDebugAndroidTestShaders
+> Task :app:compileDebugAndroidTestShaders NO-SOURCE
+> Task :app:generateDebugAndroidTestAssets UP-TO-DATE
+> Task :app:mergeDebugAndroidTestAssets
+> Task :app:compressDebugAndroidTestAssets
+> Task :app:desugarDebugAndroidTestFileDependencies
+> Task :app:compileDebugKotlin
+> Task :app:checkDebugAndroidTestDuplicateClasses
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics UP-TO-DATE
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :app:mergeDebugJavaResource
+> Task :app:testDebugUnitTest
+> Task :app:mergeProjectDexDebug
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect UP-TO-DATE
+> Task :app:assembleDebug
+
+> Task :app:compileDebugAndroidTestKotlin
+e: file:///home/ambrose/Downloads/Ascend/Drone%20SIM/mavlab-android/app/src/androidTest/java/com/ascend/mavlab/core/ui/navigation/ScreenSwipeNavigationTest.kt:60:13 Unresolved reference 'swipe'.
+e: file:///home/ambrose/Downloads/Ascend/Drone%20SIM/mavlab-android/app/src/androidTest/java/com/ascend/mavlab/core/ui/navigation/ScreenSwipeNavigationTest.kt:68:13 Unresolved reference 'swipe'.
+e: file:///home/ambrose/Downloads/Ascend/Drone%20SIM/mavlab-android/app/src/androidTest/java/com/ascend/mavlab/core/ui/navigation/ScreenSwipeNavigationTest.kt:88:13 Unresolved reference 'swipe'.
+e: file:///home/ambrose/Downloads/Ascend/Drone%20SIM/mavlab-android/app/src/androidTest/java/com/ascend/mavlab/core/ui/navigation/ScreenSwipeNavigationTest.kt:96:13 Unresolved reference 'swipe'.
+e: file:///home/ambrose/Downloads/Ascend/Drone%20SIM/mavlab-android/app/src/androidTest/java/com/ascend/mavlab/core/ui/navigation/ScreenSwipeNavigationTest.kt:105:17 Unresolved reference 'swipe'.
+e: file:///home/ambrose/Downloads/Ascend/Drone%20SIM/mavlab-android/app/src/androidTest/java/com/ascend/mavlab/core/ui/navigation/ScreenSwipeNavigationTest.kt:110:13 Unresolved reference 'swipe'.
+e: file:///home/ambrose/Downloads/Ascend/Drone%20SIM/mavlab-android/app/src/androidTest/java/com/ascend/mavlab/core/ui/navigation/ScreenSwipeNavigationTest.kt:119:13 Unresolved reference 'swipe'.
+
+> Task :app:mergeExtDexDebugAndroidTest
+> Task :app:compileDebugAndroidTestKotlin FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugAndroidTestKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 2m 32s
+56 actionable tasks: 31 executed, 25 up-to-date

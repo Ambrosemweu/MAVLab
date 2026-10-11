@@ -12,11 +12,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ascend.mavlab.core.common.AppRuntime
+import com.ascend.mavlab.core.ui.navigation.screenSwipeArea
+import com.ascend.mavlab.core.ui.navigation.screenSwipeExcluded
 import com.ascend.mavlab.core.common.RuntimeLifecycleState
 import com.ascend.mavlab.core.operations.*
 import com.ascend.mavlab.feature.mission.missionLimitations
@@ -37,6 +42,8 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     onReplayOnboarding: () -> Unit = {},
     onOpenController: () -> Unit = {},
+    fullScreen: Boolean = false,
+    onFullScreenChange: (Boolean) -> Unit = {},
 ) {
     val operations by AppRuntime.operations.collectAsStateWithLifecycle()
     var missionExpanded by rememberSaveable { mutableStateOf(false) }
@@ -74,9 +81,9 @@ fun SettingsScreen(
         }
     }
 
-    Surface(modifier = modifier.fillMaxSize()) {
+    Surface(modifier = modifier.fillMaxSize().screenSwipeArea()) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Ops", style = MaterialTheme.typography.headlineMedium)
+            Text("Ops", modifier = Modifier.fillMaxWidth().screenSwipeArea(), style = MaterialTheme.typography.headlineMedium)
             HealthSummary(operations)
             if (operations.incidents.isNotEmpty()) {
                 Text("Needs attention · ${operations.incidents.size}", style = MaterialTheme.typography.titleMedium)
@@ -88,6 +95,7 @@ fun SettingsScreen(
             FailureSection(onConfirm = { confirmation = it })
             RecordingSection(expanded = recordingExpanded, onExpanded = { recordingExpanded = it }, headerModifier = Modifier.bringIntoViewRequester(recordingAnchor))
             EventHistory(operations.events)
+            DisplaySection(fullScreen, onFullScreenChange)
             ExpandableSection("Advanced configuration", "QGC setup and simulation origin", setupExpanded, { setupExpanded = it }, headerModifier = Modifier.bringIntoViewRequester(setupAnchor)) {
                 Text("QGC connection setup", style = MaterialTheme.typography.titleSmall)
                 Text("Use different system IDs: MAVLab defaults to 1, QGC to 255. QGC listens on UDP 14550; MAVLab receives commands on 14551. Reconnect the QGC UDP link after changing its system ID.")
@@ -99,7 +107,7 @@ fun SettingsScreen(
                 Text("Phone-first, offline-capable drone simulation and digital-twin learning. Cockpit shows readiness, Control owns local inputs and mission actions, SIM shows engine state, and Ops explains health and recovery.")
                 val version = remember(context) { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "Unknown" }
                 Text("Version $version", style = MaterialTheme.typography.labelLarge)
-                OutlinedButton(onClick = onReplayOnboarding) { Text("Replay onboarding") }
+                OutlinedButton(onClick = onReplayOnboarding, modifier = Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true)) { Text("Replay onboarding") }
             }
         }
     }
@@ -113,6 +121,22 @@ fun SettingsScreen(
 internal data class OpsConfirmation(val title: String, val message: String, val action: () -> Unit)
 
 @Composable
+private fun DisplaySection(fullScreen: Boolean, onFullScreenChange: (Boolean) -> Unit) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    ExpandableSection("Display", if (fullScreen) "Full screen" else "Standard", expanded, { expanded = it }) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).screenSwipeExcluded(cancelClickOnHorizontalDrag = true)
+            .toggleable(value = fullScreen, role = Role.Switch, onValueChange = onFullScreenChange)
+            .padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Full screen", style = MaterialTheme.typography.titleSmall)
+                Text("Hide Android bars. Swipe from a system edge to reveal them. MAVLab navigation stays visible.", style = MaterialTheme.typography.bodySmall)
+            }
+            Switch(checked = fullScreen, onCheckedChange = null)
+        }
+    }
+}
+
+@Composable
 private fun HealthSummary(operations: OperationsState) {
     val vehicleFlow = remember { AppRuntime.state.map { Triple(it.armed, it.mode.displayName, it.controlAuthority.displayName) }.distinctUntilChanged() }
     val vehicle by vehicleFlow.collectAsStateWithLifecycle(Triple(false, "Stabilize", "Idle"))
@@ -123,7 +147,7 @@ private fun HealthSummary(operations: OperationsState) {
         operations.incidents.isNotEmpty() -> "${operations.incidents.size} active ${if (operations.incidents.size == 1) "issue" else "issues"}"
         else -> "No active issues detected"
     }
-    ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+    ElevatedCard(Modifier.fillMaxWidth().screenSwipeArea(), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(title, style = MaterialTheme.typography.headlineSmall)
             Text("Authority: ${vehicle.third}", style = MaterialTheme.typography.titleMedium)
@@ -146,7 +170,7 @@ private fun IncidentCard(incident: OpsIncident, onRecover: () -> Unit) {
             Text(incident.title, style = MaterialTheme.typography.titleMedium)
             Text(incident.consequence, style = MaterialTheme.typography.bodyMedium)
             Text("First observed ${opsTimestamp(incident.observedAtMs)}", style = MaterialTheme.typography.bodySmall)
-            OutlinedButton(onClick = onRecover) { Text(incident.actionLabel) }
+            OutlinedButton(onClick = onRecover, modifier = Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true)) { Text(incident.actionLabel) }
         }
     }
 }
@@ -218,9 +242,9 @@ private fun RuntimeSection(operations: OperationsState, onConfirm: (OpsConfirmat
         OpsValue("Telemetry recording", if (operations.recording) "Active · sampled at 5 Hz" else "Stopped")
         Text("Background handoff retains simulation and MAVLink for one minute, then while a validated GCS, armed flight or AUTO mission requires it. Phone input is suspended in the background.", style = MaterialTheme.typography.bodySmall)
         if (operations.runtime == RuntimeLifecycleState.RUNNING) {
-            OutlinedButton(onClick = { onConfirm(OpsConfirmation("Stop simulation?", "Stops physics, MAVLink, sensors and audio, and saves the active recording. Vehicle state freezes; this does not land or disarm it. Starting again resumes the same process state.") { context.startService(SimulationService.stopIntent(context)) }) }) { Text("Stop simulation") }
+            OutlinedButton(modifier = Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), onClick = { onConfirm(OpsConfirmation("Stop simulation?", "Stops physics, MAVLink, sensors and audio, and saves the active recording. Vehicle state freezes; this does not land or disarm it. Starting again resumes the same process state.") { context.startService(SimulationService.stopIntent(context)) }) }) { Text("Stop simulation") }
         } else if (operations.runtime == RuntimeLifecycleState.STOPPED || operations.runtime == RuntimeLifecycleState.ERROR) {
-            Button(onClick = { ContextCompat.startForegroundService(context, SimulationService.appVisibleIntent(context)) }) { Text("Start simulation") }
+            Button(modifier = Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), onClick = { ContextCompat.startForegroundService(context, SimulationService.appVisibleIntent(context)) }) { Text("Start simulation") }
         }
     }
 }
@@ -233,7 +257,7 @@ private fun FailureSection(onConfirm: (OpsConfirmation) -> Unit) {
     val armed by armedFlow.collectAsStateWithLifecycle(false)
     var expanded by rememberSaveable { mutableStateOf(false) }
     ExpandableSection("Failure scenarios", "${failures.activeCount} active injected conditions", expanded, { expanded = it }) {
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(enabled = failures.activeCount > 0, onClick = { onConfirm(OpsConfirmation("Reset simulated failures?", "Clears all injected faults and restores normal environment settings. Battery charge and actual peer connection do not change.", AppRuntime::resetFailures)) }) { Text("Reset all failures") }
             OutlinedButton(enabled = !armed, onClick = { onConfirm(OpsConfirmation("Recharge simulated battery?", "Restores battery charge to 100% while disarmed. Active drain scenarios remain.") { if (!AppRuntime.state.value.armed) AppRuntime.resetBattery() }) }) { Text("Recharge battery") }
         }
@@ -253,7 +277,7 @@ private fun FailureScenarioCard(scenario: FailureScenario, onInject: () -> Unit)
             Text(scenario.title, style = MaterialTheme.typography.titleSmall)
             Text("${scenario.severity.label} · ${scenario.learningGoal}", style = MaterialTheme.typography.bodySmall)
             Text(scenario.description, style = MaterialTheme.typography.bodyMedium)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = onInject) { Text("Inject ${scenario.title}") }
                 TextButton(onClick = { AppRuntime.clearFailureScenario(scenario) }) { Text("Reset scenario") }
                 TextButton(onClick = { learnExpanded = !learnExpanded }) { Text(if (learnExpanded) "Hide lesson" else "Learn why") }
@@ -275,17 +299,17 @@ private fun EventHistory(events: List<OpsEvent>) {
     ExpandableSection("State transitions", "${events.size} recent events · this process", expanded, { expanded = it }) {
         Text("Observed changes are sampled at 5 Hz, retained across tabs, and bounded to 200 events. This history restarts with the app process; saved recording files hold their own timeline.", style = MaterialTheme.typography.bodySmall)
         Text("Severity", style = MaterialTheme.typography.labelLarge)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FlowRow(Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             FilterChip(selected = severity == null, onClick = { severity = null }, label = { Text("All") })
             OpsSeverity.entries.forEach { option -> FilterChip(selected = severity == option, onClick = { severity = option }, label = { Text(option.label) }) }
         }
         Text("Component", style = MaterialTheme.typography.labelLarge)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FlowRow(Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             FilterChip(selected = component == null, onClick = { component = null }, label = { Text("All") })
             OpsComponent.entries.forEach { option -> FilterChip(selected = component == option, onClick = { component = option }, label = { Text(option.label) }) }
         }
         Text("State and time", style = MaterialTheme.typography.labelLarge)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FlowRow(Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             FilterChip(selected = eventState == null, onClick = { eventState = null }, label = { Text("All states") })
             OpsEventState.entries.forEach { option -> FilterChip(selected = eventState == option, onClick = { eventState = option }, label = { Text(option.label) }) }
             FilterChip(selected = recentOnly, onClick = { recentOnly = !recentOnly }, label = { Text("Last 5 minutes") })
@@ -299,7 +323,7 @@ private fun EventHistory(events: List<OpsEvent>) {
         }
         var showAll by rememberSaveable { mutableStateOf(false) }
         if (filtered.size > 30) {
-            TextButton(onClick = { showAll = !showAll }) { Text(if (showAll) "Show fewer events" else "Show ${filtered.size - 30} earlier events") }
+            TextButton(modifier = Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), onClick = { showAll = !showAll }) { Text(if (showAll) "Show fewer events" else "Show ${filtered.size - 30} earlier events") }
             if (showAll) filtered.drop(30).forEach { Text("${opsTimestamp(it.timestampMs)} · ${it.component.label} · ${it.state.label}\n${it.message}", style = MaterialTheme.typography.bodySmall) }
         }
     }
@@ -319,7 +343,7 @@ internal fun ExpandableSection(title: String, summary: String, expanded: Boolean
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            TextButton(onClick = { onExpanded(!expanded) }) {
+            TextButton(modifier = Modifier.screenSwipeExcluded(cancelClickOnHorizontalDrag = true), onClick = { onExpanded(!expanded) }) {
                 Icon(if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown, contentDescription = null)
                 Text(if (expanded) "Hide $title" else "Show $title")
             }

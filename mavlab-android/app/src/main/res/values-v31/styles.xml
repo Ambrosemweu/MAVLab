@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MAVLab" parent="Base.Theme.MAVLab">
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowSplashScreenBackground">@color/mavlab_window_background</item>
+    </style>
+</resources>

@@ -20,6 +20,7 @@
 
         <activity
             android:name=".MainActivity"
+            android:windowSoftInputMode="adjustResize"
             android:icon="@mipmap/mavlab_launcher"
             android:exported="true">
             <intent-filter>
