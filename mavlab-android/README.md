@@ -5,11 +5,10 @@ for Android.
 
 ## Current Scope
 
-The v1.5 app is organized around five MVP surfaces:
+MAVLab v1.6.0 (version code 19) has four product surfaces:
 
 - Cockpit: live operations, telemetry, safety state, and MAVLink status
-- Controller: local/manual control with phone sensors and fallback inputs
-- Mission: QGroundControl uploads, autonomous route execution, and waypoint progress
+- Control: calibrated phone/manual input, deliberate flight actions and contextual mission controls
 - SIM: 3D physical behavior visualization
 - Ops: diagnostics, logs, export staging, QGC setup, and release checks
 
@@ -21,7 +20,10 @@ Current implementation includes:
 - Phone tilt controller with calibration and manual fallback controls
 - Telemetry dashboard cards and rolling charts
 - SceneView-based 3D drone model tab
-- Failure, mission, and lesson code retained for reuse under the v1.5 surfaces
+- Contextual received missions, spatial route view and engine-owned fence/rally recovery
+- Optional full-screen display and guarded continuous swipe navigation
+- Ops-controlled, off-by-default recording, review and export
+- Reusable lesson code remains internal; it is not a visible Lessons destination
 - First-launch onboarding
 - CI and release metadata scaffolding
 
@@ -46,3 +48,5 @@ MAVLab broadcasts MAVLink telemetry over UDP and tracks validated ground-control
 ## Release
 
 GitHub Actions workflows live in the repository root under `.github/workflows/`. Play Store draft metadata lives under `fastlane/metadata/android/en-US/`.
+
+Run `bundleRelease` in addition to the debug gate when preparing a release. The APK is debug-signed; the current AAB is unsigned and requires production signing for Play. [Release notes](../docs/v1_6_0_release_notes.md), [release readiness](../docs/operations/v1.6.0-readiness.md) and [release runbook](../docs/operations/release.md) distinguish host checks, device/QGC acceptance and actual publication.

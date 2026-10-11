@@ -1,5 +1,7 @@
 # MAVLab v1.5 QA Test Matrix
 
+Historical checklist, not current release evidence. The legacy `Passed` cells below lack complete build/device/QGC identities and must not be treated as v1.6.0 acceptance. Preserved for history; use the [v1.6.0 acceptance specification](validation/v1.6.0-acceptance.md) and [identified result records](validation/results/README.md) instead.
+
 This document defines the test matrix and checklist for verifying the functionality, stability, and UX quality of MAVLab v1.5 prior to release.
 
 ## 1. Onboarding Flow

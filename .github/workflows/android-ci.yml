@@ -23,7 +23,12 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
-      - name: Lint
+      - name: Documentation and release metadata
+        # Candidate notes are allowed in CI; publishing uses the stricter gate.
+        run: python3 ../scripts/check-release-docs.py
+      - name: Documentation checker tests
+        run: python3 ../scripts/test_check_release_docs.py
+      - name: Lint Android
         run: ./gradlew lintDebug
       - name: Unit tests
         run: ./gradlew testDebugUnitTest

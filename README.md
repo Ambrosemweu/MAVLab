@@ -1,121 +1,115 @@
 # MAVLab by Ascend Labs
 
-<p align="center">
-  <img src="assets/Screenshot_20260620_184419.jpg" alt="MAVLab Android drone simulator interface" width="300">
-</p>
+A phone-first, offline-capable drone simulator and digital twin. Learn attitude, control, telemetry, missions and failure recovery on Android before taking on ROS, Gazebo, ArduPilot/PX4 SITL, Docker or a multi-process simulator stack.
 
-MAVLab makes drone simulation approachable. It is an Android-first drone systems simulation and digital-twin platform for learners who want to understand drones without first fighting the steep learning curve of ROS, Gazebo, ArduPilot/PX4 SITL, Docker, MAVProxy, Linux networking, and multi-window simulator setup.
+Physics, autopilot, visualization and the MAVLink endpoint run on the phone. QGroundControl is optional for the core learning loop; no aircraft, cloud service or external simulation server is required.
 
-Built for classroom training, hands-on bootcamps, and flight operators, MAVLab operates completely offline on a phone. It helps students learn autopilot structures, physics, telemetry protocols (MAVLink), control mechanisms, failure conditions, and autonomous missions through a friendly app before they graduate into the full professional toolchain.
+**Release status:** **v1.6.0**, Android version code **19**, is approved for publication; merge/publication is in progress. The latest published version is [v1.5.3](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.5.3), whose navigation differs from the screenshots below. See the [v1.6.0 release notes](docs/v1_6_0_release_notes.md) and [pre-merge checklist](docs/operations/v1.6.0-readiness.md).
 
-Active implementation codebase: [mavlab-android/](mavlab-android/).
+## Four connected views
 
-On `feature/mavlab-uiux-refinements`, Ops prioritizes health/recovery, diagnostics and session review. Recording is off by default; begin a session or opt into automatic flight/mission recording in Ops. These are development-branch changes, not a published release. See the [Ops guide](docs/user/ops.md).
+| Cockpit | Control | SIM | Ops |
+|---|---|---|---|
+| [![Cockpit — vehicle state and telemetry](assets/media/2026-10/screenshots/cockpit.jpg)](docs/user/cockpit.md) | [![Control — local input and flight actions](assets/media/2026-10/screenshots/control.jpg)](docs/user/controller.md) | [![SIM — engine-driven digital twin](assets/media/2026-10/screenshots/sim.jpg)](docs/user/sim.md) | [![Ops — health, connectivity and setup](assets/media/2026-10/screenshots/ops.jpg)](docs/user/ops.md) |
 
----
+Missions span these views: concise Cockpit progress, expandable Control actions, received-route geometry in SIM and exact upload evidence in Ops. There is no separate Mission tab, built-in sample route or onboard mission planner.
 
-## 📄 Technical paper
+## Demos
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21319694.svg)](https://doi.org/10.5281/zenodo.21319694)
+### MAVLab on-device
 
-**MAVLab: A Phone-First Drone Digital-Twin Simulator for Flattening the Drone-Systems Learning Curve** — Kioko & Kaira, Ascend Labs, 2026. DOI: [10.5281/zenodo.21319694](https://doi.org/10.5281/zenodo.21319694)
+Local controls, live telemetry/charts and the 3D digital twin, with original recorded sound.
 
-The technical report documents the drone-education tooling cliff, the phone-first architecture, the protocol-first engineering methodology, and live QGroundControl acceptance results.
+<a href="assets/media/2026-10/mavlab-on-device.mp4"><img src="assets/media/2026-10/mavlab-on-device-poster.jpg" alt="Play the on-device MAVLab demo" width="280"></a>
 
-[Read the paper (DOI)](https://doi.org/10.5281/zenodo.21319694) · [lab site copy](https://labs.fly-ascend.com/mavlab-technical-paper.pdf) · [Markdown source](docs/paper/paper.md) · [How to cite](CITATION.cff)
+[Watch/download MP4](assets/media/2026-10/mavlab-on-device.mp4) · 84 seconds · 60 fps.
 
----
+### MAVLab + QGroundControl
 
-## 🎥 Demo
+QGC plan editing and simulated AUTO flight, with the MAVLab phone view and its audio alongside it.
 
-**MAVLab on-device** — physics, live cockpit telemetry, and the 3D digital twin running entirely on a phone, fully offline.
+[![Play the QGC and MAVLab demo](assets/media/2026-10/mavlab-qgc-poster.jpg)](assets/media/2026-10/mavlab-qgc-demo.mp4)
 
-https://github.com/user-attachments/assets/31fe9b06-06e0-4d55-aa34-e33151d50802
+[Watch/download MP4](assets/media/2026-10/mavlab-qgc-demo.mp4) · 118 seconds · 1080p. The clips are approximately aligned; the recording ends during RTL, before touchdown. It does not demonstrate fence/rally acceptance or every protocol capability.
 
-**MAVLab ↔ QGroundControl** — the MAVLink protocol server in action: QGroundControl connects to the on-phone simulator to arm, take off, and fly a mission.
+[Media gallery, captions and provenance](assets/media/2026-10/README.md).
 
-https://github.com/user-attachments/assets/1b7cdebd-bcb9-48b3-9dc3-ca9344e6c6aa
+<details>
+<summary>Earlier v1.5 demos</summary>
 
----
+On-device: https://github.com/user-attachments/assets/31fe9b06-06e0-4d55-aa34-e33151d50802
 
-## Features in v1.5
+QGC: https://github.com/user-attachments/assets/1b7cdebd-bcb9-48b3-9dc3-ca9344e6c6aa
 
-- **High-Fidelity Physics & Autopilot:** Fixed-rate quadcopter physics model and realistic PID attitude/altitude autopilot controls.
-- **Diagnostics Dashboard (Cockpit):** Live telemetry panels and rolling real-time graphs charting altitude, roll, pitch, and yaw.
-- **Multi-Mode Control Surface:** Interactive dual joysticks or phone accelerometer tilt control.
-- **3D Digital Twin View (SIM):** Live 3D rendering of the drone's position, attitude, and propeller speeds utilizing a bundled GLB model.
-- **Mission Operation:** GCS upload, engine-driven waypoint navigation and Guided offsets, with explicit partial/unsupported behavior in the [MAVLink contract](docs/internals/mavlink-contract.md).
-- **MAVLink UDP Protocol Server:** Interoperable with QGroundControl, supporting heartbeats, position/attitude streams, parameter downloads, mission synchronization, GCS-commanded home position, COMMAND_INT, and simultaneous multi-GCS telemetry.
-- **Failure Labs Scenarios:** Test Operator recovery under failure scenarios:
-  - GPS Loss, GPS Drift, Compass Loss, and Barometer offset failures.
-  - Wind speed, direction, and gust simulation.
-  - Individual motor failure.
-  - Unsafe battery drain and heavy payload masses.
-  - Signal / Link loss scenarios.
-- **Session-Based Flight Logging:** Automatically records flight parameters to CSV and events/timelines to JSONL.
-- **Markdown Flight Reports:** Generates human-readable flight debrief reports (`report.md`) containing maximum altitude, battery consumption, failure event timelines, and safety observations.
-- **Logs Sharesheet Export:** Share and export flight files directly via standard Android Sharesheet intents.
-- **First-Launch Onboarding:** Educational onboarding explaining MAVLab features and digital twin concepts.
+</details>
 
----
+## What v1.6.0 adds
 
-## Quick Start
+- **A focused interface:** Cockpit, Control, SIM and Ops; contextual missions; a nine-page onboarding tour ending with **Start flying**.
+- **Fluid navigation:** continuous guarded horizontal swipes, compact labelled tabs and optional full-screen display. Sliders, route gestures and the 3D camera retain their own input.
+- **Engine-owned control:** calibrated Phone Sensors, Custom Input and deliberate Direct RPM. Foreground phone steering continues across Cockpit, Control and SIM; GCS missions and fence recovery remain distinct authorities.
+- **Readable telemetry and SIM:** one combined altitude/attitude chart, a centered starting camera and inspection lighting that keeps the model visible when orbiting.
+- **Ops health and recovery:** explicit GCS link state, incidents, bounded transition history, diagnostics and failure exercises.
+- **Opt-in recording:** recording is **off by default**, including AUTO missions. Begin explicitly in Ops or enable recording on arm while disarmed; stop/save, review and export sessions.
+- **MAVLink 2 and resilient transfers:** unsigned MAVLink 2 output, CRC-checked supported input, targeted ACKs, missing-item retries and preservation of accepted plans after failed replacement uploads.
+- **Simulated fences and rally returns:** separate safety-plan stores, explicit fence enablement, engine-driven breach recovery, eligible rally/home RTL, landing and disarming. See [flight boundaries](docs/user/flight-boundaries.md).
 
-### Try the prebuilt APK (recommended for first run)
+The simulator uses flat ground and straight-line return control. It does not implement terrain/obstacle routing, SmartRTL, MAVLink signing, full ArduPilot equivalence or real-aircraft safety qualification. Timed loiter and waypoint pause semantics remain limited. Implemented, partial, no-op and unsupported behavior is documented in the [MAVLink contract](docs/internals/mavlink-contract.md).
 
-1. Download `MAVLab-v1.5.3.apk` from the [GitHub Releases page](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.5.3).
-2. Install it (Android will prompt you to allow installs from your file manager / browser — normal for sideloaded APKs).
-3. For same-phone QGroundControl, open MAVLab first and then switch to QGC within one minute. Once QGC is connected, MAVLab keeps telemetry running in the background.
-4. QGroundControl auto-detects the vehicle on `127.0.0.1:14550` — arm, take off, and fly missions within the first session.
-5. Prefer desktop QGroundControl? Connect phone and computer to the **same Wi-Fi** and open QGC on the computer; the phone's UDP broadcast links automatically.
+## Start learning
 
-Stuck? See [docs/known_first_run_issues.md](docs/known_first_run_issues.md). The full source-build path is below.
+**Signing warning:** v1.6.0 is distributed as a locally verified debug build. It cannot update the official v1.5.3 APK in place because their certificates differ. Export recordings/save QGC plans and read [upgrade guidance](docs/user/upgrading.md) before deciding to change installations. Uninstalling erases local app data; no automatic migration is provided. Stable release signing is the [next-release priority](docs/operations/release-signing-next.md).
 
-### Build & Deploy
+### Published APK
 
-To compile the app, run the tests, and build the debug package:
+Download `MAVLab-v1.5.3.apk` from the [published release](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.5.3). Android may ask you to allow installation from your file manager or browser. The v1.6.0 APK will be linked only after publication and artifact verification.
+
+### Build v1.6.0
+
+Requires Java 17 and Android SDK 35; minimum Android version is 8.0 (API 26).
+
 ```bash
 cd mavlab-android
-GRADLE_USER_HOME="$PWD/.gradle" ./gradlew lintDebug testDebugUnitTest assembleDebug
-```
-To install the build to your connected device:
-```bash
+GRADLE_USER_HOME="$PWD/.gradle" ./gradlew testDebugUnitTest lintDebug assembleDebug bundleRelease --console=plain
 adb install -r app/build/outputs/apk/debug/MAVlab.apk
 ```
 
----
+The downloadable APK path is a debug-signed build. The release AAB needs production signing and Play Console qualification before Play distribution; it is not directly installable. See the [release runbook](docs/operations/release.md).
 
-## Connecting QGroundControl (QGC)
+### First local flight
 
-MAVLab integrates directly with QGroundControl:
-1. **On-Device (same phone):** Open MAVLab, then switch to QGC within the one-minute handoff window. QGC automatically detects the vehicle on `127.0.0.1:14550`. MAVLab keeps the runtime alive while a validated GCS heartbeat is present or a flight is active; when it is backgrounded, idle, and disconnected, it stops automatically. Split-screen is optional.
-2. **Local Wi-Fi (Cross-Device):** Connect your computer and phone to the same local Wi-Fi router. Open MAVLab on the phone and QGC on your computer; the phone's UDP broadcast will automatically link the vehicle.
-3. *Note: Ensure your GCS System ID is set to `255` (default) and MAVLab is set to `1` to prevent system conflicts.*
+1. Complete or skip onboarding; **Start flying** opens Cockpit without arming.
+2. In Control, choose Phone Sensors and calibrate while grounded.
+3. **Arm → Takeoff**; observe the same simulated vehicle in Cockpit and SIM.
+4. **Land → Disarm**. Disarming cuts motor thrust; do not use it as normal airborne landing.
+5. For a saved session, begin recording in Ops before flight. Recording never starts merely because you opened the app or uploaded a mission.
 
----
+## Connect QGroundControl
 
-## Project Documentation
+- **Same phone:** open MAVLab, then switch to QGC within the one-minute handoff window. Telemetry targets `127.0.0.1:14550`; split-screen is optional.
+- **Desktop over LAN:** use the same trusted Wi-Fi network/subnet. Client isolation and a firewall blocking UDP 14550 can prevent discovery.
+- **Identity:** MAVLab currently uses SYSID 1 / COMPID 1; QGC normally uses SYSID 255. Do not place multiple same-ID simulators or real aircraft on the test network.
+- **Continuity:** a validated GCS heartbeat, armed flight or active mission retains the background runtime. Phone input suspends in the background; motor audio follows retained simulation. Idle/disconnected runtime stops after the handoff policy expires.
+- **Uploads:** keep the simulated vehicle disarmed while diagnosing connection and plan transfers. After upgrading, save your plan and reconnect QGC to refresh capabilities. Upload navigation, fence and rally lists independently; uploading a fence does not enable it.
 
-Documentation is organized by audience and purpose:
+GCS connection is not control authority or proof of successful command/mission delivery. See [setup](docs/setup_guide.md), [troubleshooting](docs/known_first_run_issues.md) and [mission operation](docs/user/mission.md).
 
-- **[Documentation Home](docs/README.md):** Start here for user guides, internals, operations, validation, research, and history.
-- **[Contributor and Agent Guide](AGENTS.md):** MAVLab’s non-negotiables, vocabulary, hazards, impact matrix, and verification defaults.
-- **[Architecture Overview](docs/internals/overview.md):** Current ownership, state flow, product surfaces, and implementation boundaries.
-- **[MAVLink Contract](docs/internals/mavlink-contract.md):** Truthful identity, ports, timing, support classes, and validation rules.
-- **[Release Runbook](docs/operations/release.md):** Version, build, evidence, publication, and post-release verification.
-- **[Technical Paper](docs/paper/paper.md):** Versioned research source tied to the evaluated release.
-- **[QA Test Matrix](docs/test_matrix.md):** Complete checklist for manual app validation.
-- **[v1.5.3 Release Notes](docs/v1_5_3_release_notes.md):** Gyro control, stable ArduPilot-compatible identity, connection-aware background telemetry, and reorganized project documentation.
-- **[v1.5.2 Release Notes](docs/v1_5_2_release_notes.md):** Onboarding rebuilt natively in Compose, plus the "no split-screen needed" connection correction.
-- **[v1.5.1 Release Notes](docs/v1_5_1_release_notes.md):** GCS set-home, COMMAND_INT, multi-GCS telemetry, and link stability fixes.
-- **[v1.5 Release Notes](docs/v1_5_release_notes.md):** Summary of what is new in the v1.5 feature release.
-- **[Setup Guide](docs/setup_guide.md)**
-- **[Teacher Guide](docs/teacher_guide.md)**
+## Documentation and evidence
 
----
+- [Documentation home](docs/README.md), [user guides](docs/user/README.md) and [teacher guide](docs/teacher_guide.md).
+- [Architecture](docs/internals/overview.md), [control authority](docs/internals/control-authority.md), [runtime lifecycle](docs/internals/runtime-lifecycle.md) and [MAVLink contract](docs/internals/mavlink-contract.md).
+- [Contributor guide](AGENTS.md), [Android implementation](mavlab-android/README.md), [release runbook](docs/operations/release.md) and [v1.6.0 readiness](docs/operations/v1.6.0-readiness.md).
+- [Validation records](docs/validation/results/README.md). Prior build/device passes are not automatically acceptance of the new versioned artifact.
+- [v1.6.0 candidate notes](docs/v1_6_0_release_notes.md); published [v1.5.3](docs/v1_5_3_release_notes.md), [v1.5.2](docs/v1_5_2_release_notes.md), [v1.5.1](docs/v1_5_1_release_notes.md) and [v1.5](docs/v1_5_release_notes.md) notes.
+
+## Technical paper
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21319694.svg)](https://doi.org/10.5281/zenodo.21319694)
+
+**MAVLab: A Phone-First Drone Digital-Twin Simulator for Flattening the Drone-Systems Learning Curve** — Kioko & Kaira, Ascend Labs, 2026. [DOI](https://doi.org/10.5281/zenodo.21319694) · [Markdown source](docs/paper/paper.md) · [How to cite](CITATION.cff).
+
+The paper describes its evaluated release snapshot. MAVLab v1.6.0 does not silently inherit those acceptance results or revise the published research claims.
 
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
-
-The UI/UX feature branch uses **Cockpit · Control · SIM · Ops**. Missions are contextual: concise Cockpit awareness, expandable Control actions, received-route geometry in SIM, and upload evidence in Ops. See [surface responsibilities](docs/mavlab_product_surface_definition.md). This branch layout is not yet a published release.

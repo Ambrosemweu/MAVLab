@@ -36,6 +36,11 @@ jobs:
             exit 0
           fi
 
+          if grep -Eq '^Status: (Release candidate|Draft)' "${release_notes}"; then
+            echo "Candidate/draft notes are not synchronized into an existing public release."
+            exit 0
+          fi
+
           gh release edit "${tag}" \
             --repo "${GITHUB_REPOSITORY}" \
             --title "MAVLab ${tag}" \

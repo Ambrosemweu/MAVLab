@@ -1,6 +1,6 @@
 # MAVLab Product Surface Definition
 
-The UI/UX feature branch uses four surfaces in this order: **Cockpit, Control, SIM, Ops**. This describes branch behavior, not a published release. Mission is a contextual state shared by those surfaces, not a fifth destination.
+MAVLab v1.6.0 uses four surfaces in this order: **Cockpit, Control, SIM, Ops**. Mission is a contextual state shared by those surfaces, not a fifth destination.
 
 | Surface | Primary job | Mission responsibility |
 | --- | --- | --- |

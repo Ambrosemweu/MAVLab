@@ -1,1 +1,1 @@
-Learn drone systems with your phone using simulation, MAVLink, and lessons.
+Learn drone systems with phone simulation, telemetry and QGroundControl.

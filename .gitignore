@@ -6,6 +6,7 @@ local.properties
 .vscode/
 captures/
 mavlab-android/app/build/
+scripts/__pycache__/
 
 # Local/internal planning artifacts belong in Obsidian, not the public repo
 phases/

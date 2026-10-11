@@ -1,0 +1,13 @@
+# MAVLab v1.6.0 demonstration
+
+Status: Presenter script, not a validation result. Allow 7–10 minutes; prepare any QGC plans before the demonstration. Use only an isolated simulated vehicle, begin disarmed and recording stopped, and name the app/QGC build you are showing.
+
+1. **Why MAVLab (one minute):** introduce the phone-first learning loop before the professional simulation toolchain. Replay onboarding from Ops; show labelled previews and finish with Start flying. Explain that this does not arm or record.
+2. **Local control (two minutes):** select Phone Sensors while disarmed, calibrate neutral, then Arm and Takeoff. Gently tilt/rotate the phone while moving through Cockpit, Control and SIM. Show that the engine—not the camera—owns attitude. Land and verify touchdown/disarmed state. Use Disarm deliberately if still armed; do not cut thrust as normal airborne recovery.
+3. **Observe and navigate (one minute):** compare Cockpit's altitude/attitude scales, SIM's lit model and the real engine state. Demonstrate a horizontal swipe on passive content, a vertical Ops scroll, and a camera drag that does not change screens. Full screen is optional in Ops; labelled tabs remain.
+4. **Optional QGC mission (two minutes):** connect the same phone within the one-minute handoff, or use a desktop on the trusted LAN. Upload a prepared short supported mission while disarmed. Inspect Ops transfer evidence, Control's conditional mission row and SIM's received route. Start AUTO deliberately; observe actual progression. Demonstrate confirmed Take control & land, or let terminal RTL return and land. Verify armed/mode/authority instead of assuming a connection or completed progress means safe completion.
+5. **Recovery and review (one or two minutes):** while grounded, inject/reset an Ops sensor exercise and show incident recovery. Begin recording explicitly, perform a short deliberate scenario, then Stop and save; review/export the observed evidence. Explain that recording defaults off and Stop/save does not land.
+
+If presenting fences/rally, allocate a separate prepared exercise: upload actual supported lists, verify configuration and enable while disarmed, then compare report-only versus actionable recovery. Show the selected return destination and engine touchdown/disarm, plus disable/manual-mode reverse paths. Do not improvise exclusions or imply obstacle routing, SmartRTL or real-aircraft safety.
+
+The [recorded demos](../assets/media/2026-10/README.md) are presentation assets, not full acceptance runs. For qualification use the [acceptance specification](validation/v1.6.0-acceptance.md), [current guides](user/README.md) and [MAVLink contract](internals/mavlink-contract.md).

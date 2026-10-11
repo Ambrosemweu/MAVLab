@@ -1,0 +1,5 @@
+Four focused views: Cockpit, Control, SIM and Ops.
+Continuous guarded swipes and optional full screen.
+Refreshed onboarding, telemetry and illuminated digital twin.
+Opt-in recording, review and export.
+MAVLink 2 transfers and engine-owned simulated fence/rally recovery.

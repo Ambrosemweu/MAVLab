@@ -7,13 +7,16 @@ FLY
 Use phone tilt controls or manual fallback controls to fly. Watch altitude, speed, attitude, GPS, battery, and mode telemetry update live.
 
 CONNECT TO QGROUNDCONTROL
-MAVLab speaks MAVLink over UDP so QGroundControl can connect and view the simulator like a real aircraft.
+MAVLab speaks MAVLink over UDP so QGroundControl can connect to the simulated vehicle, upload supported plans and observe telemetry. Protocol support is bounded; MAVLab is not official ArduPilot firmware or a real-aircraft control system.
 
-LEARN
-Seven guided lessons cover first flight, MAVLink, phone control, flight modes, PID control, sensors, and failsafes.
+EXPLORE FOUR VIEWS
+Use Cockpit for vehicle state, Control for deliberate flight actions, SIM for the digital twin and received route, and Ops for health, diagnostics, recording and setup. A nine-step introduction helps you begin. Compact tabs, guarded swipes and optional full-screen display keep navigation accessible.
 
 EXPERIMENT
-Use Failure Lab to inject GPS loss, GPS drift, compass interference, wind, motor failures, battery drain, and payload effects. Use Mission Lab to load and run waypoint missions.
+Use Ops to inject and reset supported sensor, wind, motor, battery and payload failures. Upload supported missions, fence regions and rally points from QGroundControl. Enable fencing explicitly to explore engine-driven recovery. Returns use flat ground and straight-line control, not obstacle or terrain avoidance.
+
+RECORD DELIBERATELY
+Recording is off by default. Begin a session in Ops or opt into recording on arm while disarmed. Stop/save, review and export your recorded session without a cloud account.
 
 BUILT FOR CLASSROOMS
 MAVLab is offline-first, open source, and designed for drone systems education where hardware access is limited.

@@ -1,6 +1,6 @@
 # MAVLab Setup Guide
 
-The UI/UX feature branch uses four tabs; released v1.5.3 retains earlier navigation.
+This guide describes v1.6.0. Earlier v1.5.3 installations retain the previous layout; read the upgrade guide before changing installations because signing compatibility is not guaranteed.
 
 MAVLab's core learning loop is designed to run from one Android-first app. You do not need ROS, Gazebo, ArduPilot SITL, PX4 SITL, Docker, Python bridges, cloud servers, or Linux networking knowledge to start learning drone simulation concepts.
 
@@ -10,6 +10,8 @@ MAVLab's core learning loop is designed to run from one Android-first app. You d
 2. Install QGroundControl if you want ground-station integration.
 3. Open MAVLab and complete onboarding.
 4. Use the guided surfaces to learn the basics: Cockpit, Control, SIM, and Ops.
+
+The final **Start flying** button opens Cockpit; it does not arm or begin recording. In Control calibrate, Arm, Takeoff, Land and then Disarm. Recording is off by default; begin explicitly in Ops or opt into recording on arm while disarmed. See [upgrade guidance](user/upgrading.md).
 
 ## QGroundControl
 
@@ -34,4 +36,4 @@ adb install -r app/build/outputs/apk/debug/MAVlab.apk
 
 - If QGC does not connect, restart QGC and MAVLab, then confirm both apps are on the same network.
 - If the phone controller is unavailable, use manual fallback sliders in the Control tab.
-- If the 3D model does not render smoothly, continue using Dashboard and Lessons; the simulator keeps running.
+- If the 3D view is unavailable, return to Cockpit/Control and inspect Ops. Do not assume a visual failure has stopped the engine; check authority and land/disarm deliberately.

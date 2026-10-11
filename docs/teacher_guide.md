@@ -26,14 +26,16 @@ Professional tools are powerful, but they can bury beginners under installation,
 - Students run MAVLab on their phones.
 - QGroundControl can run on the same phone by switching to it within MAVLab's one-minute handoff window, or on an instructor desktop over Wi-Fi. Split-screen is optional; a connected GCS keeps telemetry active in the background.
 - Start each session with the problem MAVLab solves: drone simulation usually requires a steep toolchain, but the concepts can be learned first in one friendly app.
-- Use Failure Lab only after students understand normal flight.
+- Use Ops failure exercises only after students understand normal flight. Lessons retained in the codebase are not a visible Lessons destination in the v1.6.0 candidate.
 
 ## Assessment Ideas
 
 - Explain the difference between Stabilize, Alt Hold, Guided, Loiter, Auto, and RTL.
 - Identify which telemetry messages QGC uses to show attitude, position, GPS, and battery.
 - Demonstrate GPS loss and explain why Auto/Loiter degrade.
-- Load a demo mission and describe waypoint progression.
+- Author/upload a small mission in QGC, follow progression in Cockpit/Control/SIM, and inspect upload evidence in Ops. There is no built-in demo route in current navigation.
+- Compare disabled fencing, report-only breaches and engine RTL/LAND recovery. Identify who owns intent and the deliberate reverse path; do not frame straight-line simulated returns as obstacle avoidance.
+- Begin recording explicitly in Ops, stop/save, and distinguish observed flight history from a planned route. Automatic capture requires opt-in.
 - Compare behavior with and without wind.
 
 ## Safety Framing
