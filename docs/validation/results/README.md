@@ -4,6 +4,7 @@ Store immutable, build-specific MAVLab validation records here. Do not overwrite
 
 ## Results
 
+- [Attribution-only Git history cleanup and historical commit mapping — 2026-10-12](2026-10-12-attribution-rewrite/README.md). Earlier records retain their original tested commit IDs; consult this mapping for their source-identical rewritten counterparts.
 - [v1.6.0 publication, independently downloaded assets and signing deferral — 2026-10-12](v1.6.0-2026-10-12-publication.md)
 - [v1.6.0 candidate pre-merge host, packaging and signing verification — 2026-10-12](2026-10-12-v1.6.0-premerge-host.md)
 

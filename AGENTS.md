@@ -107,6 +107,7 @@ Do not convert a manual checklist into a permanent `PASS` claim without recordin
 
 - Understand the constraint before adding architecture.
 - Keep one concern per commit or pull request.
+- Keep human commit attribution intact. Do not append Claude `Co-authored-by` or `Claude-Session` trailers to this project's commits.
 - Add focused tests for changed behavior.
 - User-visible changes need user docs.
 - Changes to `SimulationService`, `AppRuntime`, `PhysicsSimulationEngine`, `MavlinkUdpServer`, navigation, persisted formats, or compatibility identity require an explicit documentation review.

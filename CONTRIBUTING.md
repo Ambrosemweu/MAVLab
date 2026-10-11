@@ -36,3 +36,7 @@ Be kind. This is an education tool used by beginners; assume good faith and expl
 ## License
 
 Apache License 2.0. By contributing you agree your contributions are licensed under the same.
+
+## Commit attribution
+
+Use the actual human contributor's Git identity and preserve genuine human co-author credits. Do not append Claude `Co-authored-by` or `Claude-Session` trailers. The maintainer-approved [2026-10-12 attribution cleanup](docs/validation/results/2026-10-12-attribution-rewrite/README.md) records the source-preserving history rewrite and old/new commit mapping.
