@@ -7,18 +7,27 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sin
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-class ProceduralDroneSynth(
+internal class ProceduralDroneSynth(
     private val sampleRateHz: Int,
     private val bufferFrames: Int,
+    private val outputFactory: (() -> ProceduralAudioOutput?)? = null,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val mutableStatus = MutableStateFlow(
@@ -30,8 +39,11 @@ class ProceduralDroneSynth(
     private val harmonicPhases = Array(MotorCount) { FloatArray(MaxHarmonics) }
     private val whinePhases = FloatArray(2)
     private val renderBuffer = FloatArray(bufferFrames.coerceAtLeast(64))
-    private var audioTrack: AudioTrack? = null
+    private val lifecycleLock = Any()
+    private val renderOwner = Mutex()
     private var renderJob: Job? = null
+    private var activeSession: Any? = null
+    private var released = false
     @Volatile private var latestFrame: ProceduralSoundFrame = ProceduralSoundFrame.Disabled
     @Volatile private var masterVolume: Float = 0f
     private var noiseState = 0x13579BDF
@@ -39,63 +51,85 @@ class ProceduralDroneSynth(
 
     val status: StateFlow<ProceduralSynthStatus> = mutableStatus.asStateFlow()
 
-    fun start() {
-        if (renderJob != null) return
-        val track = createAudioTrack()
-        if (track == null) {
-            mutableStatus.value = mutableStatus.value.copy(
-                running = false,
-                fallbackReason = "AudioTrack unavailable",
-            )
-            return
-        }
-        audioTrack = track
+    fun start() = synchronized(lifecycleLock) {
+        if (released || renderJob != null) return@synchronized
+        val session = Any()
+        activeSession = session
+        renderJob = scope.launch(start = CoroutineStart.LAZY) { runSession(session) }
+        renderJob?.start()
+    }
+
+    fun stop() = synchronized(lifecycleLock) {
+        activeSession = null
+        renderJob?.cancel()
+        renderJob = null
+        mutableStatus.value = mutableStatus.value.copy(running = false)
+    }
+
+    fun release() = synchronized(lifecycleLock) {
+        released = true
+        stop()
+        scope.cancel()
+    }
+
+    // Only this worker touches its output. Stop/release request cancellation, never
+    // dispose a track underneath write/underrunCount. The mutex also serializes a
+    // rapid restart with the old session's cleanup and shared oscillator/buffer state.
+    private suspend fun runSession(session: Any) = renderOwner.withLock {
+        var output: ProceduralAudioOutput? = null
         try {
-            track.play()
-        } catch (error: RuntimeException) {
-            track.release()
-            audioTrack = null
-            mutableStatus.value = mutableStatus.value.copy(
-                running = false,
-                fallbackReason = error.localizedMessage ?: "AudioTrack play failed",
-            )
-            return
-        }
-        mutableStatus.value = mutableStatus.value.copy(running = true, fallbackReason = null)
-        renderJob = scope.launch {
-            while (isActive) {
-                val activeTrack = audioTrack ?: break
-                val frame = latestFrame
-                render(frame, renderBuffer)
-                val written = activeTrack.write(renderBuffer, 0, renderBuffer.size, AudioTrack.WRITE_BLOCKING)
-                if (written < 0) {
-                    mutableStatus.value = mutableStatus.value.copy(
-                        running = false,
-                        fallbackReason = "AudioTrack write failed $written",
-                    )
-                    break
+            currentCoroutineContext().ensureActive()
+            output = if (outputFactory != null) outputFactory.invoke()
+                else createAudioTrack()?.let(::AndroidProceduralAudioOutput)
+            if (output == null) {
+                publish(session) { it.copy(running = false, fallbackReason = "AudioTrack unavailable") }
+                return@withLock
+            }
+            currentCoroutineContext().ensureActive()
+            output.play()
+            publish(session) { it.copy(running = true, fallbackReason = null) }
+            while (currentCoroutineContext().isActive) {
+                render(latestFrame, renderBuffer)
+                var offset = 0
+                while (offset < renderBuffer.size) {
+                    currentCoroutineContext().ensureActive()
+                    val written = output.write(renderBuffer, offset, renderBuffer.size - offset)
+                    if (written < 0) throw IllegalStateException("AudioTrack write failed $written")
+                    if (written == 0) delay(2L) else offset += written
                 }
-                mutableStatus.value = mutableStatus.value.copy(
-                    running = true,
-                    underrunCount = activeTrack.underrunCount,
-                    fallbackReason = null,
-                )
+                currentCoroutineContext().ensureActive()
+                val underruns = output.underrunCount
+                publish(session) { it.copy(running = true, underrunCount = underruns, fallbackReason = null) }
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: RuntimeException) {
+            publish(session) { it.copy(running = false, fallbackReason = error.localizedMessage ?: "AudioTrack failed") }
+        } finally {
+            output?.let { owned ->
+                // An error in pause/flush must not prevent native resource disposal.
+                cleanup { owned.pause() }
+                cleanup { owned.flush() }
+                cleanup { owned.release() }
+            }
+            synchronized(lifecycleLock) {
+                if (activeSession === session) {
+                    activeSession = null
+                    renderJob = null
+                    mutableStatus.value = mutableStatus.value.copy(running = false)
+                }
             }
         }
     }
 
-    fun stop() {
-        renderJob?.cancel()
-        renderJob = null
-        audioTrack?.pause()
-        audioTrack?.flush()
-        mutableStatus.value = mutableStatus.value.copy(running = false)
+    private fun publish(session: Any, update: (ProceduralSynthStatus) -> ProceduralSynthStatus) {
+        synchronized(lifecycleLock) {
+            if (activeSession === session) mutableStatus.value = update(mutableStatus.value)
+        }
     }
 
-    fun release() {
-        stop()
-        audioTrack?.release()
-        audioTrack = null
+    private inline fun cleanup(action: () -> Unit) {
+        try { action() } catch (_: RuntimeException) { /* Output already unavailable. */ }
     }
 
     fun setFrame(frame: ProceduralSoundFrame) {

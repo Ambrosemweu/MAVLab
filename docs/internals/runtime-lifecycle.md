@@ -52,6 +52,10 @@ A backgrounded, idle, disconnected runtime outside the grace period should stop 
 
 Deliberate shutdown wins over retention conditions. Notification Stop and explicit close/removal paths should release locks, stop protocol work, stop simulation, and terminate the service cleanly.
 
+### Procedural audio output ownership
+
+Each procedural render session owns its AudioTrack from creation through pause/flush/release on the render worker. Stop requests cancellation without releasing a native track underneath an in-progress write or underrun-count read. A mutex serializes a rapid restart with the old session's cleanup and shared synthesis buffer/oscillators; session identity prevents old work from publishing a newer session's running status. Native writes are nonblocking, retrying zero/partial transfers with cancellation checks rather than dropping remaining samples. Output errors become fallback status and still dispose the track. Release is terminal for that synth instance and cancels its scope; runtime reconstruction creates a new instance. No UI-thread join or wait for native audio is introduced. This changes resource disposal, not simulation authority, sound modelling, background retention or service policy.
+
 ## Invariants
 
 1. Do not start two independent shared runtimes.
