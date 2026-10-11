@@ -1,0 +1,15 @@
+Control [164,30][397,134] enabled=true
+Authority · Idle [445,30][883,125] enabled=true
+Disarmed · Stabilize [931,30][1529,125] enabled=true
+Phone sensors · Battery 100% [164,146][1059,241] enabled=true
+GPS 3D fix  ·  QGC connected  ·  0 issues [164,265][1224,337] enabled=true
+Phone sensors [212,422][657,517] enabled=true
+Custom input [777,422][1180,517] enabled=true
+Direct RPM [1300,422][1637,517] enabled=true
+Calibrate neutral before arming. Arming and takeoff are separate. [164,651][1726,723] enabled=true
+Arm [610,760][738,855] enabled=true
+Calibrate [1588,760][1858,855] enabled=true
+Cockpit [269,999][468,1062] enabled=true
+Control [776,999][971,1062] enabled=true
+SIM [1328,999][1430,1062] enabled=true
+Ops [1832,999][1935,1062] enabled=true

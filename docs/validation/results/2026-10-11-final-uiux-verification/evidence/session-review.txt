@@ -1,0 +1,34 @@
+Session review [132,189][510,266] enabled=true
+20261011-161139-550 [132,314][483,362] enabled=true
+MAVLab Flight Report
+
+Summary
+
+• Session ID: 20261011-161139-550
+• Date: 2026-10-11 16:11:39 UTC
+• Duration: 5s
+• Mission status: No mission loaded
+• Max altitude: 0.0 m AGL
+• Observed horizontal path: 0.0 m (sampled vehicle motion)
+• Flight modes: STABILIZE
+• Observed authorities: IDLE
+• Battery start: 87%
+• Battery end: 87%
+• Failures injected: None
+
+Timeline
+
+• 2026-10-11 16:11:39 UTC — recording_started started explicitly in Ops
+• 2026-10-11 16:11:44 UTC — recording_stopped stopped explicitly in Ops
+
+Safety Notes
+
+No listed failure scenario was recorded. This report is not a safety assessment.
+
+Student / Operator Notes
+
+Add observations, lessons learned, or debrief notes here.
+
+
+ [132,386][948,1848] enabled=true
+Close review [719,1968][912,2016] enabled=true

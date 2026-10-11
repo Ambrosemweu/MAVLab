@@ -1,0 +1,519 @@
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.LaunchThemeTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+com.ascend.mavlab.core.ui.navigation.LaunchThemeTest:
+INSTRUMENTATION_STATUS: test=nativeStartingWindowMatchesDarkComposeBackground
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.LaunchThemeTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=nativeStartingWindowMatchesDarkComposeBackground
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.LaunchThemeTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=android12SplashBackgroundMatchesAppWindow
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.LaunchThemeTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=android12SplashBackgroundMatchesAppWindow
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest:
+INSTRUMENTATION_STATUS: test=secondPointerCancelsAnOtherwiseValidSwipe
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=secondPointerCancelsAnOtherwiseValidSwipe
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=middleGapIsSwipeableThroughTheVerticalScrollParent
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=middleGapIsSwipeableThroughTheVerticalScrollParent
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=localInteractiveDragNeverNavigates
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=localInteractiveDragNeverNavigates
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=newDragInterruptsSettlingAndDoesNotWaitForAnimation
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=newDragInterruptsSettlingAndDoesNotWaitForAnimation
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=fastShortFlickMovesOnce
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=fastShortFlickMovesOnce
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=slowShortSwipeMovesOnceThroughScrollableParent
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=slowShortSwipeMovesOnceThroughScrollableParent
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=consecutiveSwipesUseLatestDestinationWithoutCooldown
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=consecutiveSwipesUseLatestDestinationWithoutCooldown
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=10
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=contentFollowsFingerBeforeReleaseAndCancelledDragSettlesBack
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=10
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=contentFollowsFingerBeforeReleaseAndCancelledDragSettlesBack
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=11
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=visiblePreviewDoesNotAcquireActiveLifecycleBeforeRelease
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=11
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=visiblePreviewDoesNotAcquireActiveLifecycleBeforeRelease
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=12
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=disabledNavigationLeavesPassiveDragLocal
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=12
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=disabledNavigationLeavesPassiveDragLocal
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=13
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=excludedButtonDragDoesNotNavigateOrTriggerItsAction
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=13
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=excludedButtonDragDoesNotNavigateOrTriggerItsAction
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=14
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=firstEndpointNeverExposesBlankSpace
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=14
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=firstEndpointNeverExposesBlankSpace
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=15
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=dragTracksPixelsOneToOneAndCommitDoesNotTeleport
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=15
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=dragTracksPixelsOneToOneAndCommitDoesNotTeleport
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=16
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=initialJitterAndDiagonalDriftDoNotLoseHorizontalSwipeToScrolling
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=16
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=initialJitterAndDiagonalDriftDoNotLoseHorizontalSwipeToScrolling
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=17
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=verticalScrollRemainsVerticalScroll
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipeNavigationTest
+INSTRUMENTATION_STATUS: current=17
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=verticalScrollRemainsVerticalScroll
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipePagerClippingTest
+INSTRUMENTATION_STATUS: current=18
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+com.ascend.mavlab.core.ui.navigation.ScreenSwipePagerClippingTest:
+INSTRUMENTATION_STATUS: test=neighbouringCanvasCannotDrawAcrossTheSettledPageBoundary
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipePagerClippingTest
+INSTRUMENTATION_STATUS: current=18
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=neighbouringCanvasCannotDrawAcrossTheSettledPageBoundary
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=19
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+com.ascend.mavlab.feature.onboarding.OnboardingScreenTest:
+INSTRUMENTATION_STATUS: test=skipCompletesWithoutWalkingThroughTheTour
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=19
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=skipCompletesWithoutWalkingThroughTheTour
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=20
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=selectedPageSurvivesStateRestoration
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=20
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=selectedPageSurvivesStateRestoration
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=21
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=accessibilityCanDisableSwipeWhileButtonsStillNavigate
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=21
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=accessibilityCanDisableSwipeWhileButtonsStillNavigate
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=22
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=shortDisplayAndLargeTextKeepActionsVisibleAndBodyScrollable
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=22
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=shortDisplayAndLargeTextKeepActionsVisibleAndBodyScrollable
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=23
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=demoSliderKeepsItsGestureInsteadOfChangingPages
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=23
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=demoSliderKeepsItsGestureInsteadOfChangingPages
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=24
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=nextBackAndAndroidBackShareTheSamePage
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=24
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=nextBackAndAndroidBackShareTheSamePage
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=25
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=endpointsDoNotWrapOrCompleteAndFinalActionCompletesOnce
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=25
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=endpointsDoNotWrapOrCompleteAndFinalActionCompletesOnce
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=26
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=contentMovesDuringSwipeAndSettlesOnNextPage
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=26
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=contentMovesDuringSwipeAndSettlesOnNextPage
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=27
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=recordingPreviewUsesTheLiveChartLayoutWithoutClaimingLiveData
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.onboarding.OnboardingScreenTest
+INSTRUMENTATION_STATUS: current=27
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stack=androidx.compose.ui.test.junit4.android.ComposeNotIdleException: Idling resource timed out: possibly due to compose being busy.
+IdlingResourceRegistry has the following idling resources registered:
+- [busy] androidx.compose.ui.test.ComposeIdlingResource@ab017bb
+All registered idling resources: Compose-Espresso link
+	at androidx.compose.ui.test.EspressoLink_androidKt.rethrowWithMoreInfo(EspressoLink.android.kt:133)
+	at androidx.compose.ui.test.EspressoLink_androidKt.runEspressoOnIdle(EspressoLink.android.kt:106)
+	at androidx.compose.ui.test.EspressoLink.runUntilIdle(EspressoLink.android.kt:82)
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment.waitForIdle(ComposeUiTest.android.kt:709)
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment.access$waitForIdle(ComposeUiTest.android.kt:474)
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitForIdle(ComposeUiTest.android.kt:845)
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.setContent(ComposeUiTest.android.kt:933)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.setContent(AndroidComposeTestRule.android.kt:524)
+	at com.ascend.mavlab.feature.onboarding.OnboardingScreenTest.content(OnboardingScreenTest.kt:28)
+	at com.ascend.mavlab.feature.onboarding.OnboardingScreenTest.content$default(OnboardingScreenTest.kt:27)
+	at com.ascend.mavlab.feature.onboarding.OnboardingScreenTest.recordingPreviewUsesTheLiveChartLayoutWithoutClaimingLiveData(OnboardingScreenTest.kt:90)
+	... 64 trimmed
+Caused by: androidx.test.espresso.IdlingResourceTimeoutException: Wait for [Compose-Espresso link] to become idle timed out
+	at androidx.test.espresso.IdlingPolicy.handleTimeout(IdlingPolicy.java:4)
+	at androidx.test.espresso.base.UiControllerImpl$5.resourcesHaveTimedOut(UiControllerImpl.java:1)
+	at androidx.test.espresso.base.IdlingResourceRegistry$Dispatcher.handleTimeout(IdlingResourceRegistry.java:4)
+	at androidx.test.espresso.base.IdlingResourceRegistry$Dispatcher.handleMessage(IdlingResourceRegistry.java:6)
+	at android.os.Handler.dispatchMessage(Handler.java:102)
+	at androidx.test.espresso.base.Interrogator.loopAndInterrogate(Interrogator.java:14)
+	at androidx.test.espresso.base.UiControllerImpl.loopUntil(UiControllerImpl.java:8)
+	at androidx.test.espresso.base.UiControllerImpl.loopMainThreadUntilIdle(UiControllerImpl.java:16)
+	at androidx.test.espresso.Espresso$1.run(Espresso.java:1)
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:462)
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+	at android.os.Handler.handleCallback(Handler.java:938)
+	at android.os.Handler.dispatchMessage(Handler.java:99)
+	at android.os.Looper.loopOnce(Looper.java:226)
+	at android.os.Looper.loop(Looper.java:313)
+	at android.app.ActivityThread.main(ActivityThread.java:8663)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:567)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1135)
+
+INSTRUMENTATION_STATUS: stream=
+Error in recordingPreviewUsesTheLiveChartLayoutWithoutClaimingLiveData(com.ascend.mavlab.feature.onboarding.OnboardingScreenTest):
+androidx.compose.ui.test.junit4.android.ComposeNotIdleException: Idling resource timed out: possibly due to compose being busy.
+IdlingResourceRegistry has the following idling resources registered:
+- [busy] androidx.compose.ui.test.ComposeIdlingResource@ab017bb
+All registered idling resources: Compose-Espresso link
+	at androidx.compose.ui.test.EspressoLink_androidKt.rethrowWithMoreInfo(EspressoLink.android.kt:133)
+	at androidx.compose.ui.test.EspressoLink_androidKt.runEspressoOnIdle(EspressoLink.android.kt:106)
+	at androidx.compose.ui.test.EspressoLink.runUntilIdle(EspressoLink.android.kt:82)
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment.waitForIdle(ComposeUiTest.android.kt:709)
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment.access$waitForIdle(ComposeUiTest.android.kt:474)
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitForIdle(ComposeUiTest.android.kt:845)
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.setContent(ComposeUiTest.android.kt:933)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.setContent(AndroidComposeTestRule.android.kt:524)
+	at com.ascend.mavlab.feature.onboarding.OnboardingScreenTest.content(OnboardingScreenTest.kt:28)
+	at com.ascend.mavlab.feature.onboarding.OnboardingScreenTest.content$default(OnboardingScreenTest.kt:27)
+	at com.ascend.mavlab.feature.onboarding.OnboardingScreenTest.recordingPreviewUsesTheLiveChartLayoutWithoutClaimingLiveData(OnboardingScreenTest.kt:90)
+	... 64 trimmed
+Caused by: androidx.test.espresso.IdlingResourceTimeoutException: Wait for [Compose-Espresso link] to become idle timed out
+	at androidx.test.espresso.IdlingPolicy.handleTimeout(IdlingPolicy.java:4)
+	at androidx.test.espresso.base.UiControllerImpl$5.resourcesHaveTimedOut(UiControllerImpl.java:1)
+	at androidx.test.espresso.base.IdlingResourceRegistry$Dispatcher.handleTimeout(IdlingResourceRegistry.java:4)
+	at androidx.test.espresso.base.IdlingResourceRegistry$Dispatcher.handleMessage(IdlingResourceRegistry.java:6)
+	at android.os.Handler.dispatchMessage(Handler.java:102)
+	at androidx.test.espresso.base.Interrogator.loopAndInterrogate(Interrogator.java:14)
+	at androidx.test.espresso.base.UiControllerImpl.loopUntil(UiControllerImpl.java:8)
+	at androidx.test.espresso.base.UiControllerImpl.loopMainThreadUntilIdle(UiControllerImpl.java:16)
+	at androidx.test.espresso.Espresso$1.run(Espresso.java:1)
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:462)
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+	at android.os.Handler.handleCallback(Handler.java:938)
+	at android.os.Handler.dispatchMessage(Handler.java:99)
+	at android.os.Looper.loopOnce(Looper.java:226)
+	at android.os.Looper.loop(Looper.java:313)
+	at android.app.ActivityThread.main(ActivityThread.java:8663)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:567)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1135)
+
+INSTRUMENTATION_STATUS: test=recordingPreviewUsesTheLiveChartLayoutWithoutClaimingLiveData
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.settings.GcsConnectionIndicatorTest
+INSTRUMENTATION_STATUS: current=28
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=
+com.ascend.mavlab.feature.settings.GcsConnectionIndicatorTest:
+INSTRUMENTATION_STATUS: test=labelAndDotFollowConnectionIncludingDisconnect
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.feature.settings.GcsConnectionIndicatorTest
+INSTRUMENTATION_STATUS: current=28
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=28
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=labelAndDotFollowConnectionIncludingDisconnect
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 58.097
+There was 1 failure:
+1) recordingPreviewUsesTheLiveChartLayoutWithoutClaimingLiveData(com.ascend.mavlab.feature.onboarding.OnboardingScreenTest)
+androidx.compose.ui.test.junit4.android.ComposeNotIdleException: Idling resource timed out: possibly due to compose being busy.
+IdlingResourceRegistry has the following idling resources registered:
+- [busy] androidx.compose.ui.test.ComposeIdlingResource@ab017bb
+All registered idling resources: Compose-Espresso link
+	at androidx.compose.ui.test.EspressoLink_androidKt.rethrowWithMoreInfo(EspressoLink.android.kt:133)
+	at androidx.compose.ui.test.EspressoLink_androidKt.runEspressoOnIdle(EspressoLink.android.kt:106)
+	at androidx.compose.ui.test.EspressoLink.runUntilIdle(EspressoLink.android.kt:82)
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment.waitForIdle(ComposeUiTest.android.kt:709)
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment.access$waitForIdle(ComposeUiTest.android.kt:474)
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitForIdle(ComposeUiTest.android.kt:845)
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.setContent(ComposeUiTest.android.kt:933)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.setContent(AndroidComposeTestRule.android.kt:524)
+	at com.ascend.mavlab.feature.onboarding.OnboardingScreenTest.content(OnboardingScreenTest.kt:28)
+	at com.ascend.mavlab.feature.onboarding.OnboardingScreenTest.content$default(OnboardingScreenTest.kt:27)
+	at com.ascend.mavlab.feature.onboarding.OnboardingScreenTest.recordingPreviewUsesTheLiveChartLayoutWithoutClaimingLiveData(OnboardingScreenTest.kt:90)
+	... 64 trimmed
+Caused by: androidx.test.espresso.IdlingResourceTimeoutException: Wait for [Compose-Espresso link] to become idle timed out
+	at androidx.test.espresso.IdlingPolicy.handleTimeout(IdlingPolicy.java:4)
+	at androidx.test.espresso.base.UiControllerImpl$5.resourcesHaveTimedOut(UiControllerImpl.java:1)
+	at androidx.test.espresso.base.IdlingResourceRegistry$Dispatcher.handleTimeout(IdlingResourceRegistry.java:4)
+	at androidx.test.espresso.base.IdlingResourceRegistry$Dispatcher.handleMessage(IdlingResourceRegistry.java:6)
+	at android.os.Handler.dispatchMessage(Handler.java:102)
+	at androidx.test.espresso.base.Interrogator.loopAndInterrogate(Interrogator.java:14)
+	at androidx.test.espresso.base.UiControllerImpl.loopUntil(UiControllerImpl.java:8)
+	at androidx.test.espresso.base.UiControllerImpl.loopMainThreadUntilIdle(UiControllerImpl.java:16)
+	at androidx.test.espresso.Espresso$1.run(Espresso.java:1)
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:462)
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+	at android.os.Handler.handleCallback(Handler.java:938)
+	at android.os.Handler.dispatchMessage(Handler.java:99)
+	at android.os.Looper.loopOnce(Looper.java:226)
+	at android.os.Looper.loop(Looper.java:313)
+	at android.app.ActivityThread.main(ActivityThread.java:8663)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:567)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1135)
+
+FAILURES!!!
+Tests run: 28,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

@@ -1,0 +1,11 @@
+Ops [164,48][319,162] enabled=true
+GCS connected [1773,58][2020,153] enabled=true
+No active issues detected [212,246][1173,358] enabled=true
+Authority: Idle [212,382][659,486] enabled=true
+Disarmed · Stabilize · Live state [212,510][1155,605] enabled=true
+Recording stopped [212,629][774,724] enabled=true
+Peers & identity [206,850][707,909] enabled=true
+Cockpit [269,999][468,1062] enabled=true
+Control [777,999][970,1062] enabled=true
+SIM [1328,999][1430,1062] enabled=true
+Ops [1832,999][1935,1062] enabled=true

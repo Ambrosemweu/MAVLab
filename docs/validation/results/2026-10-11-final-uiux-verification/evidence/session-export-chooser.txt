@@ -1,0 +1,9 @@
+5 items [300,1268][1020,1317] enabled=true
+No recommended people to share with [45,1611][1035,1653] enabled=true
+Quick Share [0,0][0,0] enabled=true
+Truecaller [0,0][0,0] enabled=true
+WhatsApp [0,0][0,0] enabled=true
+Instagram [0,0][0,0] enabled=true
+Feed [0,0][0,0] enabled=true
+Instagram [0,0][0,0] enabled=true
+Reels [0,0][0,0] enabled=true

@@ -27,7 +27,7 @@ Use repository release/AAB automation and the configured signing environment. Ne
 
 ## 3. Validate changed surfaces
 
-As applicable, cover onboarding; all five tabs; phone control/calibration; background handoff and explicit stop; same-phone and LAN QGC; arm/disarm, takeoff/land, direct commands, mission upload/start/completion; telemetry and reconnect; failures/reset; recording/export; and supported devices.
+As applicable, cover onboarding; the four destinations (Cockpit, Control, SIM and Ops), including contextual mission actions and the received-route view; phone control/calibration; background handoff and explicit stop; same-phone and LAN QGC; arm/disarm, takeoff/land, direct commands, mission upload/start/completion; telemetry and reconnect; failures/reset; recording/export; and supported devices. Keep build-specific passes and explicit qualification gaps separate; a development merge is not release acceptance.
 
 ## 4. Record evidence
 

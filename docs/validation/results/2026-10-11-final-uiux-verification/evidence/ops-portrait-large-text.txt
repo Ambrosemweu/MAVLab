@@ -1,0 +1,15 @@
+Peers & identity [90,116][591,165] enabled=true
+GCS heartbeat validated [90,189][820,284] enabled=true
+Show Peers & identity [198,333][850,428] enabled=true
+Runtime components [90,572][767,676] enabled=true
+Running · foreground [90,700][719,795] enabled=true
+Show Runtime components [198,843][954,1033] enabled=true
+Failure scenarios [90,1177][633,1281] enabled=true
+0 active injected conditions [90,1305][917,1400] enabled=true
+Show Failure scenarios [198,1449][891,1544] enabled=true
+Recordings & review [90,1688][735,1792] enabled=true
+Recording stopped · saved locally [90,1816][990,1965] enabled=true
+Cockpit [0,0][0,0] enabled=true
+Control [0,0][0,0] enabled=true
+SIM [0,0][0,0] enabled=true
+Ops [0,0][0,0] enabled=true
