@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.ascend.mavlab.feature.onboarding.OnboardingPagesTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-11T13:26:05" hostname="Ascend" time="0.035">
+  <properties/>
+  <testcase name="recordingIsExplicitlyOptInAndNeverPromisedForEveryFlight" classname="com.ascend.mavlab.feature.onboarding.OnboardingPagesTest" time="0.007"/>
+  <testcase name="everyPageUsesADistinctVisual" classname="com.ascend.mavlab.feature.onboarding.OnboardingPagesTest" time="0.001"/>
+  <testcase name="calibrationPrecedesFlightAndLandingPrecedesDisarm" classname="com.ascend.mavlab.feature.onboarding.OnboardingPagesTest" time="0.001"/>
+  <testcase name="firstPageIsHeroAndLastOpensCockpitWithoutPromisingFlight" classname="com.ascend.mavlab.feature.onboarding.OnboardingPagesTest" time="0.001"/>
+  <testcase name="copyMentionsCoreTrainingWorkflow" classname="com.ascend.mavlab.feature.onboarding.OnboardingPagesTest" time="0.02"/>
+  <testcase name="qgcPageIsTheOnlyPageWithQgcAction" classname="com.ascend.mavlab.feature.onboarding.OnboardingPagesTest" time="0.001"/>
+  <testcase name="v15PagesCoverRequiredFlow" classname="com.ascend.mavlab.feature.onboarding.OnboardingPagesTest" time="0.001"/>
+  <testcase name="optionalGcsAndIllustrationsCannotClaimLiveState" classname="com.ascend.mavlab.feature.onboarding.OnboardingPagesTest" time="0.001"/>
+  <testcase name="surfacePageNamesTheFourTabs" classname="com.ascend.mavlab.feature.onboarding.OnboardingPagesTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

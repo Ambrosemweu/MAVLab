@@ -32,12 +32,13 @@ fun RollingChart(
     leftAxis: ChartAxisSpec,
     rightAxis: ChartAxisSpec,
     modifier: Modifier = Modifier,
+    sourceLabel: String = "Simulated vehicle",
 ) {
     val leftScale = rollingChartScaleForAxis(series, ChartAxis.LEFT, leftAxis.symmetricAroundZero)
     val rightScale = rollingChartScaleForAxis(series, ChartAxis.RIGHT, rightAxis.symmetricAroundZero)
     val plotHeight = 180.dp
     val axisColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
-    val traceDescription = "$title, last 10 seconds. " +
+    val traceDescription = "$title, $sourceLabel, last 10 seconds. " +
         "Left axis, ${leftAxis.label}, ${chartValue(leftScale.minimum, leftAxis.unit)} to ${chartValue(leftScale.maximum, leftAxis.unit)}. " +
         "Right axis, ${rightAxis.label}, ${chartValue(rightScale.minimum, rightAxis.unit)} to ${chartValue(rightScale.maximum, rightAxis.unit)}."
     ElevatedCard(modifier = modifier.fillMaxWidth()) {
@@ -47,7 +48,7 @@ fun RollingChart(
         ) {
             Text(text = title, style = MaterialTheme.typography.titleSmall)
             Text(
-                text = "Simulated vehicle · last 10 seconds",
+                text = "$sourceLabel · last 10 seconds",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

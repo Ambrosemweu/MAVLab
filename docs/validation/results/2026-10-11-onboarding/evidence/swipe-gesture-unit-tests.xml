@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.ascend.mavlab.core.ui.navigation.ScreenSwipeGestureTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-11T13:26:04" hostname="Ascend" time="0.024">
+  <properties/>
+  <testcase name="OrdinaryShortDragCommitsWithoutVelocityOrScreenWidthDependence" classname="com.ascend.mavlab.core.ui.navigation.ScreenSwipeGestureTest" time="0.001"/>
+  <testcase name="ShortDragOrReturningToOriginDoesNotChangeTheScreen" classname="com.ascend.mavlab.core.ui.navigation.ScreenSwipeGestureTest" time="0.0"/>
+  <testcase name="horizontalReleaseMovesOneDestinationWithoutWrapping" classname="com.ascend.mavlab.core.ui.navigation.ScreenSwipeGestureTest" time="0.0"/>
+  <testcase name="ConsumedChildGesturesAndMultitouchNeverNavigate" classname="com.ascend.mavlab.core.ui.navigation.ScreenSwipeGestureTest" time="0.001"/>
+  <testcase name="ShortFastFlickCommitsButSlowShortMovementDoesNot" classname="com.ascend.mavlab.core.ui.navigation.ScreenSwipeGestureTest" time="0.002"/>
+  <testcase name="TinyFastTwitchOrFlickReturningToOriginDoesNotNavigate" classname="com.ascend.mavlab.core.ui.navigation.ScreenSwipeGestureTest" time="0.0"/>
+  <testcase name="HorizontalDirectionStaysLockedDespiteFingerCurvature" classname="com.ascend.mavlab.core.ui.navigation.ScreenSwipeGestureTest" time="0.0"/>
+  <testcase name="controlExclusionWinsInsideAnOtherwiseSwipeableSurface" classname="com.ascend.mavlab.core.ui.navigation.ScreenSwipeGestureTest" time="0.011"/>
+  <testcase name="VerticalGesturesRemainLocalButAmbiguousStartsCanResolveHorizontally" classname="com.ascend.mavlab.core.ui.navigation.ScreenSwipeGestureTest" time="0.001"/>
+  <testcase name="ExplicitCancellationSuppressesAnAlreadyRecognizedSwipe" classname="com.ascend.mavlab.core.ui.navigation.ScreenSwipeGestureTest" time="0.001"/>
+  <testcase name="passiveAreaBoundsMoveWithScrollingAndAreRemovedOnDisposal" classname="com.ascend.mavlab.core.ui.navigation.ScreenSwipeGestureTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

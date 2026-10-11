@@ -3,18 +3,19 @@ package com.ascend.mavlab.feature.onboarding
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,23 +33,18 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -60,8 +56,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ascend.mavlab.core.ui.components.TelemetryCard
+import com.ascend.mavlab.core.ui.components.RollingChart
 import com.ascend.mavlab.feature.controller.TiltVisualizer
-import kotlin.math.roundToInt
+import com.ascend.mavlab.feature.settings.GcsConnectionIndicator
+import com.ascend.mavlab.core.ui.navigation.screenSwipeExcluded
 import com.ascend.mavlab.feature.drone3d.AltitudeInstrument
 
 // Shared palette, kept in sync with core.ui.theme.MavLabColorScheme so the hand-drawn
@@ -181,68 +179,29 @@ private data class Surface(val name: String, val blurb: String, val icon: ImageV
 @Composable
 private fun SurfaceGalleryVisual() {
     val surfaces = listOf(
-        Surface("Cockpit", "Telemetry, safety state, mission awareness", Icons.Default.Analytics, Blue),
-        Surface("Control", "Local inputs and received mission actions", Icons.Default.ControlCamera, Blue),
-        Surface("SIM", "3D vehicle and received route", Icons.Default.Height, Green),
-        Surface("Ops", "MAVLink status, logs, export", Icons.Default.Settings, Slate),
+        Surface("Cockpit", "Readiness and flight state", Icons.Default.Analytics, Blue),
+        Surface("Control", "Inputs and mission actions", Icons.Default.ControlCamera, Blue),
+        Surface("SIM", "3D drone and received route", Icons.Default.Height, Green),
+        Surface("Ops", "Health, GCS and recordings", Icons.Default.Settings, Slate),
     )
-    val scrollState = rememberScrollState()
-    val density = LocalDensity.current
-    // Each card is 150dp wide with 12dp spacing → 162dp per step. The active dot
-    // tracks whichever card is most in view, snapping at the half-step.
-    val stepPx = with(density) { 162.dp.toPx() }
-    val activeIndex by remember {
-        derivedStateOf {
-            (scrollState.value / stepPx)
-                .roundToInt()
-                .coerceIn(0, surfaces.lastIndex)
-        }
-    }
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(18.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(scrollState),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            surfaces.forEach { surface ->
-                Column(
-                    modifier = Modifier
-                        .width(150.dp)
-                        .height(196.dp)
+    // All four destinations stay visible. A second horizontal carousel would
+    // compete with the tutorial's page swipe and hide half the introduction.
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        surfaces.chunked(2).forEach { pair ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                pair.forEach { surface ->
+                    Column(Modifier.weight(1f).heightIn(min = 144.dp)
                         .background(CardBg, RoundedCornerShape(20.dp))
-                        .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .background(surface.tint.copy(alpha = 0.12f), RoundedCornerShape(13.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(surface.icon, contentDescription = null, tint = surface.tint, modifier = Modifier.size(24.dp))
+                        .border(1.dp, CardBorder, RoundedCornerShape(20.dp)).padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(Modifier.size(38.dp).background(surface.tint.copy(alpha = .12f), RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center) {
+                            Icon(surface.icon, contentDescription = null, tint = surface.tint, modifier = Modifier.size(22.dp))
+                        }
+                        Text(surface.name, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFE2E8F0))
+                        Text(surface.blurb, fontSize = 13.sp, color = Slate)
                     }
-                    Text(surface.name, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFE2E8F0))
-                    Text(surface.blurb, fontSize = 13.sp, color = Slate)
                 }
-            }
-        }
-        // Position dots — the active one tracks the scroll position.
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            repeat(surfaces.size) { index ->
-                val active = index == activeIndex
-                val width by animateDpAsState(if (active) 20.dp else 7.dp, label = "dotWidth")
-                val color by animateColorAsState(if (active) Blue else CardBorder, label = "dotColor")
-                Box(
-                    modifier = Modifier
-                        .height(7.dp)
-                        .width(width)
-                        .background(color, CircleShape),
-                )
             }
         }
     }
@@ -344,21 +303,15 @@ private fun QgcLinkVisual(onOpenQGroundControl: () -> Unit) {
             canvas.drawText("Phone", p(50f), p(150f), lblPaint)
             canvas.drawText("GCS", p(250f), p(150f), lblPaint)
         }
-        // Live-link chip.
-        Row(
-            modifier = Modifier
-                .background(CardBg, CircleShape)
-                .border(1.dp, CardBorder, CircleShape)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Box(modifier = Modifier.size(8.dp).background(Green, CircleShape))
-            Text("GCS linked", color = Color(0xFFE2E8F0), fontFamily = Mono, fontSize = 15.sp)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            GcsConnectionIndicator(connected = true)
+            GcsConnectionIndicator(connected = false)
         }
+        Text("Link status is separate from flight authority", color = Slate, fontSize = 13.sp)
         Text("UDP :14550 · GCS 255 · MAVLab 1", color = Slate, fontFamily = Mono, fontSize = 13.sp)
-        OutlinedButton(onClick = onOpenQGroundControl, modifier = Modifier.fillMaxWidth()) {
-            Text("Open QGroundControl")
+        OutlinedButton(onClick = onOpenQGroundControl, modifier = Modifier.fillMaxWidth()
+            .screenSwipeExcluded(cancelClickOnHorizontalDrag = true)) {
+            Text("Get QGroundControl")
         }
     }
 }
@@ -367,6 +320,7 @@ private fun QgcLinkVisual(onOpenQGroundControl: () -> Unit) {
 // 5 · Arm / takeoff / land — hovering drone with an altitude chip and controls.
 // ---------------------------------------------------------------------------
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun ArmTakeoffLandVisual() {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -401,12 +355,13 @@ private fun ArmTakeoffLandVisual() {
                 Text("3.2 m", color = Color(0xFFE2E8F0), fontFamily = Mono, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PillChip("Arm", selected = true)
             PillChip("Takeoff", selected = false)
             PillChip("Land", selected = false)
+            PillChip("Disarm", selected = false)
         }
-        DotSeparatedRow(listOf("MANUAL", "STABILIZE", "Disarmed"), mono = true)
+        Text("Land first · Disarm stops the motors", color = Slate, fontSize = 13.sp)
     }
 }
 
@@ -415,7 +370,7 @@ private fun ArmTakeoffLandVisual() {
 // ---------------------------------------------------------------------------
 @Composable
 private fun TiltPadVisual() {
-    var throttle by remember { mutableFloatStateOf(0.42f) }
+    var throttle by remember { mutableFloatStateOf(0.5f) }
     var yawTrim by remember { mutableFloatStateOf(0f) }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -466,6 +421,7 @@ private fun ControlSlider(
             Text(valueLabel, style = MaterialTheme.typography.labelLarge)
         }
         Slider(
+            modifier = Modifier.screenSwipeExcluded().testTag("onboarding-${label.lowercase().replace(' ', '-')}"),
             value = value,
             onValueChange = onValueChange,
             valueRange = min..max,
@@ -543,7 +499,7 @@ private fun MissionPlotVisual() {
             }
         }
         Text(
-            "Fly to WP2 · 2/5 reached · AUTO",
+            "Example · WP2 active · 1/3 reached",
             color = Slate,
             fontFamily = Mono,
             fontSize = 13.sp,
@@ -621,15 +577,13 @@ private fun FailurePanelVisual() {
                 PillChip("Light", selected = false)
                 PillChip("Strong", selected = true, check = true)
             }
-            OutlinedButton(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("Reset perturbations") }
+            Text("Inject and reset in Ops", color = Slate, fontSize = 13.sp)
         }
     }
 }
 
 // ---------------------------------------------------------------------------
-// 9 · Telemetry log panel — exact port of the pen "LogPanel" (YbMHy): a mono
-// header + report chip, three colored line paths over a mid axis, a legend, and
-// a caption, all in one card. Chart geometry is the pen's exact polylines.
+// 9 · Example recording — the actual Cockpit chart, with smooth static samples.
 // ---------------------------------------------------------------------------
 @Composable
 private fun TelemetryChartVisual() {
@@ -648,7 +602,7 @@ private fun TelemetryChartVisual() {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "Telemetry",
+                "Example recording",
                 fontFamily = Mono,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -666,50 +620,14 @@ private fun TelemetryChartVisual() {
                 Text("report.md", fontFamily = Mono, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFFCBD5E1))
             }
         }
-        // Chart: mid axis + three colored line paths (exact pen 276×90 polylines).
-        val altitudeDy = List(27) { if (it < 12) -5.5f else 0f }
-        val rollDy = listOf(
-            11.6f, 6.1f, -2.2f, -9.5f, -12.3f, -9.4f, -2f, 6.3f, 11.7f, 11.5f, 6f, -2.4f, -9.7f, -12.3f,
-            -9.2f, -1.8f, 6.5f, 11.7f, 11.5f, 5.7f, -2.6f, -9.7f, -12.4f, -9.1f, -1.6f, 6.7f, 11.8f,
+        RollingChart(
+            title = "Flight traces",
+            series = OnboardingTelemetryPreview.series,
+            leftAxis = OnboardingTelemetryPreview.leftAxis,
+            rightAxis = OnboardingTelemetryPreview.rightAxis,
+            sourceLabel = OnboardingTelemetryPreview.sourceLabel,
+            modifier = Modifier.testTag("onboarding-telemetry-chart"),
         )
-        val pitchDy = listOf(
-            1.6f, -0.9f, -3.1f, -4.6f, -4.9f, -4.1f, -2.2f, 0.2f, 2.5f, 4.3f, 5f, 4.4f, 2.8f, 0.5f,
-            -1.9f, -3.9f, -4.9f, -4.6f, -3.4f, -1.2f, 1.2f, 3.4f, 4.7f, 4.9f, 3.8f, 1.9f, -0.6f,
-        )
-        Canvas(modifier = Modifier.fillMaxWidth().aspectRatio(276f / 90f)) {
-            val s = size.height / 90f
-            fun pathOf(startY: Float, dys: List<Float>): Path {
-                val path = Path()
-                val stepX = size.width / dys.size
-                var y = startY
-                path.moveTo(0f, y * s)
-                dys.forEachIndexed { i, dy ->
-                    y += dy
-                    path.lineTo((i + 1) * stepX, y * s)
-                }
-                return path
-            }
-            drawLine(Color(0x29FFFFFF), Offset(0f, 44f * s), Offset(size.width, 44f * s), strokeWidth = 1f * s)
-            val stroke = Stroke(width = 2f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
-            drawPath(pathOf(78f, altitudeDy), color = Blue, style = stroke)
-            drawPath(pathOf(45f, rollDy), color = Green, style = stroke)
-            drawPath(pathOf(53.4f, pitchDy), color = Amber, style = stroke)
-        }
-        // Legend.
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            LegendItem(Blue, "Altitude")
-            LegendItem(Green, "Roll")
-            LegendItem(Amber, "Pitch")
-        }
-        Text("peak 10.0 m · 1m 48s", fontFamily = Mono, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Slate)
-    }
-}
-
-@Composable
-private fun LegendItem(color: Color, label: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(modifier = Modifier.width(12.dp).height(2.dp).background(color, CircleShape))
-        Text(label, fontFamily = Mono, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = Slate)
     }
 }
 
