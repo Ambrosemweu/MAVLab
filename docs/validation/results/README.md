@@ -4,6 +4,7 @@ Store immutable, build-specific MAVLab validation records here. Do not overwrite
 
 ## Results
 
+- [v1.6.0 publication, independently downloaded assets and signing deferral — 2026-10-12](v1.6.0-2026-10-12-publication.md)
 - [v1.6.0 candidate pre-merge host, packaging and signing verification — 2026-10-12](2026-10-12-v1.6.0-premerge-host.md)
 
 - [Simulated fence/rally host and isolated phone verification — 2026-10-12](2026-10-12-simulated-fence-rally-verification.md)

@@ -42,7 +42,7 @@ Existing files such as [architecture.md](architecture.md), [protocol_guardrails.
 
 - [Operations home](operations/README.md)
 - [Release runbook](operations/release.md)
-- [v1.6.0 pre-merge and release readiness](operations/v1.6.0-readiness.md)
+- [v1.6.0 release disposition and readiness](operations/v1.6.0-readiness.md)
 - [v1.6.0 release notes](v1_6_0_release_notes.md)
 - [v1.6.0 acceptance specification](validation/v1.6.0-acceptance.md)
 - [New media, captions and checksums](../assets/media/2026-10/README.md)

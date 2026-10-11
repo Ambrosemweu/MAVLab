@@ -4,7 +4,7 @@ A phone-first, offline-capable drone simulator and digital twin. Learn attitude,
 
 Physics, autopilot, visualization and the MAVLink endpoint run on the phone. QGroundControl is optional for the core learning loop; no aircraft, cloud service or external simulation server is required.
 
-**Release status:** **v1.6.0**, Android version code **19**, is approved for publication; merge/publication is in progress. The latest published version is [v1.5.3](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.5.3), whose navigation differs from the screenshots below. See the [v1.6.0 release notes](docs/v1_6_0_release_notes.md) and [pre-merge checklist](docs/operations/v1.6.0-readiness.md).
+**Latest release:** [**v1.6.0**](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.6.0), Android version code **19**, published on 12 October 2026 (Africa/Nairobi). See the [release notes](docs/v1_6_0_release_notes.md) and [publication verification](docs/validation/results/v1.6.0-2026-10-12-publication.md). Stable signing and final-artifact phone/QGC qualification remain explicitly deferred.
 
 ## Four connected views
 
@@ -62,7 +62,7 @@ The simulator uses flat ground and straight-line return control. It does not imp
 
 ### Published APK
 
-Download `MAVLab-v1.5.3.apk` from the [published release](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.5.3). Android may ask you to allow installation from your file manager or browser. The v1.6.0 APK will be linked only after publication and artifact verification.
+Download [MAVLab-v1.6.0.apk](https://github.com/Labs-Ascend/MAVLab/releases/download/v1.6.0/MAVLab-v1.6.0.apk) from the [published release](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.6.0), which also includes sound-enabled demos, screenshots and `SHA256SUMS.txt`. Android may ask you to allow installation from your file manager or browser. Read the signing warning above before changing an existing installation.
 
 ### Build v1.6.0
 
@@ -100,7 +100,7 @@ GCS connection is not control authority or proof of successful command/mission d
 - [Architecture](docs/internals/overview.md), [control authority](docs/internals/control-authority.md), [runtime lifecycle](docs/internals/runtime-lifecycle.md) and [MAVLink contract](docs/internals/mavlink-contract.md).
 - [Contributor guide](AGENTS.md), [Android implementation](mavlab-android/README.md), [release runbook](docs/operations/release.md) and [v1.6.0 readiness](docs/operations/v1.6.0-readiness.md).
 - [Validation records](docs/validation/results/README.md). Prior build/device passes are not automatically acceptance of the new versioned artifact.
-- [v1.6.0 candidate notes](docs/v1_6_0_release_notes.md); published [v1.5.3](docs/v1_5_3_release_notes.md), [v1.5.2](docs/v1_5_2_release_notes.md), [v1.5.1](docs/v1_5_1_release_notes.md) and [v1.5](docs/v1_5_release_notes.md) notes.
+- Published release notes: [v1.6.0](docs/v1_6_0_release_notes.md), [v1.5.3](docs/v1_5_3_release_notes.md), [v1.5.2](docs/v1_5_2_release_notes.md), [v1.5.1](docs/v1_5_1_release_notes.md) and [v1.5](docs/v1_5_release_notes.md).
 
 ## Technical paper
 
