@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.ascend.mavlab.core.mavlink.MavlinkIdentityStatusTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-11T12:49:03" hostname="Ascend" time="0.006">
+  <properties/>
+  <testcase name="gcsConnectionRequiresContinuousHeartbeatsBeforeLockingConnected" classname="com.ascend.mavlab.core.mavlink.MavlinkIdentityStatusTest" time="0.0"/>
+  <testcase name="gcsHeartbeatSeriesResetsAfterLongGapBeforeConnectionLocks" classname="com.ascend.mavlab.core.mavlink.MavlinkIdentityStatusTest" time="0.001"/>
+  <testcase name="onlyGroundControlHeartbeatQualifiesForConnectionRetention" classname="com.ascend.mavlab.core.mavlink.MavlinkIdentityStatusTest" time="0.003"/>
+  <testcase name="gcsConnectionDropsOnlyAfterHeartbeatTimeout" classname="com.ascend.mavlab.core.mavlink.MavlinkIdentityStatusTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,44 @@
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipePagerClippingTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.ascend.mavlab.core.ui.navigation.ScreenSwipePagerClippingTest:
+INSTRUMENTATION_STATUS: test=neighbouringCanvasCannotDrawAcrossTheSettledPageBoundary
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.ascend.mavlab.core.ui.navigation.ScreenSwipePagerClippingTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Offscreen SIM-style grid must not bleed into Control at x=861 expected:<-16777216> but was:<-65536>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.ascend.mavlab.core.ui.navigation.ScreenSwipePagerClippingTest.neighbouringCanvasCannotDrawAcrossTheSettledPageBoundary(ScreenSwipePagerClippingTest.kt:44)
+
+INSTRUMENTATION_STATUS: stream=
+Error in neighbouringCanvasCannotDrawAcrossTheSettledPageBoundary(com.ascend.mavlab.core.ui.navigation.ScreenSwipePagerClippingTest):
+java.lang.AssertionError: Offscreen SIM-style grid must not bleed into Control at x=861 expected:<-16777216> but was:<-65536>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.ascend.mavlab.core.ui.navigation.ScreenSwipePagerClippingTest.neighbouringCanvasCannotDrawAcrossTheSettledPageBoundary(ScreenSwipePagerClippingTest.kt:44)
+
+INSTRUMENTATION_STATUS: test=neighbouringCanvasCannotDrawAcrossTheSettledPageBoundary
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 1.351
+There was 1 failure:
+1) neighbouringCanvasCannotDrawAcrossTheSettledPageBoundary(com.ascend.mavlab.core.ui.navigation.ScreenSwipePagerClippingTest)
+java.lang.AssertionError: Offscreen SIM-style grid must not bleed into Control at x=861 expected:<-16777216> but was:<-65536>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at com.ascend.mavlab.core.ui.navigation.ScreenSwipePagerClippingTest.neighbouringCanvasCannotDrawAcrossTheSettledPageBoundary(ScreenSwipePagerClippingTest.kt:44)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

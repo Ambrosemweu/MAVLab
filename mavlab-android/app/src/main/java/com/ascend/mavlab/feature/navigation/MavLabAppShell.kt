@@ -108,9 +108,11 @@ fun MavLabAppShell(fullScreen: Boolean = false, onFullScreenChange: (Boolean) ->
     if (!onboardingComplete) {
         OnboardingScreen(
             modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
+            swipeEnabled = !touchExploration && !keyboardVisible,
             onComplete = {
                 preferences.edit().putBoolean("onboarding_complete", true).apply()
                 onboardingComplete = true
+                openTab(MavLabTab.Cockpit)
             },
         )
         return

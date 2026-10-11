@@ -8,6 +8,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -58,7 +59,10 @@ fun ScreenSwipePager(
                         while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
                     }
                 }
-            Box(Modifier.fillMaxSize().then(protection)) { content(page, active, settled) }
+            // Canvas coordinates (SIM grid/trail) can extend outside their own
+            // layout. Clip each page, not just the overall viewport, so prepared
+            // neighbours cannot draw a stray line over the selected surface.
+            Box(Modifier.fillMaxSize().clipToBounds().then(protection)) { content(page, active, settled) }
         }
     }
 }

@@ -10,6 +10,8 @@ A short horizontal swipe or quick flick is enough; you do not need to drag acros
 
 The current and next screen slide together with your finger and settle from that same position when you release it. An interrupted or cancelled swipe eases back. Swiping past Cockpit or Ops stops at the end, and a new swipe takes over immediately from a settling animation. Partially visible neighbouring screens are previews, not active controls. SIM's 3D renderer starts after you arrive so it does not cold-start during the swipe.
 
+Each page's drawing stays inside its own bounds. SIM's grid and flight trail cannot draw a stray line over Control or Ops while SIM is prepared offscreen.
+
 Controls have priority. Dragging a slider, manipulating the 3D camera, panning a route, interacting with a mission action, or scrolling vertically does not change screens. Use the bottom buttons when a screen is mostly interactive. Screen-swiping is disabled during text entry and TalkBack touch exploration. Android system gestures remain available at the edges.
 
 On Cockpit and Ops, a horizontal drag over a button cancels its tap. Release and tap normally to activate the button.

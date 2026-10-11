@@ -83,7 +83,11 @@ fun SettingsScreen(
 
     Surface(modifier = modifier.fillMaxSize().screenSwipeArea()) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Ops", modifier = Modifier.fillMaxWidth().screenSwipeArea(), style = MaterialTheme.typography.headlineMedium)
+            Row(Modifier.fillMaxWidth().screenSwipeArea(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Ops", style = MaterialTheme.typography.headlineMedium)
+                OpsGcsStatus()
+            }
             HealthSummary(operations)
             if (operations.incidents.isNotEmpty()) {
                 Text("Needs attention · ${operations.incidents.size}", style = MaterialTheme.typography.titleMedium)
@@ -119,6 +123,13 @@ fun SettingsScreen(
 }
 
 internal data class OpsConfirmation(val title: String, val message: String, val action: () -> Unit)
+
+@Composable
+private fun OpsGcsStatus() {
+    val connection = remember { AppRuntime.mavlinkIdentityStatus.map { it.gcsConnected }.distinctUntilChanged() }
+    val connected by connection.collectAsStateWithLifecycle(false)
+    GcsConnectionIndicator(connected)
+}
 
 @Composable
 private fun DisplaySection(fullScreen: Boolean, onFullScreenChange: (Boolean) -> Unit) {

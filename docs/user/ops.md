@@ -10,6 +10,8 @@ Incident times describe when this app process first observed the problem. The st
 
 ## Peers and mission evidence
 
+The indicator beside **Ops** shows a green dot and **GCS connected** after a continuous validated GCS heartbeat stream has warmed up (three seconds). It shows a red dot and **GCS disconnected** before validation, after heartbeats expire (15 seconds without a heartbeat, checked once per second), or when MAVLink stops. Red describes the link only; offline simulation is still normal and available. Packet receipt alone does not turn it green. The text label also identifies the state without relying on colour.
+
 Expand **Peers & identity** for vehicle/GCS system and component IDs, packet/heartbeat age, validation, conflicts, transport status, latest inbound message and command ACK. A validated heartbeat does not grant control authority or prove that outgoing telemetry arrived at QGC.
 
 **Mission upload** appears for a stored mission or a non-idle upload. It shows exact phase, expected/received counts, zero-based requested/validated sequences, rejection, stored source and partial behavior. Accepted upload is separate from AUTO execution. Restoration generates no new upload ACK. A rejected replacement retains the prior loaded mission; inspect the reason, correct it in QGC and re-upload. Unverified saved source requires re-upload before route display/local Start AUTO, or clear while disarmed in Control.

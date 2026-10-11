@@ -10,6 +10,8 @@ Ops prioritizes current health and active corrective actions, then peer/identity
 
 Incidents and history are separate. A reset is a command, not immediate proof of recovered telemetry: for example GPS remains degraded until the observed fix returns, and resetting drain does not recharge a low battery. Actual GCS heartbeat expiry and injected lost link remain separate issues. Absence of a peer is a normal offline state. Validation of a heartbeat does not prove outbound telemetry delivery or grant control authority. Unknown source and upload rejection retain exact mission evidence without duplicating Control flight-progress presentation.
 
+The Ops header additionally exposes a labelled green/red GCS link dot. Its lifecycle-aware observer maps the existing `mavlinkIdentityStatus.gcsConnected` Boolean with distinct-until-changed, rather than adding a timer, inferring connection from packets, or collecting every identity update into the header. Existing three-second heartbeat warmup and 15-second expiry remain authoritative. Disconnected red is a link state, not a new critical incident; identity conflicts remain separately visible in Peers & identity.
+
 ## Recording
 
 Recording is opt-in, as explicitly requested by the user during Ops implementation. Automatic recording defaults to off for local flights and AUTO missions. Ops can explicitly begin a ground or flight recording, or enable automatic-on-arm capture while disarmed. Explicit Begin does not opt into future automatic capture.
