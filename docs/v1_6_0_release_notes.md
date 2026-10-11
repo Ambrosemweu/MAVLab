@@ -7,7 +7,7 @@ Android version code: 19. Release date: 2026-10-12.
 
 Stable release signing is deferred by the maintainer to the next release. This version distributes the locally verified **debug-signed APK**, not a production-signed APK. Its certificate differs from the official v1.5.3 APK, so it **cannot update that published APK in place**. Matching local development installations may update in place; do not assume all v1.5.3 installations use the same key.
 
-Do not uninstall or clear data simply to bypass Android's signature check. Export valuable recordings, save QGC plans externally and note your settings first. Removing the previous app erases its local data/settings; this release provides no automatic signing-key/data migration. Only change installations after explicitly accepting that consequence. See [upgrade guidance](user/upgrading.md).
+Do not uninstall or clear data simply to bypass Android's signature check. Export valuable recordings, save QGC plans externally and note your settings first. Removing the previous app erases its local data/settings; this release provides no automatic signing-key/data migration. Only change installations after explicitly accepting that consequence. See [upgrade guidance](https://github.com/Labs-Ascend/MAVLab/blob/v1.6.0/docs/user/upgrading.md).
 
 The AAB is unsigned, not directly installable and not Play-ready. Stable APK/AAB signing, secure key backup and a deliberate upgrade/migration policy are the first priority for the next release.
 
@@ -46,18 +46,18 @@ MAVLab v1.6.0 brings a clearer phone-first interface, continuous guarded navigat
 
 ## Important limits
 
-This is a simulated vehicle, not official ArduPilot firmware or a real-aircraft safety system. Ground is flat and returns are straight-line, not obstacle/terrain-aware. SmartRTL, predictive fence braking, terrain frames and MAVLink signing are unsupported. LOITER_TIME has arrival but not timed dwell; `autocontinue=false` does not pause at a waypoint. SET_MESSAGE_INTERVAL accepts requests without dynamic rate selection. See the [MAVLink contract](internals/mavlink-contract.md) and [flight boundaries guide](user/flight-boundaries.md).
+This is a simulated vehicle, not official ArduPilot firmware or a real-aircraft safety system. Ground is flat and returns are straight-line, not obstacle/terrain-aware. SmartRTL, predictive fence braking, terrain frames and MAVLink signing are unsupported. LOITER_TIME has arrival but not timed dwell; `autocontinue=false` does not pause at a waypoint. SET_MESSAGE_INTERVAL accepts requests without dynamic rate selection. See the [MAVLink contract](https://github.com/Labs-Ascend/MAVLab/blob/v1.6.0/docs/internals/mavlink-contract.md) and [flight boundaries guide](https://github.com/Labs-Ascend/MAVLab/blob/v1.6.0/docs/user/flight-boundaries.md).
 
 ## Upgrade and evidence
 
 Use `MAVLab-v1.6.0.apk` only with the signing warning above understood. An in-place update preserves settings/recordings only when the signing identity matches; older missions with unknown source require re-upload before route display/local AUTO. Save your QGC plan and reconnect after upgrading to refresh capabilities. Upload safety plans while disarmed; uploading never enables fencing.
 
-[Sound-enabled demos and four screenshots](../assets/media/2026-10/README.md) show local control and AUTO/RTL initiation, not a complete fence/rally acceptance flight.
+[Sound-enabled demos and four screenshots](https://github.com/Labs-Ascend/MAVLab/blob/v1.6.0/assets/media/2026-10/README.md) show local control and AUTO/RTL initiation, not a complete fence/rally acceptance flight.
 
-Earlier working-tree evidence includes 307 unit tests and seven isolated Android protocol/flight checks on the fence/rally build, plus separate earlier UI/layout/audio phone suites. Those APKs used version 1.5.3/code 18; they are not the final v1.6.0 artifact. Live QGC nonempty safety-plan transfer/recovery, final candidate device acceptance and verified published artifacts remain separate gates in [release readiness](operations/v1.6.0-readiness.md). No blanket release PASS is claimed.
+Earlier working-tree evidence includes 307 unit tests and seven isolated Android protocol/flight checks on the fence/rally build, plus separate earlier UI/layout/audio phone suites. Those APKs used version 1.5.3/code 18; they are not the final v1.6.0 artifact. Live QGC nonempty safety-plan transfer/recovery, final candidate device acceptance and verified published artifacts remain separate gates in [release readiness](https://github.com/Labs-Ascend/MAVLab/blob/v1.6.0/docs/operations/v1.6.0-readiness.md). No blanket release PASS is claimed.
 
 Ambrose subsequently confirmed actual fence and rally uploads completed without errors on the previously installed update. This user-reported success is recorded in readiness, not promoted to independently verified candidate download/recovery acceptance.
 
-The [1.6.0 candidate host gate](validation/results/2026-10-12-v1.6.0-premerge-host.md) then passed with 307 freshly rerun unit tests, successful APK/AAB assembly and lint (zero errors, 34 warnings). Documentation/tooling and isolated packaging/signing-fixture checks passed. The newly versioned APK has not been installed/accepted on the phone. The maintainer authorized publication with this and the recorded broader device/QGC qualification gaps carried forward; publishing is not a new device-test PASS.
+The [1.6.0 candidate host gate](https://github.com/Labs-Ascend/MAVLab/blob/v1.6.0/docs/validation/results/2026-10-12-v1.6.0-premerge-host.md) then passed with 307 freshly rerun unit tests, successful APK/AAB assembly and lint (zero errors, 34 warnings). Documentation/tooling and isolated packaging/signing-fixture checks passed. The newly versioned APK has not been installed/accepted on the phone. The maintainer authorized publication with this and the recorded broader device/QGC qualification gaps carried forward; publishing is not a new device-test PASS.
 
 Only v1.6.0 has an explicitly authorized manual-publication exception. Tag CI archives its own comparison build but does not replace public assets with a runner-generated debug key. Future tag releases remain guarded by stable signing requirements; no private key or signing secret was created/uploaded for this release.
