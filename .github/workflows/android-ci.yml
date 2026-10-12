@@ -28,6 +28,8 @@ jobs:
         run: python3 ../scripts/check-release-docs.py
       - name: Documentation checker tests
         run: python3 ../scripts/test_check_release_docs.py
+      - name: Build-only release attachment tests
+        run: python3 ../scripts/test_release_assets.py
       - name: Lint Android
         run: ./gradlew lintDebug
       - name: Unit tests

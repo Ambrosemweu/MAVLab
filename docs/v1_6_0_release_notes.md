@@ -3,6 +3,8 @@
 Status: v1.6.0 approved for publication with documented signing and qualification deferrals.
 Android version code: 19. Release date: 2026-10-12.
 
+Release attachments contain only `MAVLab-v1.6.0.apk` and `MAVLab-v1.6.0.aab`. Demos and screenshots remain in the repository's media gallery, not as release attachments.
+
 ## Important installation warning
 
 Stable release signing is deferred by the maintainer to the next release. This version distributes the locally verified **debug-signed APK**, not a production-signed APK. Its certificate differs from the official v1.5.3 APK, so it **cannot update that published APK in place**. Matching local development installations may update in place; do not assume all v1.5.3 installations use the same key.

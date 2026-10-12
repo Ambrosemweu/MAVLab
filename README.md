@@ -62,7 +62,7 @@ The simulator uses flat ground and straight-line return control. It does not imp
 
 ### Published APK
 
-Download [MAVLab-v1.6.0.apk](https://github.com/Labs-Ascend/MAVLab/releases/download/v1.6.0/MAVLab-v1.6.0.apk) from the [published release](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.6.0), which also includes sound-enabled demos, screenshots and `SHA256SUMS.txt`. Android may ask you to allow installation from your file manager or browser. Read the signing warning above before changing an existing installation.
+Download [MAVLab-v1.6.0.apk](https://github.com/Labs-Ascend/MAVLab/releases/download/v1.6.0/MAVLab-v1.6.0.apk) from the [published release](https://github.com/Labs-Ascend/MAVLab/releases/tag/v1.6.0). Release attachments contain only the APK and AAB builds; demos and screenshots remain in the gallery above. Android may ask you to allow installation from your file manager or browser. Read the signing warning above before changing an existing installation.
 
 ### Build v1.6.0
 

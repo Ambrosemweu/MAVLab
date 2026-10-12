@@ -25,6 +25,7 @@ jobs:
       - name: Verify release tag
         run: |
           python3 ../scripts/check-release-docs.py --publish --tag "${GITHUB_REF_NAME}"
+          python3 ../scripts/test_release_assets.py
           expected_tag="v$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts)"
           if [ "${GITHUB_REF_NAME}" != "${expected_tag}" ]; then
             echo "Release tag ${GITHUB_REF_NAME} does not match app version ${expected_tag}." >&2
@@ -39,24 +40,6 @@ jobs:
             "${GITHUB_WORKSPACE}/release-artifacts/MAVLab-${GITHUB_REF_NAME}.apk"
           cp app/build/outputs/bundle/release/app-release.aab \
             "${GITHUB_WORKSPACE}/release-artifacts/MAVLab-${GITHUB_REF_NAME}.aab"
-          media="${GITHUB_WORKSPACE}/assets/media/2026-10"
-          (cd "${media}" && sha256sum -c SHA256SUMS)
-          for item in on-device qgc-demo; do
-            cp "${media}/mavlab-${item}.mp4" \
-              "${GITHUB_WORKSPACE}/release-artifacts/MAVLab-${GITHUB_REF_NAME}-${item}.mp4"
-          done
-          for item in on-device qgc; do
-            cp "${media}/mavlab-${item}-poster.jpg" \
-              "${GITHUB_WORKSPACE}/release-artifacts/MAVLab-${GITHUB_REF_NAME}-${item}-poster.jpg"
-          done
-          for surface in cockpit control sim ops; do
-            cp "${media}/screenshots/${surface}.jpg" \
-              "${GITHUB_WORKSPACE}/release-artifacts/MAVLab-${GITHUB_REF_NAME}-${surface}.jpg"
-          done
-          (cd "${media}" && zip -0 -X -r \
-            "${GITHUB_WORKSPACE}/release-artifacts/MAVLab-${GITHUB_REF_NAME}-media.zip" \
-            README.md SOURCE-SHA256.md SHA256SUMS mavlab-on-device.mp4 mavlab-qgc-demo.mp4 \
-            mavlab-on-device-poster.jpg mavlab-qgc-poster.jpg screenshots)
       - name: Sign APK with stable upgrade identity
         # v1.6.0 alone is manually published from the verified local debug build.
         # Future releases retain the stable signing requirement.
@@ -95,12 +78,14 @@ jobs:
               --title "MAVLab ${GITHUB_REF_NAME}" \
               --notes-file "${release_notes}"
             gh release upload "${GITHUB_REF_NAME}" \
-              "${GITHUB_WORKSPACE}"/release-artifacts/* \
+              "${GITHUB_WORKSPACE}/release-artifacts/MAVLab-${GITHUB_REF_NAME}.apk" \
+              "${GITHUB_WORKSPACE}/release-artifacts/MAVLab-${GITHUB_REF_NAME}.aab" \
               --repo "${GITHUB_REPOSITORY}" \
               --clobber
           else
             gh release create "${GITHUB_REF_NAME}" \
-              "${GITHUB_WORKSPACE}"/release-artifacts/* \
+              "${GITHUB_WORKSPACE}/release-artifacts/MAVLab-${GITHUB_REF_NAME}.apk" \
+              "${GITHUB_WORKSPACE}/release-artifacts/MAVLab-${GITHUB_REF_NAME}.aab" \
               --repo "${GITHUB_REPOSITORY}" \
               --title "MAVLab ${GITHUB_REF_NAME}" \
               --notes-file "${release_notes}" \
